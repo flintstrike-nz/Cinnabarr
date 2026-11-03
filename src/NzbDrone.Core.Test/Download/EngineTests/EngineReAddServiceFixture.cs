@@ -37,7 +37,8 @@ namespace NzbDrone.Core.Test.Download.EngineTests
                 {
                     Series = new Series { Id = 5 },
                     Episodes = new List<Episode> { new Episode { Id = 4 } },
-                    ParsedEpisodeInfo = new ParsedEpisodeInfo()
+                    ParsedEpisodeInfo = new ParsedEpisodeInfo(),
+                    Release = new ReleaseInfo { IndexerFlags = IndexerFlags.Freeleech }
                 }
             };
 
@@ -74,7 +75,8 @@ namespace NzbDrone.Core.Test.Download.EngineTests
                                                                         ((TorrentInfo)r.Release).InfoHash == null &&
                                                                         ((TorrentInfo)r.Release).MagnetUrl == null &&
                                                                         r.Release.DownloadUrl == "http://indexer/download/1" &&
-                                                                        r.Release.IndexerId == 2),
+                                                                        r.Release.IndexerId == 2 &&
+                                                                        r.Release.IndexerFlags == IndexerFlags.Freeleech),
                                               3),
                         Times.Once());
 

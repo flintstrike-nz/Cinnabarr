@@ -70,6 +70,10 @@ namespace NzbDrone.Core.Download.Engine
                 throw new EngineReAddException($"The release link for '{title}' wasn't stored, so it can't be re-added. Search for it again instead.");
             }
 
+            // ReleaseInfo.IndexerFlags isn't stored with the grab; the Missing row has them from the episode
+            // grab history.
+            var indexerFlags = remoteEpisode.Release?.IndexerFlags ?? release.IndexerFlags;
+
             var torrent = new TorrentInfo
             {
                 Guid = release.Guid,
@@ -81,7 +85,7 @@ namespace NzbDrone.Core.Download.Engine
                 CommentUrl = release.CommentUrl,
                 IndexerId = release.IndexerId,
                 Indexer = release.Indexer,
-                IndexerFlags = release.IndexerFlags,
+                IndexerFlags = indexerFlags,
                 PublishDate = release.PublishDate,
                 Languages = release.Languages,
                 DownloadProtocol = DownloadProtocol.Torrent
