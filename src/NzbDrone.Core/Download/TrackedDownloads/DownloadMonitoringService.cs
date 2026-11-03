@@ -33,6 +33,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         private readonly ITrackedDownloadService _trackedDownloadService;
         private readonly IEngineClientRegistry _engineClientRegistry;
         private readonly IEngineReconcileService _engineReconcileService;
+        private readonly IEngineTorrentPreparationService _engineTorrentPreparationService;
         private readonly Logger _logger;
         private readonly Debouncer _refreshDebounce;
 
@@ -46,6 +47,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                                          ITrackedDownloadService trackedDownloadService,
                                          IEngineClientRegistry engineClientRegistry,
                                          IEngineReconcileService engineReconcileService,
+                                         IEngineTorrentPreparationService engineTorrentPreparationService,
                                          Logger logger)
         {
             _downloadClientStatusService = downloadClientStatusService;
@@ -58,6 +60,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             _trackedDownloadService = trackedDownloadService;
             _engineClientRegistry = engineClientRegistry;
             _engineReconcileService = engineReconcileService;
+            _engineTorrentPreparationService = engineTorrentPreparationService;
             _logger = logger;
 
             _refreshDebounce = new Debouncer(QueueRefresh, TimeSpan.FromSeconds(5));
@@ -105,6 +108,11 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             var trackedDownloads = new List<TrackedDownload>();
             var missingFromEngine = new List<TrackedDownload>();
 
+            if (_engineClientRegistry.IsEngineClient(downloadClient.Definition.Id))
+            {
+                PrepareEngineTorrents(downloadClient);
+            }
+
             try
             {
                 downloadClientItems = downloadClient.GetItems().ToList();
@@ -139,6 +147,18 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             trackedDownloads.AddRange(missingFromEngine);
 
             return trackedDownloads;
+        }
+
+        private void PrepareEngineTorrents(IDownloadClient downloadClient)
+        {
+            try
+            {
+                _engineTorrentPreparationService.Prepare(downloadClient);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "Unable to prepare new torrents in the engine");
+            }
         }
 
         private List<TrackedDownload> FindMissingFromEngine(IDownloadClient downloadClient, List<string> downloadIds)

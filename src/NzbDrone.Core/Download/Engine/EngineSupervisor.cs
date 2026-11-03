@@ -311,6 +311,10 @@ namespace NzbDrone.Core.Download.Engine
             settings.TvCategory = string.Empty;
             settings.TvImportedCategory = string.Empty;
 
+            // Nothing downloads until EngineTorrentPreparationService has applied the file whitelist (roadmap §4.8).
+            settings.HoldNewTorrents = true;
+            settings.InitialState = (int)QBittorrentState.Start;
+
             if (definition == null)
             {
                 definition = _downloadClientFactory.Create(new DownloadClientDefinition

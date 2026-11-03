@@ -46,6 +46,11 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
 
         [JsonProperty(PropertyName = "last_activity")] // Timestamp in unix seconds when a chunk was last downloaded/uploaded
         public long LastActivity { get; set; }
+
+        [JsonProperty(PropertyName = "has_metadata")] // False while a magnet is still fetching its metadata
+        public bool HasMetadata { get; set; } = true;
+
+        public string Tags { get; set; } // Comma-separated tags
     }
 
     public class QBittorrentTorrentProperties

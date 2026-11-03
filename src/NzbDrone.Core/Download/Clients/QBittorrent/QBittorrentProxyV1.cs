@@ -278,6 +278,27 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             // Not supported on api v1
         }
 
+        public void SetFilePriority(string hash, IEnumerable<int> fileIndexes, int priority, QBittorrentSettings settings)
+        {
+            foreach (var fileIndex in fileIndexes)
+            {
+                var request = BuildRequest(settings).Resource("/command/setFilePrio")
+                                                    .Post()
+                                                    .AddFormParameter("hash", hash)
+                                                    .AddFormParameter("id", fileIndex)
+                                                    .AddFormParameter("priority", priority);
+                ProcessRequest(request, settings);
+            }
+        }
+
+        public void StartTorrent(string hash, QBittorrentSettings settings)
+        {
+            var request = BuildRequest(settings).Resource("/command/resume")
+                                                .Post()
+                                                .AddFormParameter("hash", hash);
+            ProcessRequest(request, settings);
+        }
+
         private HttpRequestBuilder BuildRequest(QBittorrentSettings settings)
         {
             var requestBuilder = new HttpRequestBuilder(settings.UseSsl, settings.Host, settings.Port, settings.UrlBase)

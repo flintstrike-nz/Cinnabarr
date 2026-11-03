@@ -149,7 +149,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                                                 .Post()
                                                 .AddFormParameter("urls", torrentUrl);
 
-            AddTorrentDownloadFormParameters(request, settings);
+            AddTorrentDownloadFormParameters(request, settings, isMagnet: true);
 
             if (seedConfiguration != null)
             {
@@ -171,7 +171,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                                                 .Post()
                                                 .AddFormUpload("torrents", fileName, fileContent);
 
-            AddTorrentDownloadFormParameters(request, settings);
+            AddTorrentDownloadFormParameters(request, settings, isMagnet: false);
 
             if (seedConfiguration != null)
             {
@@ -258,16 +258,29 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             return "seedingTimeLimit";
         }
 
-        private void AddTorrentDownloadFormParameters(HttpRequestBuilder request, QBittorrentSettings settings)
+        private void AddTorrentDownloadFormParameters(HttpRequestBuilder request, QBittorrentSettings settings, bool isMagnet)
         {
             if (settings.TvCategory.IsNotNullOrWhiteSpace())
             {
                 request.AddFormParameter("category", settings.TvCategory);
             }
 
-            // Avoid extraneous API version check if initial state is ForceStart
-            if ((QBittorrentState)settings.InitialState is QBittorrentState.Start or QBittorrentState.Stop)
+            if (settings.HoldNewTorrents)
             {
+                // Built-in engine: nothing is downloaded until Embarr has set the file priorities (roadmap §4.8).
+                // A magnet fetches its metadata, then stops; a .torrent file already has it, so it starts stopped.
+                if (isMagnet)
+                {
+                    request.AddFormParameter("stopCondition", "MetadataReceived");
+                }
+                else
+                {
+                    request.AddFormParameter("stopped", true);
+                }
+            }
+            else if ((QBittorrentState)settings.InitialState is QBittorrentState.Start or QBittorrentState.Stop)
+            {
+                // Avoid extraneous API version check if initial state is ForceStart
                 var stoppedParameterName = GetApiVersion(settings) >= new Version(2, 11, 0) ? "stopped" : "paused";
 
                 // Note: ForceStart is handled by separate api call
@@ -362,6 +375,27 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                 .Post()
                 .AddFormParameter("hashes", hash)
                 .AddFormParameter("tags", string.Join(",", tags));
+            ProcessRequest(request, settings);
+        }
+
+        public void SetFilePriority(string hash, IEnumerable<int> fileIndexes, int priority, QBittorrentSettings settings)
+        {
+            var request = BuildRequest(settings).Resource("/api/v2/torrents/filePrio")
+                .Post()
+                .AddFormParameter("hash", hash)
+                .AddFormParameter("id", string.Join("|", fileIndexes))
+                .AddFormParameter("priority", priority);
+            ProcessRequest(request, settings);
+        }
+
+        public void StartTorrent(string hash, QBittorrentSettings settings)
+        {
+            // qBittorrent 5 (API 2.11) renamed resume to start
+            var action = GetApiVersion(settings) >= new Version(2, 11, 0) ? "start" : "resume";
+
+            var request = BuildRequest(settings).Resource($"/api/v2/torrents/{action}")
+                .Post()
+                .AddFormParameter("hashes", hash);
             ProcessRequest(request, settings);
         }
 
