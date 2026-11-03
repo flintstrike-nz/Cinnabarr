@@ -66,12 +66,7 @@ namespace NzbDrone.Core.Download.History
 
         public List<DownloadHistory> GetUnfinishedGrabs(int downloadClientId)
         {
-            return _repository.FindByDownloadClientId(downloadClientId)
-                .Where(h => h.DownloadId.IsNotNullOrWhiteSpace())
-                .GroupBy(h => h.DownloadId, StringComparer.OrdinalIgnoreCase)
-                .Select(g => GetLatestExpectedEvent(g.ToList()))
-                .Where(h => h is { EventType: DownloadHistoryEventType.DownloadGrabbed })
-                .ToList();
+            return _repository.FindUnfinishedGrabs(downloadClientId);
         }
 
         private static DownloadHistory GetLatestExpectedEvent(List<DownloadHistory> events)
