@@ -71,6 +71,23 @@ namespace NzbDrone.Common.Test
                 .Returns(new UpdateOptions());
         }
 
+        [TestCase(null, "Embarr")]
+        [TestCase("Embarr", "Embarr")]
+        [TestCase("Embarr 4K", "Embarr 4K")]
+        [TestCase("Sonarr", "Sonarr")]
+        [TestCase("Sonarr HD", "Sonarr HD")]
+        [TestCase("Anime Sonarr", "Anime Sonarr")]
+        [TestCase("Something Else", "Embarr")]
+        public void InstanceName_should_keep_names_with_current_or_legacy_app_name(string configured, string expected)
+        {
+            if (configured != null)
+            {
+                Subject.SetValue("InstanceName", configured);
+            }
+
+            Subject.InstanceName.Should().Be(expected);
+        }
+
         [Test]
         public void GetValue_Success()
         {

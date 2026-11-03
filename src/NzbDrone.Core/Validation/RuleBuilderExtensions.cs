@@ -3,6 +3,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using FluentValidation;
 using FluentValidation.Validators;
+using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Configuration;
 
@@ -105,10 +106,12 @@ namespace NzbDrone.Core.Validation
             return ruleBuilder.WithState(v => NzbDroneValidationState.Warning);
         }
 
-        public static IRuleBuilderOptions<T, string> StartsOrEndsWithSonarr<T>(this IRuleBuilder<T, string> ruleBuilder)
+        public static IRuleBuilderOptions<T, string> StartsOrEndsWithAppName<T>(this IRuleBuilder<T, string> ruleBuilder)
         {
+            var names = $"({Regex.Escape(BuildInfo.AppName)}|{Regex.Escape(BuildInfo.LegacyAppName)})";
+
             ruleBuilder.SetValidator(new NotEmptyValidator(null));
-            return ruleBuilder.SetValidator(new RegularExpressionValidator("^Sonarr|Sonarr$")).WithMessage("Must start or end with Sonarr");
+            return ruleBuilder.SetValidator(new RegularExpressionValidator($"^{names}|{names}$")).WithMessage($"Must start or end with {BuildInfo.AppName}");
         }
     }
 }

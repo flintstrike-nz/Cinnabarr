@@ -52,7 +52,7 @@ public class GeneralSettingsController : SettingsController<GeneralSettingsResou
 
         SharedValidator.RuleFor(c => c.UrlBase).ValidUrlBase();
         SharedValidator.RuleFor(c => c.TrustedNetworks).ValidIpNetworks();
-        SharedValidator.RuleFor(c => c.InstanceName).StartsOrEndsWithSonarr();
+        SharedValidator.RuleFor(c => c.InstanceName).StartsOrEndsWithAppName();
 
         SharedValidator.RuleFor(c => c.Username).NotEmpty().When(c => c.AuthenticationMethod == AuthenticationType.Forms);
         SharedValidator.RuleFor(c => c.Password).NotEmpty().When(c => c.AuthenticationMethod == AuthenticationType.Forms);
