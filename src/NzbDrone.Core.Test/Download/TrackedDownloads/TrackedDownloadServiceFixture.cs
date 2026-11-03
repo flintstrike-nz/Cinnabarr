@@ -301,6 +301,38 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
         }
 
         [Test]
+        public void should_not_flag_incomplete_link_once_the_download_is_imported()
+        {
+            var client = GivenEngineClient();
+            var item = GivenEngineItem(client);
+
+            // Grabbed for episodes 4 and 6; episode 6 was later removed and the rest was imported by hand.
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(EngineHash))
+                .Returns([
+                    new EpisodeHistory { DownloadId = EngineHash, SourceTitle = item.Title, SeriesId = 5, EpisodeId = 4, EventType = EpisodeHistoryEventType.DownloadFolderImported },
+                    new EpisodeHistory { DownloadId = EngineHash, SourceTitle = item.Title, SeriesId = 5, EpisodeId = 4, EventType = EpisodeHistoryEventType.Grabbed },
+                    new EpisodeHistory { DownloadId = EngineHash, SourceTitle = item.Title, SeriesId = 5, EpisodeId = 6, EventType = EpisodeHistoryEventType.Grabbed }
+                ]);
+
+            Mocker.GetMock<IDownloadHistoryService>()
+                .Setup(s => s.GetLatestDownloadHistoryItem(EngineHash))
+                .Returns(new DownloadHistory { DownloadId = EngineHash, SeriesId = 5, EventType = DownloadHistoryEventType.DownloadImported });
+
+            GivenLinkedLibrary(4);
+
+            var trackedDownload = Subject.TrackDownload(client, item);
+
+            trackedDownload.State.Should().Be(TrackedDownloadState.Imported);
+            trackedDownload.HasIncompleteLink.Should().BeFalse();
+            trackedDownload.Status.Should().Be(TrackedDownloadStatus.Ok);
+            trackedDownload.RemoteEpisode.Episodes.Select(e => e.Id).Should().Equal(4);
+
+            // Kept in the cache like any other imported item.
+            Subject.TrackDownload(client, item).Should().BeSameAs(trackedDownload);
+        }
+
+        [Test]
         public void should_unlink_engine_download_when_its_series_is_deleted()
         {
             var client = GivenEngineClient();

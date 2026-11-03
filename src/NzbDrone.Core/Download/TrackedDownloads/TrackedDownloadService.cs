@@ -347,7 +347,10 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                 ? null
                 : new RemoteEpisode { ParsedEpisodeInfo = parsedEpisodeInfo, Series = series, Episodes = episodes };
 
-            if (series == null || episodes.Count != episodeIds.Count)
+            // The hold only guards automatic import. Once the torrent is imported (for example by the Manual
+            // Import the warning asks for), its grab rows may still name the removed episode: don't keep flagging it.
+            if (trackedDownload.State != TrackedDownloadState.Imported &&
+                (series == null || episodes.Count != episodeIds.Count))
             {
                 trackedDownload.HasIncompleteLink = true;
                 trackedDownload.Warn(TrackedDownload.IncompleteLinkMessage);
