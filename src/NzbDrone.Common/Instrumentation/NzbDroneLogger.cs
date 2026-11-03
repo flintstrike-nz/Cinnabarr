@@ -44,6 +44,8 @@ namespace NzbDrone.Common.Instrumentation
                 RegisterDebugger();
             }
 
+            RegisterSentrySink();
+
             if (updateApp)
             {
                 RegisterUpdateFile(appFolderInfo);
@@ -158,6 +160,17 @@ namespace NzbDrone.Common.Instrumentation
             }
 
             LogManager.Configuration.LoggingRules.Insert(0, rule);
+        }
+
+        // Embarr doesn't report to Sentry. Events written to the "Sentry" logger are
+        // telemetry-only, so swallow them instead of letting them reach local logs.
+        private static void RegisterSentrySink()
+        {
+            var target = new NullTarget("sentryNullTarget");
+            var loggingRule = new LoggingRule("Sentry", LogLevel.Trace, target) { Final = true };
+
+            LogManager.Configuration.AddTarget(target);
+            LogManager.Configuration.LoggingRules.Insert(0, loggingRule);
         }
 
         private static void RegisterGlobalFilters()

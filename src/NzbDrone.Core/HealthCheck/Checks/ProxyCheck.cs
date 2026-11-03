@@ -27,7 +27,9 @@ namespace NzbDrone.Core.HealthCheck.Checks
             _client = client;
             _logger = logger;
 
-            _cloudRequestBuilder = cloudRequestBuilder.Services;
+            // Test the proxy against the metadata service, the one upstream service Embarr
+            // still depends on (until Phase 4), rather than Sonarr's general services API.
+            _cloudRequestBuilder = cloudRequestBuilder.SkyHookTvdb;
         }
 
         public override HealthCheck Check()
@@ -52,7 +54,9 @@ namespace NzbDrone.Core.HealthCheck.Checks
             }
 
             var request = _cloudRequestBuilder.Create()
-                .Resource("/ping")
+                .SetSegment("route", "search")
+                .AddQueryParam("language", "eng")
+                .AddQueryParam("term", "embarr")
                 .Build();
 
             try
