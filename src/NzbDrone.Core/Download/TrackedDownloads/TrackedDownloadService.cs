@@ -305,10 +305,24 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                     MapFromLinkHistory(trackedDownload, historyItems);
                 }
 
-                // Same release details as any other row (languages, release group, ...), so queue filters keep it.
+                // Same release details as any other row (indexer, languages, custom formats, ...), so queue
+                // filters and scores treat it alike.
                 if (trackedDownload.RemoteEpisode != null)
                 {
-                    _aggregationService.Augment(trackedDownload.RemoteEpisode);
+                    var remoteEpisode = trackedDownload.RemoteEpisode;
+
+                    remoteEpisode.Release ??= new ReleaseInfo();
+                    remoteEpisode.Release.Indexer = trackedDownload.Indexer;
+                    remoteEpisode.Release.IndexerId = grab.IndexerId;
+                    remoteEpisode.Release.Title = remoteEpisode.ParsedEpisodeInfo?.ReleaseTitle;
+
+                    if (Enum.TryParse(historyItems.FirstOrDefault(h => h.EventType == EpisodeHistoryEventType.Grabbed)?.Data?.GetValueOrDefault("indexerFlags"), true, out IndexerFlags flags))
+                    {
+                        remoteEpisode.Release.IndexerFlags = flags;
+                    }
+
+                    _aggregationService.Augment(remoteEpisode);
+                    remoteEpisode.CustomFormats = _formatCalculator.ParseCustomFormat(remoteEpisode, size);
                 }
             }
             catch (Exception e)

@@ -3,6 +3,7 @@ using System.Linq;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
+using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.Aggregation;
 using NzbDrone.Core.Download.Engine;
@@ -417,6 +418,7 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
                 DownloadId = EngineHash,
                 SourceTitle = "TV.Series.S01E01.720p.HDTV-Group",
                 EventType = DownloadHistoryEventType.DownloadGrabbed,
+                IndexerId = 9,
                 Release = new ReleaseInfo { Size = 1000 }
             };
 
@@ -429,6 +431,7 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
             trackedDownload.DownloadItem.TotalSize.Should().Be(1000);
             trackedDownload.DownloadItem.DownloadClientInfo.Id.Should().Be(client.Id);
             trackedDownload.RemoteEpisode.Series.Id.Should().Be(5);
+            trackedDownload.RemoteEpisode.Release.IndexerId.Should().Be(9);
             trackedDownload.StatusMessages.Should().ContainSingle()
                 .Which.Messages.Should().Equal(TrackedDownload.MissingFromEngineMessage);
 
@@ -437,6 +440,8 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
 
             Mocker.GetMock<IRemoteEpisodeAggregationService>()
                 .Verify(s => s.Augment(trackedDownload.RemoteEpisode), Times.Once());
+            Mocker.GetMock<ICustomFormatCalculationService>()
+                .Verify(s => s.ParseCustomFormat(trackedDownload.RemoteEpisode, 1000), Times.Once());
 
             ExceptionVerification.ExpectedWarns(1);
         }
