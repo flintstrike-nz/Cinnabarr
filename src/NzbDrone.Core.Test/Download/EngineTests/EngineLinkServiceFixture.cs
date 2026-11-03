@@ -122,6 +122,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
 
             Subject.Handle(GivenGrab());
 
+            Mocker.GetMock<IDiskProvider>().Verify(d => d.WriteAllText(It.IsAny<string>(), It.IsAny<string>()), Times.Once());
             ExceptionVerification.ExpectedWarns(1);
         }
 
@@ -133,11 +134,13 @@ namespace NzbDrone.Core.Test.Download.EngineTests
 
             var inserted = new List<EpisodeHistory>();
             Mocker.GetMock<IHistoryRepository>()
-                .Setup(r => r.Insert(It.IsAny<EpisodeHistory>()))
-                .Callback<EpisodeHistory>(inserted.Add);
+                .Setup(r => r.InsertMany(It.IsAny<IList<EpisodeHistory>>()))
+                .Callback<IList<EpisodeHistory>>(inserted.AddRange);
 
             Subject.TryRestore(_client, Hash).Should().BeTrue();
 
+            Mocker.GetMock<IHistoryRepository>().Verify(r => r.InsertMany(It.IsAny<IList<EpisodeHistory>>()), Times.Once());
+            Mocker.GetMock<IHistoryRepository>().Verify(r => r.Insert(It.IsAny<EpisodeHistory>()), Times.Never());
             inserted.Should().HaveCount(2);
             inserted.Should().OnlyContain(h => h.EventType == EpisodeHistoryEventType.Grabbed &&
                                                h.DownloadId == Hash &&
@@ -156,7 +159,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
 
             Subject.TryRestore(_client, Hash).Should().BeFalse();
 
-            Mocker.GetMock<IHistoryRepository>().Verify(r => r.Insert(It.IsAny<EpisodeHistory>()), Times.Never());
+            Mocker.GetMock<IHistoryRepository>().Verify(r => r.InsertMany(It.IsAny<IList<EpisodeHistory>>()), Times.Never());
         }
 
         [Test]
@@ -167,7 +170,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
 
             Subject.TryRestore(_client, Hash).Should().BeFalse();
 
-            Mocker.GetMock<IHistoryRepository>().Verify(r => r.Insert(It.IsAny<EpisodeHistory>()), Times.Never());
+            Mocker.GetMock<IHistoryRepository>().Verify(r => r.InsertMany(It.IsAny<IList<EpisodeHistory>>()), Times.Never());
         }
 
         [Test]
@@ -179,7 +182,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
 
             Subject.TryRestore(_client, Hash).Should().BeFalse();
 
-            Mocker.GetMock<IHistoryRepository>().Verify(r => r.Insert(It.IsAny<EpisodeHistory>()), Times.Never());
+            Mocker.GetMock<IHistoryRepository>().Verify(r => r.InsertMany(It.IsAny<IList<EpisodeHistory>>()), Times.Never());
         }
 
         [Test]
@@ -200,7 +203,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
 
             Subject.TryRestore(_client, Hash).Should().BeFalse();
 
-            Mocker.GetMock<IHistoryRepository>().Verify(r => r.Insert(It.IsAny<EpisodeHistory>()), Times.Never());
+            Mocker.GetMock<IHistoryRepository>().Verify(r => r.InsertMany(It.IsAny<IList<EpisodeHistory>>()), Times.Never());
         }
 
         [Test]
@@ -212,7 +215,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             Subject.TryRestore(_client, Hash).Should().BeFalse();
 
             ExceptionVerification.ExpectedWarns(1);
-            Mocker.GetMock<IHistoryRepository>().Verify(r => r.Insert(It.IsAny<EpisodeHistory>()), Times.Never());
+            Mocker.GetMock<IHistoryRepository>().Verify(r => r.InsertMany(It.IsAny<IList<EpisodeHistory>>()), Times.Never());
         }
     }
 }

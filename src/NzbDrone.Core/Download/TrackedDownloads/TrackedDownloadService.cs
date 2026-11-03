@@ -305,14 +305,17 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         {
             var firstHistoryItem = historyItems.First();
 
+            // An unparseable (for example obfuscated) name still links: the release details then come from
+            // the history row instead of the title.
             var parsedEpisodeInfo = Parser.Parser.ParseTitle(title) ??
                                     Parser.Parser.ParseTitle(firstHistoryItem.SourceTitle) ??
-                                    _parsingService.ParseSpecialEpisodeTitle(null, firstHistoryItem.SourceTitle, 0, 0, null);
-
-            if (parsedEpisodeInfo == null)
-            {
-                return null;
-            }
+                                    _parsingService.ParseSpecialEpisodeTitle(null, firstHistoryItem.SourceTitle, 0, 0, null) ??
+                                    new ParsedEpisodeInfo
+                                    {
+                                        ReleaseTitle = firstHistoryItem.SourceTitle ?? title,
+                                        Quality = firstHistoryItem.Quality,
+                                        Languages = firstHistoryItem.Languages ?? new()
+                                    };
 
             // Grabs record their episodes; a torrent linked by Manual Import only has import history.
             var grabbedEpisodeIds = historyItems.Where(h => h.EventType == EpisodeHistoryEventType.Grabbed).Select(h => h.EpisodeId);

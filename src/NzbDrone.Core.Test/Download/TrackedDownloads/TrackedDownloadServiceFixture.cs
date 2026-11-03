@@ -232,6 +232,28 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
         }
 
         [Test]
+        public void should_keep_history_link_for_engine_download_with_unparseable_names()
+        {
+            var client = GivenEngineClient();
+            var item = GivenEngineItem(client);
+            item.Title = "a8f3e2c1d9b7";
+
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(EngineHash))
+                .Returns([new EpisodeHistory { DownloadId = EngineHash, SourceTitle = "x7k2q9", SeriesId = 5, EpisodeId = 4, EventType = EpisodeHistoryEventType.DownloadFolderImported }]);
+
+            Mocker.GetMock<IParsingService>()
+                .Setup(s => s.Map(It.Is<ParsedEpisodeInfo>(p => p.ReleaseTitle == "x7k2q9"), 5, It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { 4 }))))
+                .Returns(new RemoteEpisode { Series = new Series { Id = 5 }, Episodes = [new Episode { Id = 4 }], ParsedEpisodeInfo = new ParsedEpisodeInfo { ReleaseTitle = "x7k2q9" } });
+
+            var trackedDownload = Subject.TrackDownload(client, item);
+
+            trackedDownload.IsUnlinked.Should().BeFalse();
+            trackedDownload.RemoteEpisode.Should().NotBeNull();
+            trackedDownload.RemoteEpisode.Series.Id.Should().Be(5);
+        }
+
+        [Test]
         public void should_not_match_unlinked_engine_download_by_name_when_a_series_is_added()
         {
             var client = GivenEngineClient();

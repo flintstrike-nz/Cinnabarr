@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -103,6 +104,8 @@ namespace NzbDrone.Core.Download.Engine
             var quality = QualityParser.ParseQuality(sourceTitle);
             var languages = LanguageParser.ParseLanguages(sourceTitle);
 
+            var historyItems = new List<EpisodeHistory>();
+
             foreach (var episode in episodes)
             {
                 var history = new EpisodeHistory
@@ -124,8 +127,11 @@ namespace NzbDrone.Core.Download.Engine
                 history.Data.Add("TorrentInfoHash", downloadId);
                 history.Data.Add(RestoredFromKey, "EngineSidecar");
 
-                _historyRepository.Insert(history);
+                historyItems.Add(history);
             }
+
+            // One transaction, so a failure can't leave part of the torrent linked.
+            _historyRepository.InsertMany(historyItems);
 
             _logger.Info("Restored link for '{0}' to {1} ({2} episode(s)) from the engine sidecar", sourceTitle, series.Title, episodes.Count);
 
