@@ -737,6 +737,8 @@
   "Ended": "Ended",
   "EndedOnly": "Ended Only",
   "EndedSeriesDescription": "No additional episodes or seasons are expected",
+  "EngineNotFoundHealthCheckMessage": "The built-in download engine (embarr-engine) was not found. Place it next to {appName} or set EMBARR_ENGINE_PATH. Downloads are unavailable until then.",
+  "EngineNotRunningHealthCheckMessage": "The built-in download engine is not running. {appName} is restarting it; check the logs if this persists.",
   "Episode": "Episode",
   "EpisodeAirDate": "Episode Air Date",
   "EpisodeCount": "Episode Count",
