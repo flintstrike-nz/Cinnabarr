@@ -278,6 +278,29 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
         }
 
         [Test]
+        public void should_block_pending_import_when_a_linked_episode_is_removed()
+        {
+            var client = GivenEngineClient();
+            var item = GivenEngineItem(client);
+
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(EngineHash))
+                .Returns([new EpisodeHistory { DownloadId = EngineHash, SourceTitle = item.Title, SeriesId = 5, EpisodeId = 4, EventType = EpisodeHistoryEventType.Grabbed }]);
+
+            GivenLinkedLibrary();
+
+            var trackedDownload = Subject.TrackDownload(client, item);
+            trackedDownload.State = TrackedDownloadState.ImportPending;
+
+            // The metadata refresh removes episode 4.
+            GivenLinkedLibrary(7);
+            Subject.Handle(new EpisodeInfoRefreshedEvent(new Series { Id = 5 }, new List<Episode>(), new List<Episode>(), new List<Episode> { new Episode { Id = 4 } }));
+
+            trackedDownload.HasIncompleteLink.Should().BeTrue();
+            trackedDownload.State.Should().Be(TrackedDownloadState.ImportBlocked);
+        }
+
+        [Test]
         public void should_unlink_engine_download_when_its_series_is_deleted()
         {
             var client = GivenEngineClient();
@@ -296,6 +319,7 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
             Subject.Handle(new SeriesDeletedEvent([new Series { Id = 5 }], true, true));
 
             trackedDownload.IsUnlinked.Should().BeTrue();
+            trackedDownload.State.Should().Be(TrackedDownloadState.Imported);
             trackedDownload.RemoteEpisode.Should().BeNull();
             trackedDownload.StatusMessages.Should().ContainSingle()
                 .Which.Messages.Should().Equal(TrackedDownload.UnlinkedMessage);

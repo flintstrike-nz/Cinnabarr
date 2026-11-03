@@ -351,6 +351,16 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             {
                 trackedDownload.HasIncompleteLink = true;
                 trackedDownload.Warn(TrackedDownload.IncompleteLinkMessage);
+                BlockPendingImport(trackedDownload);
+            }
+        }
+
+        // A pending import goes straight to Import, skipping Check: send it back through Check's link guards.
+        private static void BlockPendingImport(TrackedDownload trackedDownload)
+        {
+            if (trackedDownload.State == TrackedDownloadState.ImportPending)
+            {
+                trackedDownload.State = TrackedDownloadState.ImportBlocked;
             }
         }
 
@@ -360,6 +370,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             trackedDownload.HasIncompleteLink = false;
             trackedDownload.RemoteEpisode = null;
             trackedDownload.Warn(TrackedDownload.UnlinkedMessage);
+            BlockPendingImport(trackedDownload);
         }
 
         private void UpdateCachedItem(TrackedDownload trackedDownload)
