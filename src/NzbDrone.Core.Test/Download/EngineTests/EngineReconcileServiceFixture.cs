@@ -20,7 +20,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         public void Setup()
         {
             _client = new DownloadClientDefinition { Id = 3, Name = "Embarr Engine" };
-            _unfinished = new List<DownloadHistory> { new DownloadHistory { DownloadId = "AAA", SourceTitle = "Series.S01E01" } };
+            _unfinished = new List<DownloadHistory> { new DownloadHistory { Id = 1, DownloadId = "AAA", SourceTitle = "Series.S01E01" } };
 
             Mocker.GetMock<IDownloadHistoryService>()
                 .Setup(s => s.GetUnfinishedGrabs(3))
@@ -72,6 +72,18 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             _unfinished.Clear();
 
             Subject.FindMissing(_client, new string[0]).Should().BeEmpty();
+        }
+
+        [Test]
+        public void should_give_a_regrab_of_the_same_torrent_its_own_count()
+        {
+            Subject.FindMissing(_client, new string[0]);
+
+            // The first attempt failed and the same torrent was grabbed again before the next poll.
+            _unfinished = new List<DownloadHistory> { new DownloadHistory { Id = 2, DownloadId = "AAA", SourceTitle = "Series.S01E01" } };
+
+            Subject.FindMissing(_client, new string[0]).Should().BeEmpty();
+            Subject.FindMissing(_client, new string[0]).Should().ContainSingle();
         }
     }
 }

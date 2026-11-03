@@ -23,7 +23,8 @@ namespace NzbDrone.Core.Download.Engine
         private readonly ITrackedDownloadService _trackedDownloadService;
         private readonly object _lock = new();
 
-        private Dictionary<string, int> _missedPolls = new(StringComparer.OrdinalIgnoreCase);
+        // Keyed by the grab record, not the info-hash, so a re-grab of the same torrent starts its own count.
+        private Dictionary<int, int> _missedPolls = new();
 
         public EngineReconcileService(IDownloadHistoryService downloadHistoryService, ITrackedDownloadService trackedDownloadService)
         {
@@ -44,12 +45,12 @@ namespace NzbDrone.Core.Download.Engine
             lock (_lock)
             {
                 // Forget grabs that are back in the engine or finished, so a later absence starts counting again.
-                var missedPolls = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                var missedPolls = new Dictionary<int, int>();
 
                 foreach (var grab in absent)
                 {
-                    var count = _missedPolls.GetValueOrDefault(grab.DownloadId) + 1;
-                    missedPolls[grab.DownloadId] = count;
+                    var count = _missedPolls.GetValueOrDefault(grab.Id) + 1;
+                    missedPolls[grab.Id] = count;
 
                     if (count >= PollsBeforeMissing)
                     {
