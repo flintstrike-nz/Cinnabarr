@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -12,7 +11,6 @@ using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Http;
 using NzbDrone.Common.Messaging;
-using NzbDrone.Common.Processes;
 using NzbDrone.Core.Download.Clients.QBittorrent;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Lifecycle;
@@ -58,17 +56,10 @@ namespace NzbDrone.Core.Download.Engine
         private const string ApiKeyPrefix = "qbt_";
         private const int ApiKeyLength = 28;
         private const string ApiKeyChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        private const int MaxFailedHealthChecks = 3;
-        private static readonly TimeSpan StableUptime = TimeSpan.FromSeconds(60);
-
-        private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(60);
-        private static readonly TimeSpan HealthInterval = TimeSpan.FromSeconds(10);
-        private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(15);
-        private static readonly TimeSpan MaxBackoff = TimeSpan.FromSeconds(60);
 
         private readonly IAppFolderInfo _appFolderInfo;
         private readonly IDiskProvider _diskProvider;
-        private readonly IProcessProvider _processProvider;
+        private readonly IEngineProcessLauncher _processLauncher;
         private readonly IHttpClient _httpClient;
         private readonly IDownloadClientFactory _downloadClientFactory;
         private readonly IDownloadClientStatusService _downloadClientStatusService;
@@ -79,13 +70,13 @@ namespace NzbDrone.Core.Download.Engine
         private bool _processExitHooked;
         private CancellationTokenSource _cancellation;
         private Task _monitor;
-        private Process _process;
+        private IEngineProcess _process;
         private int _port;
         private string _apiKey;
 
         public EngineSupervisor(IAppFolderInfo appFolderInfo,
                                 IDiskProvider diskProvider,
-                                IProcessProvider processProvider,
+                                IEngineProcessLauncher processLauncher,
                                 IHttpClient httpClient,
                                 IDownloadClientFactory downloadClientFactory,
                                 IDownloadClientStatusService downloadClientStatusService,
@@ -94,7 +85,7 @@ namespace NzbDrone.Core.Download.Engine
         {
             _appFolderInfo = appFolderInfo;
             _diskProvider = diskProvider;
-            _processProvider = processProvider;
+            _processLauncher = processLauncher;
             _httpClient = httpClient;
             _downloadClientFactory = downloadClientFactory;
             _downloadClientStatusService = downloadClientStatusService;
@@ -103,6 +94,11 @@ namespace NzbDrone.Core.Download.Engine
         }
 
         public EngineStatus Status { get; private set; } = EngineStatus.NotStarted;
+
+        public EngineTimings Timings { get; set; } = new EngineTimings();
+
+        // Used for the restart backoff only, so tests can observe it without waiting.
+        public Func<TimeSpan, CancellationToken, Task> BackoffDelay { get; set; } = Task.Delay;
 
         // Health check results are cached, so publish changes for EngineCheck to re-run.
         private void SetStatus(EngineStatus status)
@@ -121,6 +117,8 @@ namespace NzbDrone.Core.Download.Engine
         public string EngineFolder => Path.Combine(_appFolderInfo.AppDataFolder, "engine");
 
         private string PidFile => Path.Combine(EngineFolder, "engine.pid");
+
+        private string ClientIdFile => Path.Combine(EngineFolder, "client.id");
 
         public void Handle(ApplicationStartedEvent message)
         {
@@ -144,7 +142,7 @@ namespace NzbDrone.Core.Download.Engine
                 {
                     // The host's SIGTERM/Ctrl+C shutdown doesn't publish ApplicationShutdownRequested,
                     // so also stop the engine when the process exits.
-                    AppDomain.CurrentDomain.ProcessExit += (_, _) => Shutdown(TimeSpan.FromSeconds(5));
+                    AppDomain.CurrentDomain.ProcessExit += (_, _) => Shutdown(Timings.ProcessExitShutdownTimeout);
                     _processExitHooked = true;
                 }
 
@@ -158,7 +156,7 @@ namespace NzbDrone.Core.Download.Engine
 
         public void Handle(ApplicationShutdownRequested message)
         {
-            Shutdown(ShutdownTimeout);
+            Shutdown(Timings.ShutdownTimeout);
         }
 
         private void Shutdown(TimeSpan timeout)
@@ -275,8 +273,12 @@ namespace NzbDrone.Core.Download.Engine
 
         public void EnsureDownloadClient(int port, string apiKey)
         {
-            var definition = _downloadClientFactory.All()
-                .FirstOrDefault(d => d.Implementation == nameof(QBittorrent) && d.Name == EngineDefinitionName);
+            // Tracked by the id stored next to the engine, so renaming the client in
+            // settings doesn't make the next start create a second one.
+            var all = _downloadClientFactory.All();
+            var storedId = ReadClientId();
+            var definition = all.FirstOrDefault(d => d.Id == storedId && d.Implementation == nameof(QBittorrent))
+                             ?? all.FirstOrDefault(d => d.Implementation == nameof(QBittorrent) && d.Name == EngineDefinitionName);
 
             var settings = definition?.Settings as QBittorrentSettings ?? new QBittorrentSettings();
             settings.Host = "127.0.0.1";
@@ -289,7 +291,7 @@ namespace NzbDrone.Core.Download.Engine
 
             if (definition == null)
             {
-                _downloadClientFactory.Create(new DownloadClientDefinition
+                definition = _downloadClientFactory.Create(new DownloadClientDefinition
                 {
                     Name = EngineDefinitionName,
                     Implementation = nameof(QBittorrent),
@@ -301,8 +303,11 @@ namespace NzbDrone.Core.Download.Engine
                 });
 
                 _logger.Info("Added the built-in {0} download client", EngineDefinitionName);
+                WriteClientId(definition?.Id ?? 0);
                 return;
             }
+
+            WriteClientId(definition.Id);
 
             // Failures while the engine was down may have put the client into back-off;
             // clear it before the update triggers a queue refresh.
@@ -313,52 +318,91 @@ namespace NzbDrone.Core.Download.Engine
             _downloadClientFactory.Update(definition);
         }
 
+        private int ReadClientId()
+        {
+            try
+            {
+                return _diskProvider.FileExists(ClientIdFile) && int.TryParse(_diskProvider.ReadAllText(ClientIdFile).Trim(), out var id) ? id : 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug(ex, "Unable to read the built-in download client id");
+                return 0;
+            }
+        }
+
+        private void WriteClientId(int id)
+        {
+            if (id <= 0)
+            {
+                return;
+            }
+
+            try
+            {
+                _diskProvider.WriteAllText(ClientIdFile, id.ToString());
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "Unable to store the built-in download client id");
+            }
+        }
+
         private async Task Supervise(CancellationToken token)
         {
-            var backoff = TimeSpan.FromSeconds(1);
+            var backoff = Timings.InitialBackoff;
 
             while (!token.IsCancellationRequested)
             {
                 try
                 {
-                    // Stay Failed while retrying; only the first attempt reports Starting.
-                    if (Status != EngineStatus.Failed)
+                    if (!PreviousEngineGone())
                     {
-                        SetStatus(EngineStatus.Starting);
+                        // Never run two engines on one profile: wait for the old one to go.
+                        SetStatus(EngineStatus.Failed);
+                        _logger.Error("The previous embarr-engine is still running; not starting another. Retrying in {0}s", backoff.TotalSeconds);
                     }
-
-                    _apiKey ??= GetOrCreateApiKey();
-
-                    if (!StartEngine(token))
+                    else
                     {
-                        break;
-                    }
-
-                    if (await WaitUntilHealthy(token))
-                    {
-                        SetStatus(EngineStatus.Running);
-                        _logger.Info("embarr-engine is running on 127.0.0.1:{0}", _port);
-
-                        EnsureDownloadClient(_port, _apiKey);
-
-                        var runningSince = DateTime.UtcNow;
-                        await WatchUntilUnhealthy(token);
-
-                        // Only a run that stayed up for a while resets the backoff, so an engine
-                        // that keeps crashing soon after starting still backs off.
-                        if (DateTime.UtcNow - runningSince >= StableUptime)
+                        // Stay Failed while retrying; only the first attempt reports Starting.
+                        if (Status != EngineStatus.Failed)
                         {
-                            backoff = TimeSpan.FromSeconds(1);
+                            SetStatus(EngineStatus.Starting);
                         }
-                    }
 
-                    if (token.IsCancellationRequested)
-                    {
-                        break;
-                    }
+                        _apiKey ??= GetOrCreateApiKey();
 
-                    SetStatus(EngineStatus.Failed);
-                    _logger.Error("embarr-engine stopped responding; restarting in {0}s", backoff.TotalSeconds);
+                        if (!StartEngine(token))
+                        {
+                            break;
+                        }
+
+                        if (await WaitUntilHealthy(token))
+                        {
+                            SetStatus(EngineStatus.Running);
+                            _logger.Info("embarr-engine is running on 127.0.0.1:{0}", _port);
+
+                            EnsureDownloadClient(_port, _apiKey);
+
+                            var runningSince = DateTime.UtcNow;
+                            await WatchUntilUnhealthy(token);
+
+                            // Only a run that stayed up for a while resets the backoff, so an engine
+                            // that keeps crashing soon after starting still backs off.
+                            if (DateTime.UtcNow - runningSince >= Timings.StableUptime)
+                            {
+                                backoff = Timings.InitialBackoff;
+                            }
+                        }
+
+                        if (token.IsCancellationRequested)
+                        {
+                            break;
+                        }
+
+                        SetStatus(EngineStatus.Failed);
+                        _logger.Error("embarr-engine stopped responding; restarting in {0}s", backoff.TotalSeconds);
+                    }
                 }
                 catch (OperationCanceledException)
                 {
@@ -374,17 +418,29 @@ namespace NzbDrone.Core.Download.Engine
 
                 try
                 {
-                    await Task.Delay(backoff, token);
+                    await BackoffDelay(backoff, token);
                 }
                 catch (OperationCanceledException)
                 {
                     break;
                 }
 
-                backoff = TimeSpan.FromSeconds(Math.Min(backoff.TotalSeconds * 2, MaxBackoff.TotalSeconds));
+                backoff = TimeSpan.FromTicks(Math.Min(backoff.Ticks * 2, Timings.MaxBackoff.Ticks));
             }
 
             StopEngine();
+        }
+
+        private bool PreviousEngineGone()
+        {
+            if (ProcessExited())
+            {
+                return true;
+            }
+
+            StopEngine();
+
+            return ProcessExited();
         }
 
         private bool StartEngine(CancellationToken token)
@@ -392,25 +448,14 @@ namespace NzbDrone.Core.Download.Engine
             _port = GetFreeLoopbackPort();
             EnsurePrivateEngineFolder();
 
-            // Started directly rather than through IProcessProvider: its environment
-            // dictionary lower-cases variable names (Linux is case-sensitive) and it
-            // trace-logs variable values, which would leak the API key.
-            var startInfo = new ProcessStartInfo(EnginePath)
+            var args = new[]
             {
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true
+                $"--profile={EngineFolder}",
+                $"--webui-port={_port}",
+                "--confirm-legal-notice"
             };
 
-            startInfo.ArgumentList.Add($"--profile={EngineFolder}");
-            startInfo.ArgumentList.Add($"--webui-port={_port}");
-            startInfo.ArgumentList.Add("--confirm-legal-notice");
-            startInfo.Environment[ApiKeyVariable] = _apiKey;
-
-            var process = new Process { StartInfo = startInfo };
-            process.OutputDataReceived += (_, e) => LogEngineOutput(e.Data, LogLevel.Debug);
-            process.ErrorDataReceived += (_, e) => LogEngineOutput(e.Data, LogLevel.Warn);
+            IEngineProcess process;
 
             lock (_lock)
             {
@@ -418,24 +463,25 @@ namespace NzbDrone.Core.Download.Engine
                 // slip in between the check and the launch.
                 if (token.IsCancellationRequested)
                 {
-                    process.Dispose();
                     return false;
                 }
 
                 _logger.Debug("Starting embarr-engine: {0} on port {1}", EnginePath, _port);
 
-                process.Start();
+                process = _processLauncher.Start(EnginePath,
+                    args,
+                    ApiKeyVariable,
+                    _apiKey,
+                    line => LogEngineOutput(line, LogLevel.Debug),
+                    line => LogEngineOutput(line, LogLevel.Warn));
 
                 // Own the process before anything else can throw, so failure paths stop it.
                 _process = process;
             }
 
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
-
             try
             {
-                _diskProvider.WriteAllText(PidFile, FormatPidFile(process));
+                _diskProvider.WriteAllText(PidFile, FormatPidFile(process.Id, process.StartTimeUtc));
             }
             catch (Exception ex)
             {
@@ -455,12 +501,12 @@ namespace NzbDrone.Core.Download.Engine
 
         private void StopEngine()
         {
-            StopEngine(ShutdownTimeout);
+            StopEngine(Timings.ShutdownTimeout);
         }
 
         private void StopEngine(TimeSpan timeout)
         {
-            Process process;
+            IEngineProcess process;
 
             lock (_lock)
             {
@@ -486,13 +532,14 @@ namespace NzbDrone.Core.Download.Engine
                     _logger.Debug(ex, "Engine shutdown request failed");
                 }
 
-                if (!process.WaitForExit((int)timeout.TotalMilliseconds))
+                if (!process.WaitForExit(timeout))
                 {
                     _logger.Warn("embarr-engine didn't exit within {0}s; killing it", timeout.TotalSeconds);
-                    _processProvider.Kill(process.Id);
+                    process.Kill();
                 }
 
-                if (!process.WaitForExit((int)TimeSpan.FromSeconds(5).TotalMilliseconds))
+                // Bounded: a process stuck in uninterruptible I/O must not hang shutdown.
+                if (!process.WaitForExit(Timings.KillTimeout))
                 {
                     // Leave the pid file so the next start can stop it.
                     _logger.Error("embarr-engine (pid {0}) is still running after being killed", process.Id);
@@ -508,12 +555,13 @@ namespace NzbDrone.Core.Download.Engine
                 }
             }
 
+            process.Dispose();
             DeletePidFile();
         }
 
-        public static string FormatPidFile(Process process)
+        public static string FormatPidFile(int pid, DateTime startTimeUtc)
         {
-            return $"{process.Id}\n{process.StartTime.ToUniversalTime().Ticks}\n";
+            return $"{pid}\n{startTimeUtc.Ticks}\n";
         }
 
         // The pid file stores the pid and the process start time, so a reused pid
@@ -543,17 +591,27 @@ namespace NzbDrone.Core.Download.Engine
                 var contents = _diskProvider.ReadAllText(PidFile);
                 var firstLine = contents.Split('\n')[0].Trim();
 
-                if (!int.TryParse(firstLine, out var pid) || !_processProvider.Exists(pid))
+                if (!int.TryParse(firstLine, out var pid))
                 {
                     return;
                 }
 
-                using var stale = Process.GetProcessById(pid);
+                using var stale = _processLauncher.Find(pid);
 
-                if (IsSameProcess(contents, pid, stale.StartTime.ToUniversalTime()))
+                if (stale == null)
+                {
+                    return;
+                }
+
+                if (IsSameProcess(contents, pid, stale.StartTimeUtc))
                 {
                     _logger.Warn("Stopping embarr-engine left running by a previous session (pid {0})", pid);
-                    _processProvider.Kill(pid);
+                    stale.Kill();
+
+                    if (!stale.WaitForExit(Timings.KillTimeout))
+                    {
+                        _logger.Error("embarr-engine from a previous session (pid {0}) didn't exit", pid);
+                    }
                 }
                 else
                 {
@@ -587,7 +645,7 @@ namespace NzbDrone.Core.Download.Engine
 
         private async Task<bool> WaitUntilHealthy(CancellationToken token)
         {
-            var deadline = DateTime.UtcNow + StartupTimeout;
+            var deadline = DateTime.UtcNow + Timings.StartupTimeout;
 
             while (DateTime.UtcNow < deadline)
             {
@@ -603,7 +661,7 @@ namespace NzbDrone.Core.Download.Engine
                     return true;
                 }
 
-                await Task.Delay(TimeSpan.FromMilliseconds(500), token);
+                await Task.Delay(Timings.StartupPollInterval, token);
             }
 
             return false;
@@ -615,7 +673,7 @@ namespace NzbDrone.Core.Download.Engine
 
             while (!token.IsCancellationRequested)
             {
-                await Task.Delay(HealthInterval, token);
+                await Task.Delay(Timings.HealthInterval, token);
 
                 if (ProcessExited())
                 {
@@ -625,7 +683,7 @@ namespace NzbDrone.Core.Download.Engine
 
                 failures = Ping() ? 0 : failures + 1;
 
-                if (failures >= MaxFailedHealthChecks)
+                if (failures >= Timings.MaxFailedHealthChecks)
                 {
                     return;
                 }

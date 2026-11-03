@@ -206,6 +206,51 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_find_renamed_built_in_client_by_stored_id()
+        {
+            var renamed = new DownloadClientDefinition
+            {
+                Id = 12,
+                Name = "My Engine",
+                Implementation = nameof(QBittorrent),
+                ConfigContract = nameof(QBittorrentSettings),
+                Settings = new QBittorrentSettings { TvCategory = "custom" }
+            };
+
+            var clientIdFile = Path.Combine(_appData, "engine", "client.id");
+
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FileExists(clientIdFile)).Returns(true);
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.ReadAllText(clientIdFile)).Returns("12");
+
+            Mocker.GetMock<IDownloadClientFactory>()
+                .Setup(s => s.All())
+                .Returns(new List<DownloadClientDefinition> { renamed });
+
+            Subject.EnsureDownloadClient(40000, EngineSupervisor.GenerateApiKey());
+
+            Mocker.GetMock<IDownloadClientFactory>().Verify(v => v.Create(It.IsAny<DownloadClientDefinition>()), Times.Never());
+            Mocker.GetMock<IDownloadClientFactory>().Verify(v => v.Update(renamed), Times.Once());
+            ((QBittorrentSettings)renamed.Settings).Port.Should().Be(40000);
+            ((QBittorrentSettings)renamed.Settings).TvCategory.Should().Be("custom");
+        }
+
+        [Test]
+        public void should_store_id_of_created_built_in_client()
+        {
+            Mocker.GetMock<IDownloadClientFactory>()
+                .Setup(s => s.Create(It.IsAny<DownloadClientDefinition>()))
+                .Returns<DownloadClientDefinition>(d =>
+                {
+                    d.Id = 21;
+                    return d;
+                });
+
+            Subject.EnsureDownloadClient(40000, EngineSupervisor.GenerateApiKey());
+
+            Mocker.GetMock<IDiskProvider>().Verify(v => v.WriteAllText(Path.Combine(_appData, "engine", "client.id"), "21"), Times.Once());
+        }
+
+        [Test]
         public void should_clear_download_client_failures_when_engine_recovers()
         {
             var existing = new DownloadClientDefinition
