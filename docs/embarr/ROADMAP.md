@@ -224,8 +224,13 @@ This per-file import is idempotent. It's keyed by info-hash plus the file's inde
 
 **Checks:**
 - **Before any data downloads** (from metadata only): file names, extensions, file sizes, a sample check by name and size only, and the parsed episode or movie matching the target.
-- **After each file completes:** media info (resolution, codecs, languages, runtime) and the full runtime-based sample check. That check reuses `Embarr:src/NzbDrone.Core/MediaFiles/EpisodeImport/DetectSample.cs`, which needs the file's runtime, so it can only run once the file is on disk.
-- **On rejection:** delete that file (it was never published under its final name), blocklist the release, search again.
+- **After each video file completes:** media info (resolution, codecs, languages, runtime) and the full runtime-based sample check. That check reuses `Embarr:src/NzbDrone.Core/MediaFiles/EpisodeImport/DetectSample.cs`, which needs the file's runtime, so it can only run once the file is on disk.
+- **On video rejection:** delete that file (it was never published under its final name), blocklist the release, search again.
+
+**Subtitles are validated separately.** They have no resolution or runtime, and `DetectSample` would treat a zero runtime as a sample, so the video checks never run on them.
+- **Subtitle checks:** extension, a sensible size, text subtitles parse as text, and the language and forced/SDH flags read from the file name.
+- **Registration:** a subtitle is attached to the video it belongs to, in the same slot, and renamed to match that video's final name (§4.11). If the video hasn't been imported yet, the subtitle stays under its pending name until it is. If the video is rejected, its subtitles are deleted with it.
+- **On subtitle rejection:** only that subtitle is discarded. A bad subtitle never blocklists the release.
 
 **Name already taken.** For an upgrade in the same slot, the new file waits under its pending name. When it passes its checks it replaces the old file, and the old file is removed from its own torrent using the steps in §4.10.
 
@@ -240,7 +245,7 @@ This per-file import is idempotent. It's keyed by info-hash plus the file's inde
 **Race mode** grabs several releases for the same file and keeps the first good copy.
 - Up to *N* releases target the same file, in the same slot. Each writes to its own unique pending name.
 - The **winner is the first copy that completes, passes the post-completion checks and is imported** (§4.8). A copy that completes but fails its checks (a sample, a mislabelled release) is rejected and blocklisted, and the race continues with the others.
-- Losers are only cancelled after the winner has been imported. For each losing torrent, that file is set to priority 0 and its partial `.!qB` is deleted. A losing torrent with no wanted files left is removed from the engine.
+- Losers are only cancelled after the winner has been imported. A losing copy may be partial (`.pending.!qB`) or may already have finished (`.pending`) while the winner was being checked. Either way, its file is deleted at the path the engine currently reports for it. If the losing torrent still has other wanted files, use the single-file removal steps in §4.10. Otherwise the losing torrent is removed from the engine along with its data.
 - Races are decided **per file**. A series pack can race single-episode torrents, and each episode goes to whichever source first delivers a valid copy.
 - Losers are not blocklisted. They were valid releases, just slower.
 - Settings: maximum concurrent sources per file, and "race allowed" per indexer. Race is off by default on private trackers (see §8).
