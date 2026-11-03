@@ -11,6 +11,7 @@ using NLog;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Http;
+using NzbDrone.Common.Messaging;
 using NzbDrone.Common.Processes;
 using NzbDrone.Core.Download.Clients.QBittorrent;
 using NzbDrone.Core.Indexers;
@@ -26,6 +27,16 @@ namespace NzbDrone.Core.Download.Engine
         Starting,
         Running,
         Failed
+    }
+
+    public class EngineStatusChangedEvent : IEvent
+    {
+        public EngineStatus Status { get; }
+
+        public EngineStatusChangedEvent(EngineStatus status)
+        {
+            Status = status;
+        }
     }
 
     public interface IEngineSupervisor
@@ -59,6 +70,7 @@ namespace NzbDrone.Core.Download.Engine
         private readonly IProcessProvider _processProvider;
         private readonly IHttpClient _httpClient;
         private readonly IDownloadClientFactory _downloadClientFactory;
+        private readonly IEventAggregator _eventAggregator;
         private readonly Logger _logger;
 
         private readonly object _lock = new object();
@@ -74,6 +86,7 @@ namespace NzbDrone.Core.Download.Engine
                                 IProcessProvider processProvider,
                                 IHttpClient httpClient,
                                 IDownloadClientFactory downloadClientFactory,
+                                IEventAggregator eventAggregator,
                                 Logger logger)
         {
             _appFolderInfo = appFolderInfo;
@@ -81,10 +94,24 @@ namespace NzbDrone.Core.Download.Engine
             _processProvider = processProvider;
             _httpClient = httpClient;
             _downloadClientFactory = downloadClientFactory;
+            _eventAggregator = eventAggregator;
             _logger = logger;
         }
 
         public EngineStatus Status { get; private set; } = EngineStatus.NotStarted;
+
+        // Health check results are cached, so publish changes for EngineCheck to re-run.
+        private void SetStatus(EngineStatus status)
+        {
+            if (Status == status)
+            {
+                return;
+            }
+
+            Status = status;
+            _eventAggregator.PublishEvent(new EngineStatusChangedEvent(status));
+        }
+
         public string EnginePath { get; private set; }
 
         public string EngineFolder => Path.Combine(_appFolderInfo.AppDataFolder, "engine");
@@ -97,12 +124,10 @@ namespace NzbDrone.Core.Download.Engine
 
             if (EnginePath == null)
             {
-                Status = EngineStatus.NotFound;
+                SetStatus(EngineStatus.NotFound);
                 _logger.Warn("embarr-engine was not found next to Embarr and {0} is not set. Downloads are unavailable.", EnginePathVariable);
                 return;
             }
-
-            _apiKey = GetOrCreateApiKey();
 
             lock (_lock)
             {
@@ -134,9 +159,25 @@ namespace NzbDrone.Core.Download.Engine
 
         private void Shutdown(TimeSpan timeout)
         {
+            Task monitor;
+
             lock (_lock)
             {
+                // Cancelling under the lock serialises with StartEngine: a launch either
+                // completes first (and is stopped below) or sees the cancellation and is skipped.
                 _cancellation?.Cancel();
+                monitor = _monitor;
+            }
+
+            StopEngine(timeout);
+
+            try
+            {
+                monitor?.Wait(timeout);
+            }
+            catch (AggregateException)
+            {
+                // The monitor ends with cancellation; nothing to report.
             }
 
             StopEngine(timeout);
@@ -244,12 +285,22 @@ namespace NzbDrone.Core.Download.Engine
             {
                 try
                 {
-                    Status = EngineStatus.Starting;
-                    StartEngine();
+                    // Stay Failed while retrying; only the first attempt reports Starting.
+                    if (Status != EngineStatus.Failed)
+                    {
+                        SetStatus(EngineStatus.Starting);
+                    }
+
+                    _apiKey ??= GetOrCreateApiKey();
+
+                    if (!StartEngine(token))
+                    {
+                        break;
+                    }
 
                     if (await WaitUntilHealthy(token))
                     {
-                        Status = EngineStatus.Running;
+                        SetStatus(EngineStatus.Running);
                         backoff = TimeSpan.FromSeconds(1);
                         _logger.Info("embarr-engine is running on 127.0.0.1:{0}", _port);
 
@@ -262,7 +313,7 @@ namespace NzbDrone.Core.Download.Engine
                         break;
                     }
 
-                    Status = EngineStatus.Failed;
+                    SetStatus(EngineStatus.Failed);
                     _logger.Error("embarr-engine stopped responding; restarting in {0}s", backoff.TotalSeconds);
                 }
                 catch (OperationCanceledException)
@@ -271,7 +322,7 @@ namespace NzbDrone.Core.Download.Engine
                 }
                 catch (Exception ex)
                 {
-                    Status = EngineStatus.Failed;
+                    SetStatus(EngineStatus.Failed);
                     _logger.Error(ex, "embarr-engine failed; restarting in {0}s", backoff.TotalSeconds);
                 }
 
@@ -288,9 +339,11 @@ namespace NzbDrone.Core.Download.Engine
 
                 backoff = TimeSpan.FromSeconds(Math.Min(backoff.TotalSeconds * 2, MaxBackoff.TotalSeconds));
             }
+
+            StopEngine();
         }
 
-        private void StartEngine()
+        private bool StartEngine(CancellationToken token)
         {
             _port = GetFreeLoopbackPort();
             _diskProvider.EnsureFolder(EngineFolder);
@@ -315,18 +368,37 @@ namespace NzbDrone.Core.Download.Engine
             process.OutputDataReceived += (_, e) => LogEngineOutput(e.Data, LogLevel.Debug);
             process.ErrorDataReceived += (_, e) => LogEngineOutput(e.Data, LogLevel.Warn);
 
-            _logger.Debug("Starting embarr-engine: {0} on port {1}", EnginePath, _port);
+            lock (_lock)
+            {
+                // Checked under the same lock Shutdown cancels under, so a shutdown can't
+                // slip in between the check and the launch.
+                if (token.IsCancellationRequested)
+                {
+                    process.Dispose();
+                    return false;
+                }
 
-            process.Start();
+                _logger.Debug("Starting embarr-engine: {0} on port {1}", EnginePath, _port);
+
+                process.Start();
+
+                // Own the process before anything else can throw, so failure paths stop it.
+                _process = process;
+            }
+
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
 
-            _diskProvider.WriteAllText(PidFile, process.Id.ToString());
-
-            lock (_lock)
+            try
             {
-                _process = process;
+                _diskProvider.WriteAllText(PidFile, process.Id.ToString());
             }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "Unable to write engine pid file");
+            }
+
+            return true;
         }
 
         private void LogEngineOutput(string line, LogLevel level)

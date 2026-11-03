@@ -3,6 +3,7 @@ using NzbDrone.Core.Localization;
 
 namespace NzbDrone.Core.HealthCheck.Checks
 {
+    [CheckOn(typeof(EngineStatusChangedEvent))]
     public class EngineCheck : HealthCheckBase
     {
         private readonly IEngineSupervisor _engineSupervisor;

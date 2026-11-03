@@ -9,6 +9,8 @@ using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.Clients.QBittorrent;
 using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Indexers;
+using NzbDrone.Core.Lifecycle;
+using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Test.Common;
 
@@ -107,6 +109,22 @@ namespace NzbDrone.Core.Test.Download.EngineTests
                 .Returns(false);
 
             Subject.ResolveEnginePath().Should().BeNull();
+        }
+
+        [Test]
+        public void should_report_not_found_and_publish_status_when_engine_is_missing()
+        {
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(s => s.FileExists(It.IsAny<string>()))
+                .Returns(false);
+
+            Subject.Handle(new ApplicationStartedEvent());
+
+            Subject.Status.Should().Be(EngineStatus.NotFound);
+            Mocker.GetMock<IEventAggregator>()
+                .Verify(v => v.PublishEvent(It.Is<EngineStatusChangedEvent>(e => e.Status == EngineStatus.NotFound)), Times.Once());
+
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]
