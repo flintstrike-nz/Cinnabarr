@@ -106,7 +106,8 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         {
             var existingItem = Find(downloadItem.DownloadId);
 
-            if (existingItem != null && existingItem.State != TrackedDownloadState.Downloading)
+            // An Unlinked torrent is re-evaluated on every poll, so a link made by Manual Import is picked up.
+            if (existingItem != null && existingItem.State != TrackedDownloadState.Downloading && !existingItem.IsUnlinked)
             {
                 LogItemChange(existingItem, existingItem.DownloadItem, downloadItem);
 
@@ -150,7 +151,8 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                     trackedDownload.State = state;
                 }
 
-                var parsedEpisodeInfo = isUnlinked ? null : Parser.Parser.ParseTitle(trackedDownload.DownloadItem.Title);
+                // Built-in engine downloads take their series and episodes from the info-hash history below.
+                var parsedEpisodeInfo = isEngine ? null : Parser.Parser.ParseTitle(trackedDownload.DownloadItem.Title);
 
                 if (parsedEpisodeInfo != null)
                 {
@@ -167,7 +169,11 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                     trackedDownload.Indexer = grabbedEvent?.Data?.GetValueOrDefault("indexer");
                     trackedDownload.Added = grabbedEvent?.Date;
 
-                    if (parsedEpisodeInfo == null ||
+                    if (isEngine)
+                    {
+                        trackedDownload.RemoteEpisode = MapFromLinkHistory(trackedDownload.DownloadItem.Title, historyItems);
+                    }
+                    else if (parsedEpisodeInfo == null ||
                         trackedDownload.RemoteEpisode?.Series == null ||
                         trackedDownload.RemoteEpisode.Episodes.Empty())
                     {
@@ -293,8 +299,45 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             }
         }
 
+        // For the built-in engine the info-hash history decides the series and episodes (roadmap §4.4
+        // rule 1); titles are only parsed for release details.
+        private RemoteEpisode MapFromLinkHistory(string title, List<EpisodeHistory> historyItems)
+        {
+            var firstHistoryItem = historyItems.First();
+
+            var parsedEpisodeInfo = Parser.Parser.ParseTitle(title) ??
+                                    Parser.Parser.ParseTitle(firstHistoryItem.SourceTitle) ??
+                                    _parsingService.ParseSpecialEpisodeTitle(null, firstHistoryItem.SourceTitle, 0, 0, null);
+
+            if (parsedEpisodeInfo == null)
+            {
+                return null;
+            }
+
+            // Grabs record their episodes; a torrent linked by Manual Import only has import history.
+            var grabbedEpisodeIds = historyItems.Where(h => h.EventType == EpisodeHistoryEventType.Grabbed).Select(h => h.EpisodeId);
+            var episodeIds = grabbedEpisodeIds.Any() ? grabbedEpisodeIds : historyItems.Select(h => h.EpisodeId).Where(id => id > 0);
+
+            return _parsingService.Map(parsedEpisodeInfo, firstHistoryItem.SeriesId, episodeIds.Distinct().ToList());
+        }
+
         private void UpdateCachedItem(TrackedDownload trackedDownload)
         {
+            if (_engineClientRegistry.IsEngineClient(trackedDownload.DownloadClient))
+            {
+                if (trackedDownload.IsUnlinked)
+                {
+                    return;
+                }
+
+                var historyItems = FindHistory(trackedDownload.DownloadItem.DownloadId);
+
+                trackedDownload.RemoteEpisode = historyItems.Any() ? MapFromLinkHistory(trackedDownload.DownloadItem.Title, historyItems) : null;
+                _aggregationService.Augment(trackedDownload.RemoteEpisode);
+
+                return;
+            }
+
             var parsedEpisodeInfo = Parser.Parser.ParseTitle(trackedDownload.DownloadItem.Title);
 
             trackedDownload.RemoteEpisode = parsedEpisodeInfo == null ? null : _parsingService.Map(parsedEpisodeInfo, 0, 0, null);

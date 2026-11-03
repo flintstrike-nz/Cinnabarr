@@ -39,8 +39,8 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             var disk = Mocker.GetMock<IDiskProvider>();
             disk.Setup(d => d.WriteAllText(It.IsAny<string>(), It.IsAny<string>()))
                 .Callback<string, string>((path, contents) => _files[path] = contents);
-            disk.Setup(d => d.MoveFile(It.IsAny<string>(), It.IsAny<string>(), true))
-                .Callback<string, string, bool>((source, destination, _) =>
+            disk.Setup(d => d.ReplaceFile(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((source, destination) =>
                 {
                     _files[destination] = _files[source];
                     _files.Remove(source);
@@ -168,6 +168,29 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             Subject.TryRestore(_client, Hash).Should().BeFalse();
 
             Mocker.GetMock<IHistoryRepository>().Verify(r => r.Insert(It.IsAny<EpisodeHistory>()), Times.Never());
+        }
+
+        [Test]
+        public void should_not_restore_part_of_a_link_if_some_episodes_are_missing()
+        {
+            Subject.Handle(GivenGrab());
+            Mocker.GetMock<ISeriesService>().Setup(s => s.FindByTvdbId(1234)).Returns(new Series { Id = 7, Title = "Series" });
+            Mocker.GetMock<IEpisodeService>().Setup(s => s.FindEpisode(7, 1, 2)).Returns(new Episode { Id = 21 });
+
+            Subject.TryRestore(_client, Hash).Should().BeFalse();
+
+            Mocker.GetMock<IHistoryRepository>().Verify(r => r.Insert(It.IsAny<EpisodeHistory>()), Times.Never());
+        }
+
+        [Test]
+        public void should_replace_existing_link_in_one_step()
+        {
+            Subject.Handle(GivenGrab());
+            Subject.Handle(GivenGrab());
+
+            Mocker.GetMock<IDiskProvider>().Verify(d => d.ReplaceFile(LinkPath + ".tmp", LinkPath), Times.Exactly(2));
+            Mocker.GetMock<IDiskProvider>().Verify(d => d.MoveFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()), Times.Never());
+            Mocker.GetMock<IDiskProvider>().Verify(d => d.DeleteFile(It.IsAny<string>()), Times.Never());
         }
 
         [Test]

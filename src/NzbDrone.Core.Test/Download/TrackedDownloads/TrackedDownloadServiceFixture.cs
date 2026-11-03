@@ -161,7 +161,7 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
             };
 
             Mocker.GetMock<IParsingService>()
-                .Setup(s => s.Map(It.IsAny<ParsedEpisodeInfo>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), null))
+                .Setup(s => s.Map(It.IsAny<ParsedEpisodeInfo>(), 5, It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { 4 }))))
                 .Returns(remoteEpisode);
 
             var trackedDownload = Subject.TrackDownload(client, item);
@@ -170,6 +170,80 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
             trackedDownload.RemoteEpisode.Should().NotBeNull();
             trackedDownload.RemoteEpisode.Series.Id.Should().Be(5);
             trackedDownload.Added.Should().Be(history.Date);
+        }
+
+        [Test]
+        public void should_take_engine_download_series_from_history_not_from_title()
+        {
+            var client = GivenEngineClient();
+            var item = GivenEngineItem(client);
+
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(EngineHash))
+                .Returns([new EpisodeHistory { DownloadId = EngineHash, SourceTitle = item.Title, SeriesId = 5, EpisodeId = 4, EventType = EpisodeHistoryEventType.Grabbed }]);
+
+            Mocker.GetMock<IParsingService>()
+                .Setup(s => s.Map(It.IsAny<ParsedEpisodeInfo>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), null))
+                .Returns(new RemoteEpisode { Series = new Series { Id = 9 }, Episodes = [new Episode { Id = 90 }] });
+
+            Mocker.GetMock<IParsingService>()
+                .Setup(s => s.Map(It.IsAny<ParsedEpisodeInfo>(), 5, It.IsAny<IEnumerable<int>>()))
+                .Returns(new RemoteEpisode { Series = new Series { Id = 5 }, Episodes = [new Episode { Id = 4 }], ParsedEpisodeInfo = new ParsedEpisodeInfo() });
+
+            var trackedDownload = Subject.TrackDownload(client, item);
+
+            trackedDownload.RemoteEpisode.Series.Id.Should().Be(5);
+            trackedDownload.RemoteEpisode.Episodes.Single().Id.Should().Be(4);
+
+            Mocker.GetMock<IParsingService>()
+                .Verify(s => s.Map(It.IsAny<ParsedEpisodeInfo>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), null), Times.Never());
+        }
+
+        [Test]
+        public void should_link_unlinked_engine_download_after_manual_import()
+        {
+            var client = GivenEngineClient();
+            var item = GivenEngineItem(client);
+
+            var trackedDownload = Subject.TrackDownload(client, item);
+            trackedDownload.IsUnlinked.Should().BeTrue();
+
+            // Manual Import records history for the download id and marks the cached item imported.
+            trackedDownload.State = TrackedDownloadState.Imported;
+
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(EngineHash))
+                .Returns([new EpisodeHistory { DownloadId = EngineHash, SourceTitle = item.Title, SeriesId = 5, EpisodeId = 4, EventType = EpisodeHistoryEventType.DownloadFolderImported }]);
+
+            Mocker.GetMock<IDownloadHistoryService>()
+                .Setup(s => s.GetLatestDownloadHistoryItem(EngineHash))
+                .Returns(new DownloadHistory { DownloadId = EngineHash, SeriesId = 5, EventType = DownloadHistoryEventType.DownloadImported });
+
+            Mocker.GetMock<IParsingService>()
+                .Setup(s => s.Map(It.IsAny<ParsedEpisodeInfo>(), 5, It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { 4 }))))
+                .Returns(new RemoteEpisode { Series = new Series { Id = 5 }, Episodes = [new Episode { Id = 4 }], ParsedEpisodeInfo = new ParsedEpisodeInfo() });
+
+            var relinked = Subject.TrackDownload(client, item);
+
+            relinked.IsUnlinked.Should().BeFalse();
+            relinked.State.Should().Be(TrackedDownloadState.Imported);
+            relinked.Status.Should().Be(TrackedDownloadStatus.Ok);
+            relinked.RemoteEpisode.Series.Id.Should().Be(5);
+        }
+
+        [Test]
+        public void should_not_match_unlinked_engine_download_by_name_when_a_series_is_added()
+        {
+            var client = GivenEngineClient();
+
+            var trackedDownload = Subject.TrackDownload(client, GivenEngineItem(client));
+
+            Subject.Handle(new SeriesAddedEvent(new Series { Id = 9, TvdbId = 99 }));
+
+            trackedDownload.RemoteEpisode.Should().BeNull();
+
+            Mocker.GetMock<IParsingService>()
+                .Verify(s => s.Map(It.IsAny<ParsedEpisodeInfo>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), null), Times.Never());
         }
 
         [Test]

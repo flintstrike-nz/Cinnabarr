@@ -81,15 +81,21 @@ namespace NzbDrone.Core.Download.Engine
                 return false;
             }
 
-            var episodes = (link.Episodes ?? new())
-                .Select(e => _episodeService.FindEpisode(series.Id, e.SeasonNumber, e.EpisodeNumber))
-                .Where(e => e != null)
-                .DistinctBy(e => e.Id)
+            var linkedEpisodes = (link.Episodes ?? new())
+                .DistinctBy(e => (e.SeasonNumber, e.EpisodeNumber))
                 .ToList();
 
-            if (episodes.Count == 0)
+            var episodes = linkedEpisodes
+                .Select(e => _episodeService.FindEpisode(series.Id, e.SeasonNumber, e.EpisodeNumber))
+                .Where(e => e != null)
+                .ToList();
+
+            // Restore all or nothing: a partial link would never be completed, because restoring only
+            // happens while the torrent has no history at all. Leaving it Unlinked lets a later poll retry
+            // once the missing episodes exist.
+            if (linkedEpisodes.Count == 0 || episodes.Count != linkedEpisodes.Count)
             {
-                _logger.Debug("Link for {0} names no episodes that exist in '{1}'", downloadId, series.Title);
+                _logger.Debug("Link for {0} names {1} episode(s), {2} of them exist in '{3}'", downloadId, linkedEpisodes.Count, episodes.Count, series.Title);
                 return false;
             }
 
@@ -171,7 +177,7 @@ namespace NzbDrone.Core.Download.Engine
 
             _diskProvider.EnsureFolder(LinkFolder);
             _diskProvider.WriteAllText(temp, link.ToJson());
-            _diskProvider.MoveFile(temp, path, true);
+            _diskProvider.ReplaceFile(temp, path);
         }
 
         private EngineLink Read(string downloadId)

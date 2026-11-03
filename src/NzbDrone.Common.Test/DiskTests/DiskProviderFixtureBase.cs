@@ -92,6 +92,21 @@ namespace NzbDrone.Common.Test.DiskTests
         }
 
         [Test]
+        public void ReplaceFile_should_replace_existing_file()
+        {
+            var source = GetTempFilePath();
+            var destination = GetTempFilePath();
+
+            File.WriteAllText(source, "New");
+            File.WriteAllText(destination, "Old");
+
+            Subject.ReplaceFile(source, destination);
+
+            File.Exists(source).Should().BeFalse();
+            File.ReadAllText(destination).Should().Be("New");
+        }
+
+        [Test]
         public void MoveFile_should_not_move_overwrite_itself()
         {
             var source = GetTempFilePath();

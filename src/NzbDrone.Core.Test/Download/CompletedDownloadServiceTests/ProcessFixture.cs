@@ -5,6 +5,7 @@ using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.Disk;
 using NzbDrone.Core.Download;
+using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.History;
 using NzbDrone.Core.MediaFiles;
@@ -142,6 +143,27 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             AssertNotReadyToImport();
             _trackedDownload.StatusMessages.Should().ContainSingle()
                 .Which.Messages.Should().Equal(TrackedDownload.UnlinkedMessage);
+        }
+
+        [Test]
+        public void should_use_grabbed_series_for_engine_download_even_if_title_matches_another_series()
+        {
+            var grabbedSeries = new Series { Id = 7 };
+
+            Mocker.GetMock<IEngineClientRegistry>()
+                .Setup(s => s.IsEngineClient(_trackedDownload.DownloadClient))
+                .Returns(true);
+
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(_trackedDownload.DownloadItem.DownloadId))
+                .Returns(new List<EpisodeHistory> { new EpisodeHistory { SeriesId = 7, EventType = EpisodeHistoryEventType.Grabbed } });
+
+            Mocker.GetMock<ISeriesService>().Setup(s => s.GetSeries(7)).Returns(grabbedSeries);
+
+            Subject.Check(_trackedDownload);
+
+            AssertReadyToImport();
+            Mocker.GetMock<IParsingService>().Verify(s => s.GetSeries(It.IsAny<string>()), Times.Never());
         }
 
         [Test]
