@@ -4,6 +4,7 @@ using FluentAssertions;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Core.Download;
+using NzbDrone.Core.Download.Aggregation;
 using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Download.History;
 using NzbDrone.Core.Download.TrackedDownloads;
@@ -433,6 +434,9 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
 
             Subject.Find(EngineHash).Should().BeSameAs(trackedDownload);
             Subject.TrackMissingFromEngine(client, grab).Should().BeSameAs(trackedDownload);
+
+            Mocker.GetMock<IRemoteEpisodeAggregationService>()
+                .Verify(s => s.Augment(trackedDownload.RemoteEpisode), Times.Once());
 
             ExceptionVerification.ExpectedWarns(1);
         }

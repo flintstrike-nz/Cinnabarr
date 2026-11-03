@@ -304,6 +304,12 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                 {
                     MapFromLinkHistory(trackedDownload, historyItems);
                 }
+
+                // Same release details as any other row (languages, release group, ...), so queue filters keep it.
+                if (trackedDownload.RemoteEpisode != null)
+                {
+                    _aggregationService.Augment(trackedDownload.RemoteEpisode);
+                }
             }
             catch (Exception e)
             {
