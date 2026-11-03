@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using FizzWare.NBuilder;
+using FluentAssertions;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.Disk;
@@ -64,6 +66,19 @@ namespace NzbDrone.Core.Test.MediaFiles.EpisodeFileMovingServiceTests
             Mocker.GetMock<IDiskProvider>()
                   .Setup(s => s.FileExists(It.IsAny<string>()))
                   .Returns(true);
+        }
+
+        [Test]
+        public void should_record_in_place_file_where_it_is()
+        {
+            _localEpisode.InPlace = true;
+            _episodeFile.Path = @"C:\Test\TV\Series\Season 01\Engine Name.mkv".AsOsAgnostic();
+
+            var result = Subject.MoveEpisodeFile(_episodeFile, _localEpisode);
+
+            result.RelativePath.Should().Be(Path.Combine("Season 01", "Engine Name.mkv"));
+            Mocker.GetMock<IDiskTransferService>()
+                  .Verify(s => s.TransferFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TransferMode>(), It.IsAny<bool>()), Times.Never());
         }
 
         [Test]

@@ -6,6 +6,7 @@ using NLog;
 using NzbDrone.Common.Disk;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Download;
+using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.MediaFiles.EpisodeImport.Aggregation.Aggregators;
 using NzbDrone.Core.MediaFiles.MediaInfo;
 using NzbDrone.Core.Parser.Model;
@@ -40,7 +41,8 @@ namespace NzbDrone.Core.MediaFiles.EpisodeImport.Aggregation
 
         public LocalEpisode Augment(LocalEpisode localEpisode, DownloadClientItem downloadClientItem)
         {
-            var isMediaFile = MediaFileExtensions.Extensions.Contains(Path.GetExtension(localEpisode.Path));
+            // A file the built-in engine holds under its hidden pending name is checked as the media file it is.
+            var isMediaFile = MediaFileExtensions.Extensions.Contains(Path.GetExtension(EngineFileMapper.GetNameWithoutPendingSuffix(localEpisode.Path)));
 
             if (localEpisode.DownloadClientEpisodeInfo == null &&
                 localEpisode.FolderEpisodeInfo == null &&

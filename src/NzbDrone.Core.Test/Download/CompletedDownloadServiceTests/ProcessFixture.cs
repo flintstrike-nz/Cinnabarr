@@ -160,6 +160,26 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
         }
 
         [Test]
+        public void should_leave_downloads_into_the_library_to_the_per_file_import()
+        {
+            Mocker.GetMock<IEngineClientRegistry>()
+                .Setup(s => s.IsEngineClient(_trackedDownload.DownloadClient))
+                .Returns(true);
+
+            Mocker.GetMock<IEngineLinkService>()
+                .Setup(s => s.Get(_trackedDownload.DownloadItem.DownloadId))
+                .Returns(new EngineLink { Files = new List<EngineLinkFile>() });
+
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(_trackedDownload.DownloadItem.DownloadId))
+                .Returns(new List<EpisodeHistory> { new EpisodeHistory { SeriesId = 7, EventType = EpisodeHistoryEventType.Grabbed } });
+
+            Subject.Check(_trackedDownload);
+
+            AssertNotReadyToImport();
+        }
+
+        [Test]
         public void should_use_grabbed_series_for_engine_download_even_if_title_matches_another_series()
         {
             var grabbedSeries = new Series { Id = 7 };

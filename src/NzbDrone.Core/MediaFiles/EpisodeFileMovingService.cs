@@ -120,6 +120,15 @@ namespace NzbDrone.Core.MediaFiles
                 throw new FileNotFoundException("Episode file path does not exist", episodeFilePath);
             }
 
+            // The built-in engine wrote the file to its final path and is still seeding it: record it where it is.
+            if (localEpisode is { InPlace: true })
+            {
+                episodeFile.RelativePath = series.Path.GetRelativePath(episodeFilePath);
+                localEpisode.FileNameBeforeRename = episodeFile.RelativePath;
+
+                return episodeFile;
+            }
+
             if (episodeFilePath == destinationFilePath)
             {
                 throw new SameFilenameException("File not moved, source and destination are the same", episodeFilePath);

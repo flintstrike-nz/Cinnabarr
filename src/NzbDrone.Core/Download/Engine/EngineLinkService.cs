@@ -22,6 +22,9 @@ namespace NzbDrone.Core.Download.Engine
         // Rebuilds the grab record for a built-in engine torrent from its link sidecar.
         // Returns true if grab history was written.
         bool TryRestore(DownloadClientDefinition downloadClient, string downloadId);
+
+        EngineLink Get(string downloadId);
+        void Save(string downloadId, EngineLink link);
     }
 
     // Writes the link-intent sidecar for every grab sent to the built-in engine, and uses it
@@ -238,6 +241,21 @@ namespace NzbDrone.Core.Download.Engine
                 // An id this build doesn't know: fall back to parsing the title.
                 return null;
             }
+        }
+
+        public EngineLink Get(string downloadId)
+        {
+            return Read(downloadId);
+        }
+
+        public void Save(string downloadId, EngineLink link)
+        {
+            if (!IsInfoHash(downloadId))
+            {
+                throw new ArgumentException("Not an info-hash", nameof(downloadId));
+            }
+
+            Write(downloadId, link);
         }
 
         private string GetLinkPath(string downloadId)

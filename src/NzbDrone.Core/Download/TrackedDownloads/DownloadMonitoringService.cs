@@ -34,6 +34,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         private readonly IEngineClientRegistry _engineClientRegistry;
         private readonly IEngineReconcileService _engineReconcileService;
         private readonly IEngineTorrentPreparationService _engineTorrentPreparationService;
+        private readonly IEngineFileImportService _engineFileImportService;
         private readonly Logger _logger;
         private readonly Debouncer _refreshDebounce;
 
@@ -48,6 +49,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                                          IEngineClientRegistry engineClientRegistry,
                                          IEngineReconcileService engineReconcileService,
                                          IEngineTorrentPreparationService engineTorrentPreparationService,
+                                         IEngineFileImportService engineFileImportService,
                                          Logger logger)
         {
             _downloadClientStatusService = downloadClientStatusService;
@@ -61,6 +63,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             _engineClientRegistry = engineClientRegistry;
             _engineReconcileService = engineReconcileService;
             _engineTorrentPreparationService = engineTorrentPreparationService;
+            _engineFileImportService = engineFileImportService;
             _logger = logger;
 
             _refreshDebounce = new Debouncer(QueueRefresh, TimeSpan.FromSeconds(5));
@@ -158,6 +161,15 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             catch (Exception ex)
             {
                 _logger.Warn(ex, "Unable to prepare new torrents in the engine");
+            }
+
+            try
+            {
+                _engineFileImportService.Process(downloadClient);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "Unable to import completed files from the engine");
             }
         }
 
