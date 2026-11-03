@@ -521,6 +521,19 @@ Each phase ends in a working, shippable build.
 5. **How a race winner is chosen.** Every option requires the winner to pass its post-completion checks and be imported before losers are cancelled (§4.9). Proposal: the first copy to do so. Alternative: rank by projected finish time and keep only the top two running, which saves bandwidth.
 6. **Maximum version slots per item.** Proposal: no hard limit; warn above 3.
 7. **Plex multi-version naming.** Plex uses a different convention from Emby. Proposal: Emby format by default (§4.11), Plex as an optional template in Phase 5.
+8. **Candidate future name: JellyBarr.** Not a commitment and not part of the current plan. Embarr stays the working name until this is decided.
+   - **Trigger:** only once Jellyfin is the implemented target server (Addendum A). Until then, Emby remains the stated target in §4.9 and §4.11.
+   - **Phase 7 interaction:** `AGENTS.md` and Phase 7 already plan one migration of the external contracts (database file, AppData folder, service name, `SONARR__` variables, custom-script variables). Fold any rename into that migration rather than renaming twice.
+   - **Addenda:** A and B use "Embarr" throughout and would need updating, as would the roadmap title.
+   - **Trademark, not copyright.** Names are not protected by copyright; the risk is a confusingly similar trademark for related goods. This is a risk assessment, not legal advice, and no register has been searched yet.
+   - **Known near-match:** a Mac app called "JellyBar" (one r) that customises the app bar. The spelling differs by one letter and sounds identical, which is weak differentiation on its own. The goods differ (a Mac customisation utility versus a media library manager), which counts in JellyBarr's favour. Whether JellyBar holds a registered mark is unknown.
+   - **"Jelly" prefix:** it evokes Jellyfin. The community uses "Jelly…" names widely (Jellyseerr, Jellystat), but Jellyfin has brand guidelines, and a name suggesting official affiliation is the usual route to trouble.
+   - **Risk estimate:** negligible for personal use; small to moderate for public distribution.
+   - **Before any public release, research:**
+     - trademark registers: NZ IPONZ, plus WIPO Global Brand Database, USPTO and EUIPO if distributing abroad, in software classes 9 and 42;
+     - GitHub, app stores and domain availability;
+     - the Jellyfin project's trademark policy.
+   - **Fallbacks:** keep Embarr (already distinct), or choose a name without "Jelly" that keeps the "-arr" convention.
 
 Decided since the first draft: metadata comes from TVDB, TMDb and IMDb (§4.14); video files are always kept after seeding (§4.10); downloads go straight to the final location with an optional same-drive staging folder (§4.8).
 
