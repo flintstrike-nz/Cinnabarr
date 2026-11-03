@@ -131,7 +131,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             return response;
         }
 
-        public void AddTorrentFromUrl(string torrentUrl, TorrentSeedConfiguration seedConfiguration, QBittorrentSettings settings)
+        public void AddTorrentFromUrl(string torrentUrl, TorrentSeedConfiguration seedConfiguration, QBittorrentSettings settings, bool hold = false)
         {
             var request = BuildRequest(settings).Resource("/command/download")
                                                 .Post()
@@ -161,7 +161,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             }
         }
 
-        public void AddTorrentFromFile(string fileName, byte[] fileContent, TorrentSeedConfiguration seedConfiguration, QBittorrentSettings settings)
+        public void AddTorrentFromFile(string fileName, byte[] fileContent, TorrentSeedConfiguration seedConfiguration, QBittorrentSettings settings, bool hold = false)
         {
             var request = BuildRequest(settings).Resource("/command/upload")
                                                 .Post()
@@ -276,6 +276,27 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         public void AddTags(string hash, IEnumerable<string> tags, QBittorrentSettings settings)
         {
             // Not supported on api v1
+        }
+
+        public void SetFilePriority(string hash, IEnumerable<int> fileIndexes, int priority, QBittorrentSettings settings)
+        {
+            foreach (var fileIndex in fileIndexes)
+            {
+                var request = BuildRequest(settings).Resource("/command/setFilePrio")
+                                                    .Post()
+                                                    .AddFormParameter("hash", hash)
+                                                    .AddFormParameter("id", fileIndex)
+                                                    .AddFormParameter("priority", priority);
+                ProcessRequest(request, settings);
+            }
+        }
+
+        public void StartTorrent(string hash, QBittorrentSettings settings)
+        {
+            var request = BuildRequest(settings).Resource("/command/resume")
+                                                .Post()
+                                                .AddFormParameter("hash", hash);
+            ProcessRequest(request, settings);
         }
 
         private HttpRequestBuilder BuildRequest(QBittorrentSettings settings)

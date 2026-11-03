@@ -10,6 +10,7 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Blocklisting;
 using NzbDrone.Core.Configuration;
+using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.Localization;
 using NzbDrone.Core.MediaFiles.TorrentInfo;
@@ -25,6 +26,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         private readonly IQBittorrentProxySelector _proxySelector;
         private readonly ICached<SeedingTimeCacheEntry> _seedingTimeCache;
         private readonly ITagRepository _tagRepository;
+        private readonly IEngineClientRegistry _engineClientRegistry;
 
         private class SeedingTimeCacheEntry
         {
@@ -42,6 +44,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                            ILocalizationService localizationService,
                            IBlocklistService blocklistService,
                            ITagRepository tagRepository,
+                           IEngineClientRegistry engineClientRegistry,
                            Logger logger)
             : base(torrentFileInfoReader, httpClient, configService, diskProvider, remotePathMappingService, localizationService, blocklistService, logger)
         {
@@ -49,10 +52,14 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
 
             _seedingTimeCache = cacheManager.GetCache<SeedingTimeCacheEntry>(GetType(), "seedingTime");
             _tagRepository = tagRepository;
+            _engineClientRegistry = engineClientRegistry;
         }
 
         private IQBittorrentProxy Proxy => _proxySelector.GetProxy(Settings);
         private Version ProxyApiVersion => _proxySelector.GetApiVersion(Settings);
+
+        // The built-in engine holds new torrents until Embarr has prepared them (roadmap §4.8).
+        private bool HoldNewTorrents => _engineClientRegistry.IsEngineClient(Definition.Id);
 
         public override void MarkItemAsImported(DownloadClientItem downloadClientItem)
         {
@@ -84,11 +91,13 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             var addHasSetShareLimits = setShareLimits && ProxyApiVersion >= new Version(2, 8, 1);
             var isRecentEpisode = remoteEpisode.IsRecentEpisode();
             var moveToTop = (isRecentEpisode && Settings.RecentTvPriority == (int)QBittorrentPriority.First) || (!isRecentEpisode && Settings.OlderTvPriority == (int)QBittorrentPriority.First);
-            var forceStart = (QBittorrentState)Settings.InitialState == QBittorrentState.ForceStart;
+
+            // A held torrent is force-started by preparation, once its file whitelist is applied (roadmap §4.8).
+            var forceStart = !HoldNewTorrents && (QBittorrentState)Settings.InitialState == QBittorrentState.ForceStart;
 
             try
             {
-                Proxy.AddTorrentFromUrl(magnetLink, addHasSetShareLimits && setShareLimits ? remoteEpisode.SeedConfiguration : null, Settings);
+                Proxy.AddTorrentFromUrl(magnetLink, addHasSetShareLimits && setShareLimits ? remoteEpisode.SeedConfiguration : null, Settings, HoldNewTorrents);
             }
             catch (DownloadClientException ex) when (ex.InnerException is HttpException httpException && httpException.Response.StatusCode is HttpStatusCode.Conflict)
             {
@@ -142,7 +151,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                 {
                     try
                     {
-                        Proxy.AddTags(hash.ToLower(), _tagRepository.GetTags(remoteEpisode.Series.Tags).Select(tag => tag.Label), Settings);
+                        Proxy.AddTags(hash.ToLower(), GetSeriesTagLabels(remoteEpisode), Settings);
                     }
                     catch (Exception ex)
                     {
@@ -160,11 +169,13 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             var addHasSetShareLimits = setShareLimits && ProxyApiVersion >= new Version(2, 8, 1);
             var isRecentEpisode = remoteEpisode.IsRecentEpisode();
             var moveToTop = (isRecentEpisode && Settings.RecentTvPriority == (int)QBittorrentPriority.First) || (!isRecentEpisode && Settings.OlderTvPriority == (int)QBittorrentPriority.First);
-            var forceStart = (QBittorrentState)Settings.InitialState == QBittorrentState.ForceStart;
+
+            // A held torrent is force-started by preparation, once its file whitelist is applied (roadmap §4.8).
+            var forceStart = !HoldNewTorrents && (QBittorrentState)Settings.InitialState == QBittorrentState.ForceStart;
 
             try
             {
-                Proxy.AddTorrentFromFile(filename, fileContent, addHasSetShareLimits ? remoteEpisode.SeedConfiguration : null, Settings);
+                Proxy.AddTorrentFromFile(filename, fileContent, addHasSetShareLimits ? remoteEpisode.SeedConfiguration : null, Settings, HoldNewTorrents);
             }
             catch (DownloadClientException ex) when (ex.InnerException is HttpException httpException && httpException.Response.StatusCode is HttpStatusCode.Conflict)
             {
@@ -218,7 +229,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                 {
                     try
                     {
-                        Proxy.AddTags(hash.ToLower(), _tagRepository.GetTags(remoteEpisode.Series.Tags).Select(tag => tag.Label), Settings);
+                        Proxy.AddTags(hash.ToLower(), GetSeriesTagLabels(remoteEpisode), Settings);
                     }
                     catch (Exception ex)
                     {
@@ -257,6 +268,14 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         }
 
         public override string Name => "qBittorrent";
+
+        // "embarr-" tags are reserved for the engine's own markers.
+        private IEnumerable<string> GetSeriesTagLabels(RemoteEpisode remoteEpisode)
+        {
+            return _tagRepository.GetTags(remoteEpisode.Series.Tags)
+                .Select(tag => tag.Label)
+                .Where(label => !EngineTorrentTags.IsReserved(label));
+        }
 
         public override IEnumerable<DownloadClientItem> GetItems()
         {

@@ -11,9 +11,11 @@ using NzbDrone.Common.Http;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.Clients;
 using NzbDrone.Core.Download.Clients.QBittorrent;
+using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.MediaFiles.TorrentInfo;
 using NzbDrone.Core.Parser.Model;
+using NzbDrone.Core.Tags;
 using NzbDrone.Core.Validation;
 using NzbDrone.Test.Common;
 
@@ -664,6 +666,80 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.QBittorrentTests
 
             Mocker.GetMock<IQBittorrentProxy>()
                   .Verify(s => s.AddTorrentFromUrl(It.IsAny<string>(), It.IsAny<TorrentSeedConfiguration>(), It.IsAny<QBittorrentSettings>()), Times.Once());
+        }
+
+        [Test]
+        public void Download_should_hold_magnet_for_the_built_in_engine()
+        {
+            Mocker.GetMock<IEngineClientRegistry>()
+                  .Setup(s => s.IsEngineClient(Subject.Definition.Id))
+                  .Returns(true);
+
+            var remoteEpisode = CreateRemoteEpisode();
+            remoteEpisode.Release.DownloadUrl = "magnet:?xt=urn:btih:ZPBPA2P6ROZPKRHK44D5OW6NHXU5Z6KR&tr=udp://abc";
+
+            Assert.DoesNotThrowAsync(async () => await Subject.Download(remoteEpisode, CreateIndexer()));
+
+            Mocker.GetMock<IQBittorrentProxy>()
+                  .Verify(s => s.AddTorrentFromUrl(It.IsAny<string>(), It.IsAny<TorrentSeedConfiguration>(), It.IsAny<QBittorrentSettings>(), true), Times.Once());
+        }
+
+        [Test]
+        public async Task Download_should_hold_torrent_file_for_the_built_in_engine()
+        {
+            Mocker.GetMock<IEngineClientRegistry>()
+                  .Setup(s => s.IsEngineClient(Subject.Definition.Id))
+                  .Returns(true);
+
+            await Subject.Download(CreateRemoteEpisode(), CreateIndexer());
+
+            Mocker.GetMock<IQBittorrentProxy>()
+                  .Verify(s => s.AddTorrentFromFile(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<TorrentSeedConfiguration>(), It.IsAny<QBittorrentSettings>(), true), Times.Once());
+        }
+
+        [Test]
+        public async Task Download_should_not_force_start_held_torrents()
+        {
+            Mocker.GetMock<IEngineClientRegistry>()
+                  .Setup(s => s.IsEngineClient(Subject.Definition.Id))
+                  .Returns(true);
+
+            (Subject.Definition.Settings as QBittorrentSettings).InitialState = (int)QBittorrentState.ForceStart;
+
+            await Subject.Download(CreateRemoteEpisode(), CreateIndexer());
+
+            Mocker.GetMock<IQBittorrentProxy>()
+                  .Verify(s => s.SetForceStart(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+        }
+
+        [Test]
+        public async Task Download_should_not_hold_torrents_for_other_clients()
+        {
+            GivenSuccessfulDownload();
+
+            await Subject.Download(CreateRemoteEpisode(), CreateIndexer());
+
+            Mocker.GetMock<IQBittorrentProxy>()
+                  .Verify(s => s.AddTorrentFromFile(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<TorrentSeedConfiguration>(), It.IsAny<QBittorrentSettings>(), false), Times.Once());
+        }
+
+        [Test]
+        public async Task Download_should_not_copy_reserved_engine_tags_from_series()
+        {
+            GivenSuccessfulDownload();
+            (Subject.Definition.Settings as QBittorrentSettings).AddSeriesTags = true;
+
+            var remoteEpisode = CreateRemoteEpisode();
+            remoteEpisode.Series.Tags = new HashSet<int> { 1, 2 };
+
+            Mocker.GetMock<ITagRepository>()
+                  .Setup(s => s.GetTags(It.IsAny<HashSet<int>>()))
+                  .Returns(new List<Tag> { new Tag { Id = 1, Label = "anime" }, new Tag { Id = 2, Label = "embarr-prepared" } });
+
+            await Subject.Download(remoteEpisode, CreateIndexer());
+
+            Mocker.GetMock<IQBittorrentProxy>()
+                  .Verify(s => s.AddTags(It.IsAny<string>(), It.Is<IEnumerable<string>>(t => t.SequenceEqual(new[] { "anime" })), It.IsAny<QBittorrentSettings>()), Times.Once());
         }
 
         [Test]

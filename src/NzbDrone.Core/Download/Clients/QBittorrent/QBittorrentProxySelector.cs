@@ -17,8 +17,9 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         QBittorrentTorrentProperties GetTorrentProperties(string hash, QBittorrentSettings settings);
         List<QBittorrentTorrentFile> GetTorrentFiles(string hash, QBittorrentSettings settings);
 
-        void AddTorrentFromUrl(string torrentUrl, TorrentSeedConfiguration seedConfiguration, QBittorrentSettings settings);
-        void AddTorrentFromFile(string fileName, byte[] fileContent, TorrentSeedConfiguration seedConfiguration, QBittorrentSettings settings);
+        // hold: the built-in engine's add, where nothing downloads until Embarr has prepared the torrent (roadmap §4.8)
+        void AddTorrentFromUrl(string torrentUrl, TorrentSeedConfiguration seedConfiguration, QBittorrentSettings settings, bool hold = false);
+        void AddTorrentFromFile(string fileName, byte[] fileContent, TorrentSeedConfiguration seedConfiguration, QBittorrentSettings settings, bool hold = false);
 
         void RemoveTorrent(string hash, bool removeData, QBittorrentSettings settings);
         void SetTorrentLabel(string hash, string label, QBittorrentSettings settings);
@@ -28,6 +29,8 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         void MoveTorrentToTopInQueue(string hash, QBittorrentSettings settings);
         void SetForceStart(string hash, bool enabled, QBittorrentSettings settings);
         void AddTags(string hash, IEnumerable<string> tags, QBittorrentSettings settings);
+        void SetFilePriority(string hash, IEnumerable<int> fileIndexes, int priority, QBittorrentSettings settings);
+        void StartTorrent(string hash, QBittorrentSettings settings);
     }
 
     public interface IQBittorrentProxySelector
