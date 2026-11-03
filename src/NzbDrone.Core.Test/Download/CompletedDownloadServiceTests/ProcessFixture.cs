@@ -39,6 +39,7 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
                     .With(c => c.DownloadItem = completed)
                     .With(c => c.RemoteEpisode = remoteEpisode)
                     .With(c => c.IsUnlinked = false)
+                    .With(c => c.HasIncompleteLink = false)
                     .Build();
 
             Mocker.GetMock<IDownloadClient>()
@@ -143,6 +144,19 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             AssertNotReadyToImport();
             _trackedDownload.StatusMessages.Should().ContainSingle()
                 .Which.Messages.Should().Equal(TrackedDownload.UnlinkedMessage);
+        }
+
+        [Test]
+        public void should_not_process_engine_download_with_incomplete_link()
+        {
+            _trackedDownload.HasIncompleteLink = true;
+            GivenSeriesMatch();
+
+            Subject.Check(_trackedDownload);
+
+            AssertNotReadyToImport();
+            _trackedDownload.StatusMessages.Should().ContainSingle()
+                .Which.Messages.Should().Equal(TrackedDownload.IncompleteLinkMessage);
         }
 
         [Test]

@@ -97,6 +97,12 @@ namespace NzbDrone.Core.Download
                 return;
             }
 
+            if (trackedDownload.HasIncompleteLink)
+            {
+                trackedDownload.Warn(TrackedDownload.IncompleteLinkMessage);
+                return;
+            }
+
             if (historyItem == null && trackedDownload.DownloadItem.Category.IsNullOrWhiteSpace())
             {
                 trackedDownload.Warn("Download wasn't grabbed by Sonarr and not in a category, Skipping.");

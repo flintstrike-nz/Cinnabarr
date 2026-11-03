@@ -6,6 +6,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
 {
     public class TrackedDownload
     {
+        public const string IncompleteLinkMessage = "Some episodes this torrent is linked to are no longer in the library, so it won't be imported automatically. Use Manual Import to link it.";
         public const string UnlinkedMessage = "Unlinked: this torrent wasn't added by Embarr, so it won't be imported automatically. Use Manual Import to link it.";
 
         public int DownloadClient { get; set; }
@@ -22,6 +23,9 @@ namespace NzbDrone.Core.Download.TrackedDownloads
 
         // A built-in engine torrent with no grab record and no link sidecar (roadmap §4.4).
         public bool IsUnlinked { get; set; }
+
+        // A built-in engine torrent whose recorded series or episodes no longer all exist.
+        public bool HasIncompleteLink { get; set; }
         public bool HasNotifiedManualInteractionRequired { get; set; }
 
         public TrackedDownload()
