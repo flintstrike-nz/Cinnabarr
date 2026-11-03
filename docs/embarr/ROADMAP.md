@@ -551,7 +551,7 @@ Do **not** fork the Jellyfin server. Build:
    - exposes small authenticated endpoints under the Jellyfin server that the web interface calls, so the Embarr API key never reaches the TV or browser;
    - records who requested what.
 2. **A web interface layer** that adds a *Discover* area and an **Add to Embarr** action, with options such as quality profile and version slot. Start with injected JavaScript and CSS delivered by the plugin. Only fork `jellyfin-web` if injection can't do the job.
-3. **The stock `jellyfin-webos` app**, unmodified, pointed at the user's server. Updating the web layer needs no reinstall on the TV.
+3. **The stock `jellyfin-webos` app**, unmodified, installed from the LG Content Store and pointed at the user's server. Updating the web layer needs no reinstall on the TV.
 
 ### A.4 What Embarr must provide
 
@@ -571,7 +571,7 @@ All of this already fits the planned single `/api/v1` and API key (§4.6):
 | **Reachability** | The Jellyfin server must be able to reach Embarr. Run them on the same machine or network. Do not expose Embarr's API to the internet for this. |
 | **Plugin API drift** | Jellyfin plugins are built against a specific server version. Expect to rebuild for each Jellyfin release. |
 | **Web injection fragility** | Injected scripts depend on `jellyfin-web` internals, which can change between releases. Keep selectors and hooks in one place. |
-| **webOS sideloading** | The stock webOS app needs LG Developer Mode (periodic renewal) or the community Homebrew Channel. |
+| **webOS installation** | The stock app is installed from the LG Content Store, which needs no sideloading. Developer Mode (periodic renewal) or the community Homebrew Channel is only needed if `jellyfin-webos` itself is later modified or a build not in the store is wanted. |
 | **Licensing** | The Jellyfin server and web are GPL-2.0, which is compatible with Embarr's licence if anything derived from them is shared. Check the `jellyfin-webos` licence before modifying that app. |
 | **Reference implementation** | Seerr (Jellyseerr / Overseerr) already does browse, request and send-to-Sonarr/Radarr, and is a useful model for request flows and permissions. It also relates to open decision 2 (v3 API compatibility shims). |
 
