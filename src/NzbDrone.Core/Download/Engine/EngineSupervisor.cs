@@ -71,6 +71,7 @@ namespace NzbDrone.Core.Download.Engine
         private CancellationTokenSource _cancellation;
         private Task _monitor;
         private IEngineProcess _process;
+        private IEngineProcess _exitedProcess;
         private int _port;
         private string _apiKey;
 
@@ -142,7 +143,17 @@ namespace NzbDrone.Core.Download.Engine
                 {
                     // The host's SIGTERM/Ctrl+C shutdown doesn't publish ApplicationShutdownRequested,
                     // so also stop the engine when the process exits.
-                    AppDomain.CurrentDomain.ProcessExit += (_, _) => Shutdown(Timings.ProcessExitShutdownTimeout);
+                    AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+                    {
+                        try
+                        {
+                            Shutdown(Timings.ProcessExitShutdownTimeout);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.Error(ex, "Failed to stop embarr-engine on exit");
+                        }
+                    };
                     _processExitHooked = true;
                 }
 
@@ -476,6 +487,11 @@ namespace NzbDrone.Core.Download.Engine
                     line => LogEngineOutput(line, LogLevel.Warn));
 
                 // Own the process before anything else can throw, so failure paths stop it.
+                // The previous child has exited (PreviousEngineGone) and no stop can still be
+                // using it: shutdown cancels before stopping, and a cancelled token never
+                // reaches this point. So it's safe to dispose it here, and only here.
+                _exitedProcess?.Dispose();
+                _exitedProcess = null;
                 _process = process;
             }
 
@@ -521,7 +537,7 @@ namespace NzbDrone.Core.Download.Engine
                 return;
             }
 
-            if (!process.HasExited)
+            if (!HasExited(process))
             {
                 try
                 {
@@ -551,12 +567,26 @@ namespace NzbDrone.Core.Download.Engine
             {
                 if (ReferenceEquals(_process, process))
                 {
+                    // Not disposed here: another stop (e.g. shutdown racing the watchdog)
+                    // may still be using it. It's disposed when the next engine replaces it.
                     _process = null;
+                    _exitedProcess = process;
                 }
             }
 
-            process.Dispose();
             DeletePidFile();
+        }
+
+        private static bool HasExited(IEngineProcess process)
+        {
+            try
+            {
+                return process.HasExited;
+            }
+            catch (InvalidOperationException)
+            {
+                return true;
+            }
         }
 
         public static string FormatPidFile(int pid, DateTime startTimeUtc)
@@ -581,6 +611,8 @@ namespace NzbDrone.Core.Download.Engine
         // would hold the profile lock and stop the new engine from starting.
         private void KillStaleEngine()
         {
+            IEngineProcess stale = null;
+
             try
             {
                 if (!_diskProvider.FileExists(PidFile))
@@ -593,38 +625,52 @@ namespace NzbDrone.Core.Download.Engine
 
                 if (!int.TryParse(firstLine, out var pid))
                 {
+                    DeletePidFile();
                     return;
                 }
 
-                using var stale = _processLauncher.Find(pid);
+                stale = _processLauncher.Find(pid);
 
                 if (stale == null)
                 {
+                    DeletePidFile();
                     return;
                 }
 
-                if (IsSameProcess(contents, pid, stale.StartTimeUtc))
-                {
-                    _logger.Warn("Stopping embarr-engine left running by a previous session (pid {0})", pid);
-                    stale.Kill();
-
-                    if (!stale.WaitForExit(Timings.KillTimeout))
-                    {
-                        _logger.Error("embarr-engine from a previous session (pid {0}) didn't exit", pid);
-                    }
-                }
-                else
+                if (!IsSameProcess(contents, pid, stale.StartTimeUtc))
                 {
                     _logger.Debug("Pid {0} from the engine pid file now belongs to another process; leaving it alone", pid);
+                    stale.Dispose();
+                    DeletePidFile();
+                    return;
                 }
+
+                _logger.Warn("Stopping embarr-engine left running by a previous session (pid {0})", pid);
+                stale.Kill();
+
+                if (stale.WaitForExit(Timings.KillTimeout))
+                {
+                    stale.Dispose();
+                    DeletePidFile();
+                    return;
+                }
+
+                _logger.Error("embarr-engine from a previous session (pid {0}) didn't exit; not starting another until it does", pid);
             }
             catch (Exception ex)
             {
-                _logger.Debug(ex, "Unable to check for a stale embarr-engine process");
+                _logger.Error(ex, "Unable to stop embarr-engine left running by a previous session");
             }
-            finally
+
+            // Kill failed or the old engine survived it: keep the pid file and treat it as our
+            // current child, so supervision keeps trying to stop it and never launches a
+            // second engine on the locked profile.
+            if (stale != null)
             {
-                DeletePidFile();
+                lock (_lock)
+                {
+                    _process = stale;
+                }
             }
         }
 
@@ -694,7 +740,7 @@ namespace NzbDrone.Core.Download.Engine
         {
             lock (_lock)
             {
-                return _process == null || _process.HasExited;
+                return _process == null || HasExited(_process);
             }
         }
 

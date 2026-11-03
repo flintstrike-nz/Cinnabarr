@@ -119,10 +119,23 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         [Test]
         public void should_start_engine_report_running_and_add_download_client()
         {
+            var created = 0;
+
+            Mocker.GetMock<IDownloadClientFactory>()
+                .Setup(s => s.Create(It.IsAny<DownloadClientDefinition>()))
+                .Callback(() => Interlocked.Increment(ref created))
+                .Returns<DownloadClientDefinition>(d =>
+                {
+                    d.Id = 1;
+                    return d;
+                });
+
             Subject.Handle(new ApplicationStartedEvent());
 
-            WaitFor(() => Subject.Status == EngineStatus.Running, "the engine to be running");
+            // Running is set just before the client is created, so wait for the creation itself.
+            WaitFor(() => Volatile.Read(ref created) > 0, "the download client to be created");
 
+            Subject.Status.Should().Be(EngineStatus.Running);
             _launcher.Started.Should().HaveCount(1);
             _launcher.Started[0].ApiKey.Should().StartWith("qbt_");
             Mocker.GetMock<IDownloadClientFactory>().Verify(v => v.Create(It.IsAny<DownloadClientDefinition>()), Times.Once());
@@ -212,6 +225,32 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             _launcher.Started[0].Unstick();
         }
 
+        [Test]
+        public void should_not_launch_while_a_stale_engine_from_a_previous_session_wont_die()
+        {
+            var stale = new FakeProcess(4242, "qbt_old", stuck: true);
+            _launcher.Stale = stale;
+
+            var pidFile = Path.Combine(@"C:\Test\AppData".AsOsAgnostic(), "engine", "engine.pid");
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FileExists(pidFile)).Returns(true);
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.ReadAllText(pidFile)).Returns(EngineSupervisor.FormatPidFile(stale.Id, stale.StartTimeUtc));
+
+            Subject.Handle(new ApplicationStartedEvent());
+
+            WaitFor(() => _backoffs.Count >= 2, "several retries");
+
+            _launcher.Started.Should().BeEmpty();
+            Subject.Status.Should().Be(EngineStatus.Failed);
+            Mocker.GetMock<IDiskProvider>().Verify(v => v.DeleteFile(pidFile), Times.Never());
+
+            // Once the old engine finally exits, the new one starts.
+            stale.Unstick();
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FileExists(pidFile)).Returns(false);
+
+            WaitFor(() => Subject.Status == EngineStatus.Running, "the new engine to be running");
+            _launcher.Started.Should().HaveCount(1);
+        }
+
         private class FakeLauncher : IEngineProcessLauncher
         {
             private readonly object _lock = new object();
@@ -219,6 +258,8 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             private int _nextPid = 1000;
 
             public bool NextIsStuck { get; set; }
+
+            public FakeProcess Stale { get; set; }
 
             public List<FakeProcess> Started
             {
@@ -255,7 +296,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
 
             public IEngineProcess Find(int pid)
             {
-                return null;
+                return Stale != null && Stale.Id == pid ? Stale : null;
             }
         }
 
