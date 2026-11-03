@@ -28,6 +28,10 @@ namespace NzbDrone.Common.EnvironmentInfo
 
         public static string AppName { get; } = "Embarr";
 
+        // Product name of the upstream app this was forked from. Still accepted where
+        // existing installs may already use it (e.g. customised instance names).
+        public static string LegacyAppName { get; } = "Sonarr";
+
         public static Version Version { get; }
         public static string Branch { get; }
         public static string Release { get; }

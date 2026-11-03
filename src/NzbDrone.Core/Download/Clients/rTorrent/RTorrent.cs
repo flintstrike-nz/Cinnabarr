@@ -5,7 +5,6 @@ using System.Threading;
 using FluentValidation.Results;
 using NLog;
 using NzbDrone.Common.Disk;
-using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Blocklisting;
@@ -26,7 +25,10 @@ namespace NzbDrone.Core.Download.Clients.RTorrent
         private readonly IRTorrentProxy _proxy;
         private readonly IRTorrentDirectoryValidator _rTorrentDirectoryValidator;
         private readonly IDownloadSeedConfigProvider _downloadSeedConfigProvider;
-        private readonly string _imported_view = string.Concat(BuildInfo.AppName.ToLower(), "_imported");
+
+        // Machine-facing view name that users' rTorrent scripts watch; keep it stable
+        // and independent of the product name.
+        private readonly string _imported_view = "sonarr_imported";
 
         public RTorrent(IRTorrentProxy proxy,
                         ITorrentFileInfoReader torrentFileInfoReader,

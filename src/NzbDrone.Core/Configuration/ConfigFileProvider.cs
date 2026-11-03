@@ -317,13 +317,18 @@ namespace NzbDrone.Core.Configuration
             {
                 var instanceName = _appOptions.InstanceName ?? GetValue("InstanceName", BuildInfo.AppName);
 
-                if (instanceName.StartsWith(BuildInfo.AppName) || instanceName.EndsWith(BuildInfo.AppName))
+                if (StartsOrEndsWith(instanceName, BuildInfo.AppName) || StartsOrEndsWith(instanceName, BuildInfo.LegacyAppName))
                 {
                     return instanceName;
                 }
 
                 return BuildInfo.AppName;
             }
+        }
+
+        private static bool StartsOrEndsWith(string value, string name)
+        {
+            return value.StartsWith(name) || value.EndsWith(name);
         }
 
         public bool UpdateAutomatically => _updateOptions.Automatically ?? GetValueBoolean("UpdateAutomatically", OsInfo.IsWindows, false);
