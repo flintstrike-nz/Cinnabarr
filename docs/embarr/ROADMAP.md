@@ -638,7 +638,7 @@ It is a public URL even for one user.
 
 | Item | Detail |
 | --- | --- |
-| **Latency** | Polling every 30–60 seconds is enough for "add this show". An FCM push to wake the home server could shorten this but is not needed to start. |
+| **Latency** | Polling every 30–60 seconds is enough for "add this show". Polling is the baseline. A push-style wake-up would need a receiving bridge on the home side: FCM targets mobile and web clients, not a background service like the relay client, so it would need extra infrastructure (for example a small companion app or a long-lived connection such as SSE or a websocket from the relay). Not needed to start. |
 | **Home server offline** | Requests wait in the queue. The phone should show how long ago the home server last checked in. |
 | **Vercel plan** | The Hobby plan is for personal, non-commercial use, which matches single-user scope. Check the terms again if the scope ever widens. |
 | **Metadata licences** | If the relay proxies TMDb / TVDB, the same terms apply as in §4.14 and §8 (attribution, project keys). |
@@ -656,6 +656,6 @@ It is a public URL even for one user.
 ### B.8 Open questions
 
 - Should the relay proxy TMDb / TVDB, or should the APK call them directly?
-- Poll only, or add FCM push to wake the home server?
+- Poll only, or add a push-style wake-up later? FCM is not a direct option for the home relay client (see B.6), so this would mean a supported bridge or a long-lived connection.
 - Should the home server ever push richer status (download progress), or only library and request state?
 - If multi-user support is wanted later, should it reuse Jellyfin identities (Addendum A) or have its own accounts?
