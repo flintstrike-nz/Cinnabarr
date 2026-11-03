@@ -41,9 +41,6 @@ namespace NzbDrone.Core.Download.Engine
     {
         EngineStatus Status { get; }
         string EnginePath { get; }
-
-        // True for the built-in "Embarr Engine" download client.
-        bool IsEngineClient(int downloadClientId);
     }
 
     // Starts and supervises embarr-engine (the headless qBittorrent fork, roadmap §3)
@@ -64,6 +61,7 @@ namespace NzbDrone.Core.Download.Engine
         private readonly IDiskProvider _diskProvider;
         private readonly IEngineProcessLauncher _processLauncher;
         private readonly IHttpClient _httpClient;
+        private readonly IEngineClientRegistry _engineClientRegistry;
         private readonly IDownloadClientFactory _downloadClientFactory;
         private readonly IDownloadClientStatusService _downloadClientStatusService;
         private readonly IEventAggregator _eventAggregator;
@@ -79,7 +77,6 @@ namespace NzbDrone.Core.Download.Engine
         // Set while a pid from a previous session couldn't be verified (e.g. its start time
         // couldn't be read). Launches wait until it's resolved; that process is never killed.
         private volatile bool _staleCheckPending;
-        private int _clientId = -1;
         private int _port;
         private string _apiKey;
 
@@ -87,6 +84,7 @@ namespace NzbDrone.Core.Download.Engine
                                 IDiskProvider diskProvider,
                                 IEngineProcessLauncher processLauncher,
                                 IHttpClient httpClient,
+                                IEngineClientRegistry engineClientRegistry,
                                 IDownloadClientFactory downloadClientFactory,
                                 IDownloadClientStatusService downloadClientStatusService,
                                 IEventAggregator eventAggregator,
@@ -96,6 +94,7 @@ namespace NzbDrone.Core.Download.Engine
             _diskProvider = diskProvider;
             _processLauncher = processLauncher;
             _httpClient = httpClient;
+            _engineClientRegistry = engineClientRegistry;
             _downloadClientFactory = downloadClientFactory;
             _downloadClientStatusService = downloadClientStatusService;
             _eventAggregator = eventAggregator;
@@ -123,26 +122,9 @@ namespace NzbDrone.Core.Download.Engine
 
         public string EnginePath { get; private set; }
 
-        public bool IsEngineClient(int downloadClientId)
-        {
-            var clientId = Volatile.Read(ref _clientId);
-
-            if (clientId < 0)
-            {
-                // Only fill in the initial value; never overwrite an id the supervisor has
-                // published meanwhile (WriteClientId).
-                Interlocked.CompareExchange(ref _clientId, ReadClientId(), -1);
-                clientId = Volatile.Read(ref _clientId);
-            }
-
-            return clientId > 0 && clientId == downloadClientId;
-        }
-
-        public string EngineFolder => Path.Combine(_appFolderInfo.AppDataFolder, "engine");
+        private string EngineFolder => _engineClientRegistry.EngineFolder;
 
         private string PidFile => Path.Combine(EngineFolder, "engine.pid");
-
-        private string ClientIdFile => Path.Combine(EngineFolder, "client.id");
 
         public void Handle(ApplicationStartedEvent message)
         {
@@ -310,7 +292,7 @@ namespace NzbDrone.Core.Download.Engine
             // Tracked by the id stored next to the engine, so renaming the client in
             // settings doesn't make the next start create a second one.
             var all = _downloadClientFactory.All();
-            var storedId = ReadClientId();
+            var storedId = _engineClientRegistry.ReadStoredClientId();
             var definition = all.FirstOrDefault(d => d.Id == storedId && d.Implementation == nameof(QBittorrent))
                              ?? all.FirstOrDefault(d => d.Implementation == nameof(QBittorrent) && d.Name == EngineDefinitionName);
 
@@ -343,11 +325,11 @@ namespace NzbDrone.Core.Download.Engine
                 });
 
                 _logger.Info("Added the built-in {0} download client", EngineDefinitionName);
-                WriteClientId(definition?.Id ?? 0);
+                _engineClientRegistry.SetClientId(definition?.Id ?? 0);
                 return;
             }
 
-            WriteClientId(definition.Id);
+            _engineClientRegistry.SetClientId(definition.Id);
 
             // Failures while the engine was down may have put the client into back-off;
             // clear it before the update triggers a queue refresh.
@@ -356,38 +338,6 @@ namespace NzbDrone.Core.Download.Engine
             definition.Settings = settings;
             definition.Enable = true;
             _downloadClientFactory.Update(definition);
-        }
-
-        private int ReadClientId()
-        {
-            try
-            {
-                return _diskProvider.FileExists(ClientIdFile) && int.TryParse(_diskProvider.ReadAllText(ClientIdFile).Trim(), out var id) ? id : 0;
-            }
-            catch (Exception ex)
-            {
-                _logger.Debug(ex, "Unable to read the built-in download client id");
-                return 0;
-            }
-        }
-
-        private void WriteClientId(int id)
-        {
-            if (id <= 0)
-            {
-                return;
-            }
-
-            Volatile.Write(ref _clientId, id);
-
-            try
-            {
-                _diskProvider.WriteAllText(ClientIdFile, id.ToString());
-            }
-            catch (Exception ex)
-            {
-                _logger.Warn(ex, "Unable to store the built-in download client id");
-            }
         }
 
         private async Task Supervise(CancellationToken token)

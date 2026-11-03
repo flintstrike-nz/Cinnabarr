@@ -6,6 +6,8 @@ namespace NzbDrone.Core.Download.TrackedDownloads
 {
     public class TrackedDownload
     {
+        public const string UnlinkedMessage = "Unlinked: this torrent wasn't added by Embarr, so it won't be imported automatically. Use Manual Import to link it.";
+
         public int DownloadClient { get; set; }
         public DownloadClientItem DownloadItem { get; set; }
         public DownloadClientItem ImportItem { get; set; }
@@ -17,6 +19,9 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         public string Indexer { get; set; }
         public DateTime? Added { get; set; }
         public bool IsTrackable { get; set; }
+
+        // A built-in engine torrent with no grab record and no link sidecar (roadmap §4.4).
+        public bool IsUnlinked { get; set; }
         public bool HasNotifiedManualInteractionRequired { get; set; }
 
         public TrackedDownload()

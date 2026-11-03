@@ -37,6 +37,7 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
                     .With(c => c.State = TrackedDownloadState.Downloading)
                     .With(c => c.DownloadItem = completed)
                     .With(c => c.RemoteEpisode = remoteEpisode)
+                    .With(c => c.IsUnlinked = false)
                     .Build();
 
             Mocker.GetMock<IDownloadClient>()
@@ -126,6 +127,21 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             Subject.Check(_trackedDownload);
 
             AssertNotReadyToImport();
+        }
+
+        [Test]
+        public void should_not_process_unlinked_engine_download_even_if_category_specified()
+        {
+            _trackedDownload.IsUnlinked = true;
+            _trackedDownload.DownloadItem.Category = "tv";
+            GivenNoGrabbedHistory();
+            GivenSeriesMatch();
+
+            Subject.Check(_trackedDownload);
+
+            AssertNotReadyToImport();
+            _trackedDownload.StatusMessages.Should().ContainSingle()
+                .Which.Messages.Should().Equal(TrackedDownload.UnlinkedMessage);
         }
 
         [Test]

@@ -6,6 +6,7 @@ using NzbDrone.Common.Cache;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.Download.Aggregation;
+using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Download.History;
 using NzbDrone.Core.History;
 using NzbDrone.Core.Messaging.Events;
@@ -41,6 +42,8 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         private readonly IDownloadHistoryService _downloadHistoryService;
         private readonly IRemoteEpisodeAggregationService _aggregationService;
         private readonly ICustomFormatCalculationService _formatCalculator;
+        private readonly IEngineClientRegistry _engineClientRegistry;
+        private readonly IEngineLinkService _engineLinkService;
         private readonly IEventAggregator _eventAggregator;
         private readonly Logger _logger;
 
@@ -52,6 +55,8 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                                       IDownloadHistoryService downloadHistoryService,
                                       IRemoteEpisodeAggregationService aggregationService,
                                       ICustomFormatCalculationService formatCalculator,
+                                      IEngineClientRegistry engineClientRegistry,
+                                      IEngineLinkService engineLinkService,
                                       IEventAggregator eventAggregator,
                                       ICacheManager cacheManager,
                                       Logger logger)
@@ -62,6 +67,8 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             _downloadHistoryService = downloadHistoryService;
             _aggregationService = aggregationService;
             _formatCalculator = formatCalculator;
+            _engineClientRegistry = engineClientRegistry;
+            _engineLinkService = engineLinkService;
             _eventAggregator = eventAggregator;
             _logger = logger;
 
@@ -118,8 +125,23 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                 HasNotifiedManualInteractionRequired = existingItem?.HasNotifiedManualInteractionRequired ?? false
             };
 
+            var isEngine = _engineClientRegistry.IsEngineClient(downloadClient.Id);
+
             try
             {
+                var historyItems = FindHistory(downloadItem.DownloadId);
+
+                // Embarr's database may have lost the grab (for example after restoring an older backup):
+                // rebuild it from the link sidecar the engine keeps (roadmap §4.4 rule 5).
+                if (isEngine && historyItems.Empty() && _engineLinkService.TryRestore(downloadClient, downloadItem.DownloadId))
+                {
+                    historyItems = FindHistory(downloadItem.DownloadId);
+                }
+
+                // The info-hash is the only key for the built-in engine (roadmap §4.4 rule 1): a torrent
+                // Embarr has no record of is listed as Unlinked and is never matched to a series by name.
+                var isUnlinked = isEngine && historyItems.Empty();
+
                 var downloadHistory = _downloadHistoryService.GetLatestDownloadHistoryItem(downloadItem.DownloadId);
 
                 if (downloadHistory != null)
@@ -128,7 +150,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                     trackedDownload.State = state;
                 }
 
-                var parsedEpisodeInfo = Parser.Parser.ParseTitle(trackedDownload.DownloadItem.Title);
+                var parsedEpisodeInfo = isUnlinked ? null : Parser.Parser.ParseTitle(trackedDownload.DownloadItem.Title);
 
                 if (parsedEpisodeInfo != null)
                 {
@@ -136,10 +158,6 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                         ? _parsingService.Map(parsedEpisodeInfo, _seriesService.GetSeries(downloadHistory.SeriesId))
                         : _parsingService.Map(parsedEpisodeInfo, 0, 0, null);
                 }
-
-                var historyItems = _historyService.FindByDownloadId(downloadItem.DownloadId)
-                    .OrderByDescending(h => h.Date)
-                    .ToList();
 
                 if (historyItems.Any())
                 {
@@ -183,6 +201,12 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                             trackedDownload.RemoteEpisode.Release.IndexerId = downloadHistory.IndexerId;
                         }
                     }
+                }
+
+                if (isUnlinked)
+                {
+                    trackedDownload.IsUnlinked = true;
+                    trackedDownload.Warn(TrackedDownload.UnlinkedMessage);
                 }
 
                 if (trackedDownload.RemoteEpisode != null)
@@ -242,6 +266,13 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             {
                 _cache.Remove(trackedDownload.DownloadItem.DownloadId);
             }
+        }
+
+        private List<EpisodeHistory> FindHistory(string downloadId)
+        {
+            return _historyService.FindByDownloadId(downloadId)
+                .OrderByDescending(h => h.Date)
+                .ToList();
         }
 
         private void LogItemChange(TrackedDownload trackedDownload, DownloadClientItem existingItem, DownloadClientItem downloadItem)

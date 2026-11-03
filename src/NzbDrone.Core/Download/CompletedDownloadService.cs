@@ -87,6 +87,12 @@ namespace NzbDrone.Core.Download
             var grabbedHistories = _historyService.FindByDownloadId(trackedDownload.DownloadItem.DownloadId).Where(h => h.EventType == EpisodeHistoryEventType.Grabbed).ToList();
             var historyItem = grabbedHistories.MaxBy(h => h.Date);
 
+            if (trackedDownload.IsUnlinked)
+            {
+                trackedDownload.Warn(TrackedDownload.UnlinkedMessage);
+                return;
+            }
+
             if (historyItem == null && trackedDownload.DownloadItem.Category.IsNullOrWhiteSpace())
             {
                 trackedDownload.Warn("Download wasn't grabbed by Sonarr and not in a category, Skipping.");
