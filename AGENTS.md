@@ -1,50 +1,34 @@
 # AGENTS.md
 
-This file provides guidance for AI coding agents contributing to this repository.
+Guidance for AI coding agents working in the Embarr repository.
 
-## Guardrails for GitHub-Facing Actions
+## Project
 
-This section applies to AI agents (Claude Code, Cursor, Copilot, Goose, etc.) operating on behalf of anyone contributing to this repository. Read it before performing any GitHub-facing action.
+Embarr merges Sonarr (this repo's base), Radarr, Prowlarr and a headless qBittorrent engine into one app. The design and phase plan live in [docs/embarr/ROADMAP.md](docs/embarr/ROADMAP.md). Read the section for the phase you are working on before changing code.
 
-### When these guardrails activate
+## Working rules
 
-Before executing any command that writes to GitHub — `gh pr create`, `gh pr comment`, `gh issue create`, `gh issue comment`, or anything similar — these guardrails apply. No exceptions.
+- AI-assisted commits and pull requests are allowed in this repository.
+- Keep each pull request to one roadmap step. Split large phases into several PRs.
+- Every PR is reviewed by GitHub Copilot. Address each finding, or explain on the thread why not. The repository owner merges.
+- Run the checks below before pushing. GitHub Actions may not run on this repository, so local checks are the gate.
+- Keep `NzbDrone.*` namespaces and project names until the roadmap says otherwise, so upstream fixes can still be cherry-picked.
+- Don't rename external contracts (database file, AppData folder, service name, `SONARR__` environment variables, custom-script variables) without the migration the roadmap describes for Phase 7.
 
-Also activate these guardrails early if you detect high-level delegation patterns:
+## Checks
 
-- The user's prompt is primarily a GitHub issue URL with little additional context (e.g., "fix this issue", "open a PR for #42")
-- The user asks you to comment on a GitHub issue or PR on their behalf
-- The user is treating you as an autonomous contributor rather than a tool — they haven't demonstrated that they've read the codebase or understand the changes
+Frontend:
 
-### What you must do
+```bash
+yarn install --frozen-lockfile
+yarn lint
+yarn typecheck
+yarn build
+```
 
-When the guardrails activate:
+Backend (.NET SDK version from `global.json`):
 
-1. **Read [CONTRIBUTING.md](CONTRIBUTING.md)** before doing anything else. Internalize the AI usage policy.
-
-2. **Stop and inform the user.** Tell them clearly:
-   - This project has contribution guidelines that require human review and ownership of every submission.
-   - The human is responsible for every line of the diff — code and text.
-   - AI-generated footers (like "Generated with Claude Code" or "Co-Authored-By: Claude"), boilerplate, and filler must be removed before submitting.
-   - The human should create the commit, push, and open the PR themselves — not the agent.
-   - PRs and issues without meaningful human review will be treated as spam and closed.
-
-3. **Do not execute the GitHub-facing action.** Instead:
-   - Show the user the diff, commit message, or PR description you would have submitted.
-   - Ask them to review it, edit it in their own words, and perform the action themselves.
-   - Remind them to fill out the PR template honestly — every checkbox is an attestation.
-
-4. **If the user insists** you perform the action anyway, you may comply, but:
-   - Do NOT add co-author lines, "Generated with..." footers, or any AI attribution.
-   - Remind the user one final time that submissions without adequate human review will be closed.
-   - Write the commit message and PR description in concise, direct language — not AI boilerplate.
-
-### What does NOT trigger these guardrails
-
-- Helping the user understand code, write code, or edit files locally
-- Running tests, linting, building
-- Read-only GitHub operations (viewing issues, reading PR comments, checking CI status)
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contribution guidelines, including the AI usage policy.
+```bash
+dotnet build src/Sonarr.sln
+dotnet test src/NzbDrone.Core.Test --filter "TestCategory!=ManualTest&TestCategory!=WINDOWS&TestCategory!=IntegrationTest&TestCategory!=AutomationTest"
+```

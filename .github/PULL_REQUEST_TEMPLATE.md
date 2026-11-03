@@ -1,24 +1,18 @@
 #### Description
 
-A few sentences describing the overall goals of the pull request's commits.
+<!-- What does this change and why? Which roadmap phase/step does it belong to (docs/embarr/ROADMAP.md)? -->
+
+#### Testing
+
+<!-- Which checks did you run (yarn lint / typecheck / build, dotnet build / test)? What did you try by hand? -->
 
 #### Screenshots for UI Changes
 
-<!-- Remove if there are no screenshots -->
+<!-- Remove if there are no UI changes -->
 
 #### Database Migration
 
-YES - ###
-
-<!-- Remove if there is no database migration. If there is an database migration replace ### with the migration number -->
-
-#### Submission Checklist
-
-<!-- You must put an X in appropriate checkboxes before submitting -->
-
-- [ ] I have read [CONTRIBUTING.md](/Sonarr/Sonarr/blob/develop/CONTRIBUTING.md) and this PR follows the guidelines
-- [ ] I have fully reviewed all code in this PR and confirm it works as intended
-- [ ] This PR was authored and submitted by an AI agent without human review
+<!-- Remove if there is no database migration. Otherwise give the migration number. -->
 
 #### Issues Fixed or Closed by this PR
 

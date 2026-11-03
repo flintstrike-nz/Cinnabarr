@@ -1,30 +1,18 @@
-# <img width="24px" src="./Logo/256.png" alt="Sonarr"></img> Sonarr
+# Embarr
 
-[![Translated](https://translate.servarr.com/widget/servarr/sonarr/svg-badge.svg)](https://translate.servarr.com/engage/servarr/)
-[![Backers on Open Collective](https://opencollective.com/Sonarr/backers/badge.svg)](#backers)
-[![Sponsors on Open Collective](https://opencollective.com/Sonarr/sponsors/badge.svg)](#sponsors)
-[![Mega Sponsors on Open Collective](https://opencollective.com/Sonarr/megasponsors/badge.svg)](#mega-sponsors)
+Embarr is one app for TV shows and movies: library management, indexer search and a built-in torrent downloader, with a single library, a single download queue and a single settings tree.
 
-Sonarr is a PVR for Usenet and BitTorrent users. It can monitor multiple RSS feeds for new episodes of your favorite shows and will grab, sort and rename them. It can also be configured to automatically upgrade the quality of files already downloaded when a better quality format becomes available.
+It is built by merging [Sonarr](https://github.com/Sonarr/Sonarr) (the base of this repository), [Radarr](https://github.com/Radarr/Radarr), [Prowlarr](https://github.com/Prowlarr/Prowlarr) and a headless [qBittorrent](https://github.com/qbittorrent/qBittorrent) engine. Embarr is not affiliated with those projects; please don't ask them for support with Embarr.
 
-## Getting Started
+**Status:** early development. See the [architecture and roadmap](docs/embarr/ROADMAP.md) for the design and the phase plan.
 
-- [Download/Installation](https://sonarr.tv/#downloads-v3)
-- [FAQ](https://wiki.servarr.com/sonarr/faq)
-- [Wiki](https://wiki.servarr.com/Sonarr)
-- [API Documentation](https://sonarr.tv/docs/api)
-- [Donate](https://sonarr.tv/donate)
+## Contributing
 
-## Support
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Note: GitHub Issues are for Bugs and Feature Requests Only
+## Upstream README
 
-- [Forums](https://forums.sonarr.tv/)
-- [Discord](https://discord.gg/M6BvZn5)
-- [GitHub - Bugs and Feature Requests Only](https://github.com/Sonarr/Sonarr/issues)
-- [IRC](https://web.libera.chat/?channels=#sonarr)
-- [Reddit](https://www.reddit.com/r/sonarr)
-- [Wiki](https://wiki.servarr.com/sonarr)
+The rest of this file is Sonarr's original README, kept for reference and attribution until Embarr has its own documentation.
 
 ## Features
 

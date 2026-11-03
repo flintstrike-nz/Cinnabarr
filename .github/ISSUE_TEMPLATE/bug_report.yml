@@ -38,14 +38,14 @@ body:
     description: |
       examples:
         - **OS**: Ubuntu 22.04
-        - **Sonarr**: Sonarr 4.0.0.766
+        - **Embarr**: 4.0.0.766
         - **Docker Install**: Yes
         - **Using Reverse Proxy**: No
         - **Browser**: Firefox 90 (If UI related)
         - **Database**: Sqlite 3.41.2
     value: |
         - OS: 
-        - Sonarr: 
+        - Embarr: 
         - Docker Install: 
         - Using Reverse Proxy: 
         - Browser: 
@@ -59,14 +59,14 @@ body:
     options:
       - Main
       - Develop
-      - Other (This issue will be closed)
+      - Other
   validations:
     required: true
 - type: textarea
   attributes:
     label: Trace Logs
     description: |
-      Trace Logs (https://wiki.servarr.com/sonarr/troubleshooting#logging-and-log-files) 
+      Trace logs from the Embarr logs folder (System → Logs → Files).
       ***All bug reports must have trace logs provided, unless it's limited to a UI issue, in that case, logs from the development console are acceptable.***
       *** Info Logs are not trace logs. If the logs do not say trace and are not from a file like `*.trace.*.txt` they are not trace logs.***
   validations:
