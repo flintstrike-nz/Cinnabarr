@@ -212,20 +212,175 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
-        public void should_skip_torrents_that_are_done_or_not_mapped()
+        public void should_check_done_torrents_once_then_skip_them_and_unmapped_ones()
         {
             _link.Completed = true;
             _link.Files.ForEach(f => f.State = EngineLinkFileState.Imported);
+            Subject.Process(GivenClient());
             Subject.Process(GivenClient());
 
             _link = new EngineLink();
             Subject.Process(GivenClient());
 
+            _proxy.Verify(p => p.GetTorrentFiles(It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Once());
+            Mocker.GetMock<IImportApprovedEpisodes>().Verify(s => s.Import(It.IsAny<List<ImportDecision>>(), It.IsAny<bool>(), It.IsAny<DownloadClientItem>(), It.IsAny<ImportMode>()), Times.Never());
+        }
+
+        [Test]
+        public void should_record_again_a_file_the_library_lost()
+        {
+            // For example after a database restore: the link says imported, the file is there, the library has no file.
+            _link.Completed = true;
+            _link.Files.ForEach(f => f.State = EngineLinkFileState.Imported);
+            _existing.Remove(_pending);
+            _existing.Add(_final);
+
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<IImportApprovedEpisodes>().Verify(s => s.Import(It.Is<List<ImportDecision>>(d => d[0].LocalEpisode.Path == _final), true, It.IsAny<DownloadClientItem>(), ImportMode.Move), Times.Once());
+            Mocker.GetMock<IEventAggregator>().Verify(e => e.PublishEvent(It.IsAny<DownloadCompletedEvent>()), Times.Once());
+            _link.Completed.Should().BeTrue();
+        }
+
+        [Test]
+        public void should_retry_removing_a_torrent_whose_videos_were_all_rejected()
+        {
+            _link.Completed = true;
+            _link.Files.ForEach(f => f.State = EngineLinkFileState.Rejected);
+            _trackedDownload.State = TrackedDownloadState.Failed;
+
+            Subject.Process(GivenClient());
+
+            _proxy.Verify(p => p.RemoveTorrent(Hash, false, _settings), Times.Once());
             _proxy.Verify(p => p.GetTorrentFiles(It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+        }
+
+        private void GivenFailure(string message)
+        {
+            _trackedDownload.State = TrackedDownloadState.Failed;
+
+            var failure = new EpisodeHistory { SeriesId = 1, EpisodeId = 11, DownloadId = Hash.ToUpperInvariant(), EventType = EpisodeHistoryEventType.DownloadFailed, Date = System.DateTime.UtcNow };
+            failure.Data["Message"] = message;
+
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(Hash.ToUpperInvariant()))
+                .Returns(new List<EpisodeHistory>
+                {
+                    new EpisodeHistory { Id = 5, SeriesId = 1, EpisodeId = 11, DownloadId = Hash.ToUpperInvariant(), EventType = EpisodeHistoryEventType.Grabbed, Date = System.DateTime.UtcNow.AddHours(-1) },
+                    failure
+                });
+        }
+
+        [Test]
+        public void should_keep_importing_the_rest_of_a_torrent_after_one_file_was_rejected()
+        {
+            GivenFailure(EngineFileImportService.RejectedMessage);
+
+            Subject.Process(GivenClient());
+
+            _proxy.Verify(p => p.RenameFile(Hash, ".Show - S01E01.mkv.pending", "Show - S01E01.mkv", _settings), Times.Once());
+        }
+
+        [Test]
+        public void should_search_again_only_once_per_grab()
+        {
+            GivenFailure(EngineFileImportService.RejectedMessage);
+            _approve = false;
+
+            Subject.Process(GivenClient());
+
+            _link.Files[0].State.Should().Be(EngineLinkFileState.Rejected);
+            Mocker.GetMock<IFailedDownloadService>().Verify(s => s.MarkAsFailed(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()), Times.Never());
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_leave_a_download_that_failed_for_another_reason()
+        {
+            GivenFailure("Manually marked as failed");
+
+            Subject.Process(GivenClient());
+
+            _proxy.Verify(p => p.GetTorrentFiles(It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+        }
+
+        [Test]
+        public void should_wait_instead_of_deleting_a_file_whose_rejection_can_pass_later()
+        {
+            Mocker.GetMock<IMakeImportDecision>()
+                .Setup(s => s.GetDecision(It.IsAny<LocalEpisode>(), It.IsAny<DownloadClientItem>()))
+                .Returns<LocalEpisode, DownloadClientItem>((l, d) => new ImportDecision(l, new ImportRejection(ImportRejectionReason.TitleTba, "Episode title is TBA")));
+
+            Subject.Process(GivenClient());
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<IDiskProvider>().Verify(s => s.DeleteFile(It.IsAny<string>()), Times.Never());
+            Mocker.GetMock<IFailedDownloadService>().Verify(s => s.MarkAsFailed(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()), Times.Never());
+            _link.Files[0].State.Should().Be(EngineLinkFileState.Pending);
+
+            // Logged once, not on every poll.
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_wait_when_the_episodes_already_have_another_file()
+        {
+            Mocker.GetMock<IEpisodeService>()
+                .Setup(s => s.GetEpisodeBySeries(1))
+                .Returns(new List<Episode>
+                {
+                    new Episode { Id = 11, SeasonNumber = 1, EpisodeNumber = 1, EpisodeFileId = 7, EpisodeFile = new NzbDrone.Core.Datastore.LazyLoaded<NzbDrone.Core.MediaFiles.EpisodeFile>(new NzbDrone.Core.MediaFiles.EpisodeFile { Id = 7, RelativePath = Path.Combine("Season 01", "Show - S01E01 - Other.mkv") }) }
+                });
+
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<IMakeImportDecision>().Verify(s => s.GetDecision(It.IsAny<LocalEpisode>(), It.IsAny<DownloadClientItem>()), Times.Never());
+            _proxy.Verify(p => p.RenameFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+            _link.Files[0].State.Should().Be(EngineLinkFileState.Pending);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_check_the_file_with_the_grabbed_indexer_flags()
+        {
+            _trackedDownload.RemoteEpisode = new RemoteEpisode { Release = new ReleaseInfo { IndexerFlags = IndexerFlags.Freeleech } };
+
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<IMakeImportDecision>().Verify(s => s.GetDecision(It.Is<LocalEpisode>(l => l.IndexerFlags == IndexerFlags.Freeleech), It.IsAny<DownloadClientItem>()), Times.Once());
+        }
+
+        [Test]
+        public void should_rename_to_the_final_name_rebuilt_after_the_checks()
+        {
+            Mocker.GetMock<IEngineFileMapper>()
+                .Setup(s => s.UpdateFinalPaths(_link, _link.Files[0], It.IsAny<Series>(), It.IsAny<LocalEpisode>()))
+                .Callback<EngineLink, EngineLinkFile, Series, LocalEpisode>((l, f, s, e) => f.FinalPath = "Show - S01E01 [x265].mkv")
+                .Returns(true);
+
+            Subject.Process(GivenClient());
+
+            _proxy.Verify(p => p.RenameFile(Hash, ".Show - S01E01.mkv.pending", "Show - S01E01 [x265].mkv", _settings), Times.Once());
+        }
+
+        [Test]
+        public void should_recover_a_subtitle_rename_whose_state_was_not_saved()
+        {
+            _link.Completed = true;
+            _link.Files[0].State = EngineLinkFileState.Imported;
+            _files[1].Name = "Show - S01E01.en.srt";
+            _existing.Remove(_subtitlePending);
+            _existing.Add(Path.Combine(_link.SavePath, "Show - S01E01.en.srt"));
+
+            Subject.Process(GivenClient());
+
+            _proxy.Verify(p => p.RenameFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+            _link.Files[1].State.Should().Be(EngineLinkFileState.Imported);
         }
 
         [TestCase(TrackedDownloadState.Ignored)]
         [TestCase(TrackedDownloadState.Failed)]
+        [TestCase(TrackedDownloadState.FailedPending)]
         public void should_leave_downloads_that_were_ignored_or_failed(TrackedDownloadState state)
         {
             _trackedDownload.State = state;

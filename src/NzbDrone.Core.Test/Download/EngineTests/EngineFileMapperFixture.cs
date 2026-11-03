@@ -166,6 +166,59 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             Map(("Show.S01E01.mkv", 1000)).Files.Single().PendingPath.Should().Be(".Show - S01E01.mkv.abcdef01.pending");
         }
 
+        [Test]
+        public void should_keep_subtitles_that_would_share_a_name_apart()
+        {
+            var map = Map(("Show.S01E01.720p/Show.S01E01.720p.mkv", 1000),
+                          ("Show.S01E01.720p/Subs/English/Show.S01E01.720p.srt", 10),
+                          ("Show.S01E01.720p/Subs/SDH/Show.S01E01.720p.srt", 10),
+                          ("Show.S01E01.720p/A/Subs/Show.S01E01.720p.en.srt", 10),
+                          ("Show.S01E01.720p/B/Subs/Show.S01E01.720p.en.srt", 10));
+
+            map.Files.Where(f => f.IsSubtitle).Select(f => f.FinalPath).Should().Equal(
+                "Show - S01E01.English.srt",
+                "Show - S01E01.SDH.srt",
+                "Show - S01E01.Subs.en.srt",
+                "Show - S01E01.2.Subs.en.srt");
+        }
+
+        [Test]
+        public void should_rebuild_final_names_from_what_the_checks_learned()
+        {
+            var map = Map(("Show.S01E01.mkv", 1000), ("Show.S01E01.en.srt", 10));
+            var link = new EngineLink { SavePath = map.SavePath, Files = map.Files };
+            var video = link.Files[0];
+
+            Mocker.GetMock<IBuildFileNames>()
+                .Setup(s => s.BuildFilePath(It.IsAny<List<Episode>>(), _series, It.Is<EpisodeFile>(f => f.MediaInfo != null && f.SceneName == "Show.S01.720p.HDTV-Grp" && f.RelativePath == "Show.S01E01.mkv"), ".mkv", null, It.IsAny<List<CustomFormat>>()))
+                .Returns(Path.Combine(_seasonFolder, "Show - S01E01 [x265].mkv"));
+
+            var localEpisode = new LocalEpisode { Episodes = _episodes, MediaInfo = new NzbDrone.Core.MediaFiles.MediaInfo.MediaInfoModel() };
+
+            Subject.UpdateFinalPaths(link, video, _series, localEpisode).Should().BeTrue();
+
+            video.FinalPath.Should().Be("Show - S01E01 [x265].mkv");
+            link.Files[1].FinalPath.Should().Be("Show - S01E01 [x265].en.srt");
+
+            // The pending names stay: the files are already downloading under them.
+            video.PendingPath.Should().Be(".Show - S01E01.mkv.abcdef01.pending");
+        }
+
+        [Test]
+        public void should_keep_the_mapped_name_when_the_rebuilt_one_leaves_the_save_folder()
+        {
+            var map = Map(("Show.S01E01.mkv", 1000));
+            var link = new EngineLink { SavePath = map.SavePath, Files = map.Files };
+
+            Mocker.GetMock<IBuildFileNames>()
+                .Setup(s => s.BuildFilePath(It.IsAny<List<Episode>>(), _series, It.IsAny<EpisodeFile>(), ".mkv", null, It.IsAny<List<CustomFormat>>()))
+                .Returns(Path.Combine(_series.Path, "Specials", "Show - S01E01.mkv"));
+
+            Subject.UpdateFinalPaths(link, link.Files[0], _series, new LocalEpisode { Episodes = _episodes }).Should().BeFalse();
+
+            link.Files[0].FinalPath.Should().Be("Show - S01E01.mkv");
+        }
+
         [TestCase(".Show - S01E01.mkv.abcdef01.pending", ".Show - S01E01.mkv")]
         [TestCase("Show - S01E01.mkv", "Show - S01E01.mkv")]
         [TestCase("Show.pending.mkv", "Show.pending.mkv")]

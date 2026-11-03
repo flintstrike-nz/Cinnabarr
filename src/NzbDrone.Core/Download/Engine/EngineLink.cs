@@ -49,6 +49,11 @@ namespace NzbDrone.Core.Download.Engine
         public string PendingPath { get; set; }
         public string FinalPath { get; set; }
         public EngineLinkFileState State { get; set; }
+
+        // For a video: the original title and file name its final name was built from, so the name can be
+        // rebuilt once media info is known.
+        public string SceneName { get; set; }
+        public string OriginalName { get; set; }
     }
 
     public class EngineLinkQuality

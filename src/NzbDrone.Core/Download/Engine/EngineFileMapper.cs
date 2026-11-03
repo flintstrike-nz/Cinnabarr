@@ -8,6 +8,7 @@ using NzbDrone.Core.Download.Clients.QBittorrent;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Organizer;
 using NzbDrone.Core.Parser;
+using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
 using NzbDrone.Core.Tv;
 
@@ -25,6 +26,10 @@ namespace NzbDrone.Core.Download.Engine
         // Maps each wanted file of a torrent to its final library path (roadmap §4.8 steps 4-6). Returns null when no
         // video file matches the grabbed episodes.
         EngineFileMap Map(string downloadId, Series series, List<Episode> episodes, QualityModel quality, string releaseTitle, List<QBittorrentTorrentFile> files);
+
+        // Rebuilds a video's final name (and its subtitles') from what the import checks learned about the file,
+        // such as its media info. Returns true if any final name changed.
+        bool UpdateFinalPaths(EngineLink link, EngineLinkFile video, Series series, LocalEpisode localEpisode);
     }
 
     public class EngineFileMapper : IEngineFileMapper
@@ -104,12 +109,17 @@ namespace NzbDrone.Core.Download.Engine
                     Size = file.Size
                 };
 
-                var finalPath = _buildFileNames.BuildFilePath(fileEpisodes.OrderBy(e => e.SeasonNumber).ThenBy(e => e.EpisodeNumber).ToList(),
-                                                              series,
-                                                              episodeFile,
-                                                              Path.GetExtension(GetFileName(file.Name)));
+                var finalPath = BuildFinalPath(fileEpisodes, series, episodeFile, Path.GetExtension(GetFileName(file.Name)), null);
 
-                mappedVideos.Add(new MappedVideo { File = file, Index = index, Episodes = fileEpisodes, FinalPath = FitFileName(finalPath) });
+                mappedVideos.Add(new MappedVideo
+                {
+                    File = file,
+                    Index = index,
+                    Episodes = fileEpisodes,
+                    FinalPath = finalPath,
+                    SceneName = episodeFile.SceneName,
+                    OriginalName = episodeFile.RelativePath
+                });
             }
 
             // Two files for the same episodes (for example a release and a re-encode): keep the larger one.
@@ -128,8 +138,14 @@ namespace NzbDrone.Core.Download.Engine
 
             foreach (var video in mappedVideos)
             {
-                map.Files.Add(CreateFile(savePath, pendingSuffix, video.Index, video.FinalPath, video.Episodes, null));
+                var videoFile = CreateFile(savePath, pendingSuffix, video.Index, video.FinalPath, video.Episodes, null);
+
+                videoFile.SceneName = video.SceneName;
+                videoFile.OriginalName = video.OriginalName;
+                map.Files.Add(videoFile);
             }
+
+            var subtitles = new List<MappedSubtitle>();
 
             foreach (var (file, index) in indexed.Where(f => EngineFileWhitelist.IsSubtitle(f.File.Name)))
             {
@@ -146,12 +162,107 @@ namespace NzbDrone.Core.Download.Engine
                     ? subtitleName.Substring(videoStem.Length)
                     : "." + subtitleName;
 
-                var finalPath = Path.Combine(Path.GetDirectoryName(video.FinalPath), Path.GetFileNameWithoutExtension(video.FinalPath) + suffix);
+                subtitles.Add(new MappedSubtitle { File = file, Index = index, Video = video, Suffix = suffix });
+            }
 
-                map.Files.Add(CreateFile(savePath, pendingSuffix, index, FitFileName(finalPath), new List<Episode>(), video.Index));
+            // Subtitles from different folders (for example English/ and SDH/) can end up with the same name: keep
+            // them apart by their folder name, then by their position if that isn't enough.
+            foreach (var group in subtitles.GroupBy(s => GetSubtitlePath(s.Video.FinalPath, s.Suffix), StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1))
+            {
+                foreach (var subtitle in group)
+                {
+                    var folder = GetFolderName(subtitle.File.Name);
+
+                    if (folder.IsNotNullOrWhiteSpace())
+                    {
+                        subtitle.Suffix = "." + folder + subtitle.Suffix;
+                    }
+                }
+            }
+
+            foreach (var group in subtitles.GroupBy(s => GetSubtitlePath(s.Video.FinalPath, s.Suffix), StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1))
+            {
+                foreach (var (subtitle, position) in group.Skip(1).Select((s, i) => (s, i + 2)))
+                {
+                    subtitle.Suffix = "." + position + subtitle.Suffix;
+                }
+            }
+
+            foreach (var subtitle in subtitles)
+            {
+                map.Files.Add(CreateFile(savePath, pendingSuffix, subtitle.Index, FitFileName(GetSubtitlePath(subtitle.Video.FinalPath, subtitle.Suffix)), new List<Episode>(), subtitle.Video.Index));
             }
 
             return map;
+        }
+
+        public bool UpdateFinalPaths(EngineLink link, EngineLinkFile video, Series series, LocalEpisode localEpisode)
+        {
+            var episodeFile = new EpisodeFile
+            {
+                Quality = localEpisode.Quality,
+                ReleaseGroup = localEpisode.ReleaseGroup,
+                SceneName = video.SceneName,
+                RelativePath = video.OriginalName,
+                Languages = localEpisode.Languages,
+                MediaInfo = localEpisode.MediaInfo,
+                IndexerFlags = localEpisode.IndexerFlags,
+                ReleaseType = localEpisode.ReleaseType,
+                Size = localEpisode.Size
+            };
+
+            var finalPath = BuildFinalPath(localEpisode.Episodes, series, episodeFile, Path.GetExtension(video.FinalPath), localEpisode.CustomFormats);
+            var finalRelative = Path.GetRelativePath(link.SavePath, finalPath).Replace('\\', '/');
+
+            // The torrent saves into one folder; a name that would move out of it keeps the name it was mapped to.
+            if (finalRelative == video.FinalPath || finalRelative.StartsWith("../") || Path.IsPathRooted(finalRelative))
+            {
+                return false;
+            }
+
+            var oldStem = Path.GetFileNameWithoutExtension(video.FinalPath);
+            var newFolder = Path.GetDirectoryName(finalPath);
+            var newStem = Path.GetFileNameWithoutExtension(finalPath);
+
+            foreach (var subtitle in link.Files.Where(f => f.IsSubtitle && f.VideoIndex == video.Index && f.State == EngineLinkFileState.Pending))
+            {
+                var name = subtitle.FinalPath.Replace('\\', '/').Split('/').Last();
+
+                if (name.StartsWith(oldStem, StringComparison.Ordinal))
+                {
+                    var subtitlePath = FitFileName(Path.Combine(newFolder, string.Concat(newStem, name.AsSpan(oldStem.Length))));
+
+                    subtitle.FinalPath = Path.GetRelativePath(link.SavePath, subtitlePath).Replace('\\', '/');
+                }
+            }
+
+            video.FinalPath = finalRelative;
+
+            return true;
+        }
+
+        private string BuildFinalPath(List<Episode> episodes, Series series, EpisodeFile episodeFile, string extension, List<CustomFormats.CustomFormat> customFormats)
+        {
+            var path = _buildFileNames.BuildFilePath(episodes.OrderBy(e => e.SeasonNumber).ThenBy(e => e.EpisodeNumber).ToList(),
+                                                     series,
+                                                     episodeFile,
+                                                     extension,
+                                                     null,
+                                                     customFormats);
+
+            return FitFileName(path);
+        }
+
+        private static string GetSubtitlePath(string videoFinalPath, string suffix)
+        {
+            return Path.Combine(Path.GetDirectoryName(videoFinalPath), Path.GetFileNameWithoutExtension(videoFinalPath) + suffix);
+        }
+
+        private static string GetFolderName(string torrentPath)
+        {
+            var parts = torrentPath.Replace('\\', '/').Split('/');
+
+            return parts.Length > 1 ? parts[^2].Trim().Trim('.') : null;
         }
 
         private static MappedVideo FindVideo(string subtitleName, List<MappedVideo> videos)
@@ -232,6 +343,16 @@ namespace NzbDrone.Core.Download.Engine
             public int Index { get; set; }
             public List<Episode> Episodes { get; set; }
             public string FinalPath { get; set; }
+            public string SceneName { get; set; }
+            public string OriginalName { get; set; }
+        }
+
+        private class MappedSubtitle
+        {
+            public QBittorrentTorrentFile File { get; set; }
+            public int Index { get; set; }
+            public MappedVideo Video { get; set; }
+            public string Suffix { get; set; }
         }
     }
 }

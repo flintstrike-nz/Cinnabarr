@@ -668,6 +668,42 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.QBittorrentTests
                   .Verify(s => s.AddTorrentFromUrl(It.IsAny<string>(), It.IsAny<TorrentSeedConfiguration>(), It.IsAny<QBittorrentSettings>()), Times.Once());
         }
 
+        [TestCase(true)]
+        [TestCase(false)]
+        public void RemoveItem_should_never_delete_library_files_of_a_mapped_engine_torrent(bool deleteData)
+        {
+            Mocker.GetMock<IEngineClientRegistry>()
+                  .Setup(s => s.IsEngineClient(Subject.Definition.Id))
+                  .Returns(true);
+
+            var link = new EngineLink { SavePath = "/tv/Show/Season 01", Files = new List<EngineLinkFile>() };
+
+            Mocker.GetMock<IEngineLinkService>()
+                  .Setup(s => s.Get("ABCDEF0123456789ABCDEF0123456789ABCDEF01"))
+                  .Returns(link);
+
+            Subject.RemoveItem(new DownloadClientItem { DownloadId = "ABCDEF0123456789ABCDEF0123456789ABCDEF01" }, deleteData);
+
+            Mocker.GetMock<IQBittorrentProxy>()
+                  .Verify(s => s.RemoveTorrent("abcdef0123456789abcdef0123456789abcdef01", false, It.IsAny<QBittorrentSettings>()), Times.Once());
+
+            Mocker.GetMock<IEngineLinkService>()
+                  .Verify(s => s.DeletePendingFiles(link), deleteData ? Times.Once() : Times.Never());
+        }
+
+        [Test]
+        public void RemoveItem_should_delete_data_of_an_engine_torrent_that_was_never_mapped()
+        {
+            Mocker.GetMock<IEngineClientRegistry>()
+                  .Setup(s => s.IsEngineClient(Subject.Definition.Id))
+                  .Returns(true);
+
+            Subject.RemoveItem(new DownloadClientItem { DownloadId = "ABCDEF0123456789ABCDEF0123456789ABCDEF01" }, true);
+
+            Mocker.GetMock<IQBittorrentProxy>()
+                  .Verify(s => s.RemoveTorrent("abcdef0123456789abcdef0123456789abcdef01", true, It.IsAny<QBittorrentSettings>()), Times.Once());
+        }
+
         [Test]
         public void Download_should_hold_magnet_for_the_built_in_engine()
         {
