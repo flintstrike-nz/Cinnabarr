@@ -463,6 +463,15 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             }
         }
 
+        // "Missing from engine" outranks link warnings: the torrent isn't there, so Manual Import can't help.
+        private static void KeepMissingFromEngineWarning(TrackedDownload trackedDownload)
+        {
+            if (trackedDownload.IsMissingFromEngine)
+            {
+                trackedDownload.Warn(TrackedDownload.MissingFromEngineMessage);
+            }
+        }
+
         private static void MarkUnlinked(TrackedDownload trackedDownload)
         {
             trackedDownload.IsUnlinked = true;
@@ -488,15 +497,18 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                 if (historyItems.Empty())
                 {
                     MarkUnlinked(trackedDownload);
-                    return;
                 }
-
-                MapFromLinkHistory(trackedDownload, historyItems);
-
-                if (trackedDownload.RemoteEpisode != null)
+                else
                 {
-                    _aggregationService.Augment(trackedDownload.RemoteEpisode);
+                    MapFromLinkHistory(trackedDownload, historyItems);
+
+                    if (trackedDownload.RemoteEpisode != null)
+                    {
+                        _aggregationService.Augment(trackedDownload.RemoteEpisode);
+                    }
                 }
+
+                KeepMissingFromEngineWarning(trackedDownload);
 
                 return;
             }
@@ -628,6 +640,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                     if (_engineClientRegistry.IsEngineClient(trackedDownload.DownloadClient))
                     {
                         MarkUnlinked(trackedDownload);
+                        KeepMissingFromEngineWarning(trackedDownload);
                     }
                     else
                     {
