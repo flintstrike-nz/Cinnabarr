@@ -3,7 +3,9 @@ using System.Linq;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
+using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.Download;
+using NzbDrone.Core.Download.Aggregation;
 using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Download.History;
 using NzbDrone.Core.Download.TrackedDownloads;
@@ -13,9 +15,11 @@ using NzbDrone.Core.Indexers.TorrentRss;
 using NzbDrone.Core.Languages;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
+using NzbDrone.Core.Qualities;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Core.Tv;
 using NzbDrone.Core.Tv.Events;
+using NzbDrone.Test.Common;
 
 namespace NzbDrone.Core.Test.Download.TrackedDownloads
 {
@@ -378,6 +382,68 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
 
             Mocker.GetMock<IParsingService>()
                 .Verify(s => s.Map(It.IsAny<ParsedEpisodeInfo>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), null), Times.Never());
+        }
+
+        [Test]
+        public void should_use_grabbed_quality_for_engine_download_rather_than_title()
+        {
+            var client = GivenEngineClient();
+            var item = GivenEngineItem(client);
+
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(EngineHash))
+                .Returns([new EpisodeHistory { DownloadId = EngineHash, SourceTitle = item.Title, SeriesId = 5, EpisodeId = 4, EventType = EpisodeHistoryEventType.Grabbed, Quality = new QualityModel(Quality.Bluray1080p, new Revision(2)) }]);
+
+            GivenLinkedLibrary();
+
+            var trackedDownload = Subject.TrackDownload(client, item);
+
+            trackedDownload.RemoteEpisode.ParsedEpisodeInfo.Quality.Quality.Should().Be(Quality.Bluray1080p);
+            trackedDownload.RemoteEpisode.ParsedEpisodeInfo.Quality.Revision.Version.Should().Be(2);
+        }
+
+        [Test]
+        public void should_list_grab_missing_from_engine_without_processing_it()
+        {
+            var client = GivenEngineClient();
+
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(EngineHash))
+                .Returns([new EpisodeHistory { DownloadId = EngineHash, SourceTitle = "TV.Series.S01E01.720p.HDTV-Group", SeriesId = 5, EpisodeId = 4, EventType = EpisodeHistoryEventType.Grabbed }]);
+
+            GivenLinkedLibrary();
+
+            var grab = new DownloadHistory
+            {
+                DownloadId = EngineHash,
+                SourceTitle = "TV.Series.S01E01.720p.HDTV-Group",
+                EventType = DownloadHistoryEventType.DownloadGrabbed,
+                IndexerId = 9,
+                Release = new ReleaseInfo { Size = 1000 }
+            };
+
+            var trackedDownload = Subject.TrackMissingFromEngine(client, grab);
+
+            trackedDownload.IsMissingFromEngine.Should().BeTrue();
+            trackedDownload.IsTrackable.Should().BeFalse();
+            trackedDownload.State.Should().Be(TrackedDownloadState.Downloading);
+            trackedDownload.DownloadItem.CanBeRemoved.Should().BeFalse();
+            trackedDownload.DownloadItem.TotalSize.Should().Be(1000);
+            trackedDownload.DownloadItem.DownloadClientInfo.Id.Should().Be(client.Id);
+            trackedDownload.RemoteEpisode.Series.Id.Should().Be(5);
+            trackedDownload.RemoteEpisode.Release.IndexerId.Should().Be(9);
+            trackedDownload.StatusMessages.Should().ContainSingle()
+                .Which.Messages.Should().Equal(TrackedDownload.MissingFromEngineMessage);
+
+            Subject.Find(EngineHash).Should().BeSameAs(trackedDownload);
+            Subject.TrackMissingFromEngine(client, grab).Should().BeSameAs(trackedDownload);
+
+            Mocker.GetMock<IRemoteEpisodeAggregationService>()
+                .Verify(s => s.Augment(trackedDownload.RemoteEpisode), Times.Once());
+            Mocker.GetMock<ICustomFormatCalculationService>()
+                .Verify(s => s.ParseCustomFormat(trackedDownload.RemoteEpisode, 1000), Times.Once());
+
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]

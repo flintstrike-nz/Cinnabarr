@@ -5,6 +5,7 @@ using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.TPL;
 using NzbDrone.Core.Configuration;
+using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
@@ -30,6 +31,8 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         private readonly IFailedDownloadService _failedDownloadService;
         private readonly ICompletedDownloadService _completedDownloadService;
         private readonly ITrackedDownloadService _trackedDownloadService;
+        private readonly IEngineClientRegistry _engineClientRegistry;
+        private readonly IEngineReconcileService _engineReconcileService;
         private readonly Logger _logger;
         private readonly Debouncer _refreshDebounce;
 
@@ -41,6 +44,8 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                                          IFailedDownloadService failedDownloadService,
                                          ICompletedDownloadService completedDownloadService,
                                          ITrackedDownloadService trackedDownloadService,
+                                         IEngineClientRegistry engineClientRegistry,
+                                         IEngineReconcileService engineReconcileService,
                                          Logger logger)
         {
             _downloadClientStatusService = downloadClientStatusService;
@@ -51,6 +56,8 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             _failedDownloadService = failedDownloadService;
             _completedDownloadService = completedDownloadService;
             _trackedDownloadService = trackedDownloadService;
+            _engineClientRegistry = engineClientRegistry;
+            _engineReconcileService = engineReconcileService;
             _logger = logger;
 
             _refreshDebounce = new Debouncer(QueueRefresh, TimeSpan.FromSeconds(5));
@@ -96,13 +103,24 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         {
             var downloadClientItems = new List<DownloadClientItem>();
             var trackedDownloads = new List<TrackedDownload>();
+            var missingFromEngine = new List<TrackedDownload>();
 
             try
             {
                 downloadClientItems = downloadClient.GetItems().ToList();
 
                 _downloadClientStatusService.RecordSuccess(downloadClient.Definition.Id);
-                _trackedDownloadService.StopTrackingMissing(downloadClient.Definition.Id, downloadClientItems.Select(i => i.DownloadId).ToList());
+
+                var downloadIds = downloadClientItems.Select(i => i.DownloadId).ToList();
+
+                // Only reconcile against a torrent list the engine actually returned.
+                if (_engineClientRegistry.IsEngineClient(downloadClient.Definition.Id))
+                {
+                    missingFromEngine = FindMissingFromEngine(downloadClient, downloadIds);
+                }
+
+                _trackedDownloadService.StopTrackingMissing(downloadClient.Definition.Id,
+                    downloadIds.Concat(missingFromEngine.Select(t => t.DownloadItem.DownloadId)).ToList());
             }
             catch (Exception ex)
             {
@@ -118,7 +136,22 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                 trackedDownloads.AddIfNotNull(item);
             }
 
+            trackedDownloads.AddRange(missingFromEngine);
+
             return trackedDownloads;
+        }
+
+        private List<TrackedDownload> FindMissingFromEngine(IDownloadClient downloadClient, List<string> downloadIds)
+        {
+            try
+            {
+                return _engineReconcileService.FindMissing((DownloadClientDefinition)downloadClient.Definition, downloadIds);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "Unable to check for grabs missing from the engine");
+                return new List<TrackedDownload>();
+            }
         }
 
         private TrackedDownload ProcessClientItem(IDownloadClient downloadClient, DownloadClientItem downloadItem)
@@ -147,6 +180,12 @@ namespace NzbDrone.Core.Download.TrackedDownloads
 
         private bool DownloadIsTrackable(TrackedDownload trackedDownload)
         {
+            // Listed for visibility only; there is nothing in the engine to import or fail.
+            if (trackedDownload.IsMissingFromEngine)
+            {
+                return false;
+            }
+
             // If the download has already been imported, failed or the user ignored it don't track it
             if (trackedDownload.State == TrackedDownloadState.Imported ||
                 trackedDownload.State == TrackedDownloadState.Failed ||

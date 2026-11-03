@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NzbDrone.Common.Extensions;
@@ -14,6 +15,9 @@ namespace NzbDrone.Core.Download.History
         bool DownloadAlreadyImported(string downloadId);
         DownloadHistory GetLatestDownloadHistoryItem(string downloadId);
         DownloadHistory GetLatestGrab(string downloadId);
+
+        // Grabs sent to this client that haven't been imported, failed or ignored yet.
+        List<DownloadHistory> GetUnfinishedGrabs(int downloadClientId);
     }
 
     public class DownloadHistoryService : IDownloadHistoryService,
@@ -57,8 +61,16 @@ namespace NzbDrone.Core.Download.History
 
         public DownloadHistory GetLatestDownloadHistoryItem(string downloadId)
         {
-            var events = _repository.FindByDownloadId(downloadId);
+            return GetLatestExpectedEvent(_repository.FindByDownloadId(downloadId));
+        }
 
+        public List<DownloadHistory> GetUnfinishedGrabs(int downloadClientId)
+        {
+            return _repository.FindUnfinishedGrabs(downloadClientId);
+        }
+
+        private static DownloadHistory GetLatestExpectedEvent(List<DownloadHistory> events)
+        {
             // Events are ordered by date descending. We'll return the most recent expected event.
             foreach (var e in events)
             {
@@ -185,9 +197,33 @@ namespace NzbDrone.Core.Download.History
 
         public void Handle(DownloadFailedEvent message)
         {
-            // Don't track failed download for an unknown download
             if (message.TrackedDownload == null)
             {
+                // Marked as failed from history, with no tracked download: record it against the known grab so
+                // the grab no longer counts as unfinished (and isn't reported missing from the engine).
+                var grab = message.DownloadId.IsNullOrWhiteSpace() ? null : GetLatestGrab(message.DownloadId);
+
+                // Don't track failed download for an unknown download
+                if (grab == null)
+                {
+                    return;
+                }
+
+                var grabFailed = new DownloadHistory
+                {
+                    EventType = DownloadHistoryEventType.DownloadFailed,
+                    SeriesId = message.SeriesId,
+                    DownloadId = message.DownloadId,
+                    SourceTitle = message.SourceTitle,
+                    Date = DateTime.UtcNow,
+                    Protocol = grab.Protocol,
+                    DownloadClientId = grab.DownloadClientId
+                };
+
+                grabFailed.Data.Add("DownloadClient", grab.Data.GetValueOrDefault("DownloadClient"));
+                grabFailed.Data.Add("DownloadClientName", grab.Data.GetValueOrDefault("DownloadClientName"));
+
+                _repository.Insert(grabFailed);
                 return;
             }
 

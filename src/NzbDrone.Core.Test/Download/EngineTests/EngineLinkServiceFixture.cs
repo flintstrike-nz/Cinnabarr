@@ -7,6 +7,7 @@ using NzbDrone.Common.Disk;
 using NzbDrone.Common.Serializer;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.Engine;
+using NzbDrone.Core.Download.History;
 using NzbDrone.Core.History;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
@@ -61,7 +62,8 @@ namespace NzbDrone.Core.Test.Download.EngineTests
                     new Episode { Id = 1, SeasonNumber = 1, EpisodeNumber = 2 },
                     new Episode { Id = 2, SeasonNumber = 1, EpisodeNumber = 3 }
                 },
-                Release = new ReleaseInfo { Title = "Series.S01E02E03.1080p.WEB-DL-Group", Indexer = "Indexer" }
+                Release = new ReleaseInfo { Title = "Series.S01E02E03.1080p.WEB-DL-Group", Indexer = "Indexer" },
+                ParsedEpisodeInfo = new ParsedEpisodeInfo { Quality = new QualityModel(Quality.Bluray1080p, new Revision(2)) }
             };
 
             return new EpisodeGrabbedEvent(remoteEpisode) { DownloadClientId = downloadClientId, DownloadId = downloadId };
@@ -149,7 +151,44 @@ namespace NzbDrone.Core.Test.Download.EngineTests
                                                h.Data[EngineLinkService.RestoredFromKey] == "EngineSidecar" &&
                                                h.Data["DownloadClientName"] == "Embarr Engine");
             inserted.Should().Contain(h => h.EpisodeId == 21).And.Contain(h => h.EpisodeId == 22);
-            inserted[0].Quality.Quality.Should().Be(Quality.WEBDL1080p);
+            inserted[0].Quality.Quality.Should().Be(Quality.Bluray1080p);
+
+            Mocker.GetMock<IDownloadHistoryRepository>()
+                .Verify(r => r.Insert(It.Is<DownloadHistory>(h => h.EventType == DownloadHistoryEventType.DownloadGrabbed && h.DownloadId == Hash && h.SeriesId == 7 && h.DownloadClientId == EngineClientId)), Times.Once());
+        }
+
+        [Test]
+        public void should_restore_grabbed_quality_rather_than_parse_it()
+        {
+            Subject.Handle(GivenGrab());
+            GivenSeriesInLibrary();
+
+            var inserted = new List<EpisodeHistory>();
+            Mocker.GetMock<IHistoryRepository>()
+                .Setup(r => r.InsertMany(It.IsAny<IList<EpisodeHistory>>()))
+                .Callback<IList<EpisodeHistory>>(inserted.AddRange);
+
+            Subject.TryRestore(_client, Hash).Should().BeTrue();
+
+            inserted.Should().OnlyContain(h => h.Quality.Quality == Quality.Bluray1080p && h.Quality.Revision.Version == 2);
+        }
+
+        [Test]
+        public void should_parse_quality_from_title_for_links_without_quality()
+        {
+            var link = new EngineLink { MediaType = EngineLinkService.SeriesMediaType, TvdbId = 1234, SourceTitle = "Series.S01E02.1080p.WEB-DL-Group" };
+            link.Episodes.Add(new EngineLinkEpisode { SeasonNumber = 1, EpisodeNumber = 2 });
+            _files[LinkPath] = link.ToJson();
+            GivenSeriesInLibrary();
+
+            var inserted = new List<EpisodeHistory>();
+            Mocker.GetMock<IHistoryRepository>()
+                .Setup(r => r.InsertMany(It.IsAny<IList<EpisodeHistory>>()))
+                .Callback<IList<EpisodeHistory>>(inserted.AddRange);
+
+            Subject.TryRestore(_client, Hash).Should().BeTrue();
+
+            inserted.Should().ContainSingle().Which.Quality.Quality.Should().Be(Quality.WEBDL1080p);
         }
 
         [Test]

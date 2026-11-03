@@ -27,6 +27,9 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         List<TrackedDownload> GetTrackedDownloads();
         void UpdateTrackable(List<TrackedDownload> trackedDownloads);
         void StopTrackingMissing(int downloadClientId, List<string> downloadIds);
+
+        // Lists a built-in engine grab whose torrent is gone from the engine (roadmap §4.4 rule 3).
+        TrackedDownload TrackMissingFromEngine(DownloadClientDefinition downloadClient, DownloadHistory grab);
     }
 
     public class TrackedDownloadService : ITrackedDownloadService,
@@ -251,6 +254,90 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             return trackedDownload;
         }
 
+        public TrackedDownload TrackMissingFromEngine(DownloadClientDefinition downloadClient, DownloadHistory grab)
+        {
+            var existingItem = Find(grab.DownloadId);
+
+            if (existingItem is { IsMissingFromEngine: true })
+            {
+                return existingItem;
+            }
+
+            var size = grab.Release?.Size ?? 0;
+
+            var downloadItem = new DownloadClientItem
+            {
+                DownloadId = grab.DownloadId,
+                Title = grab.SourceTitle,
+                TotalSize = size,
+                RemainingSize = size,
+                Status = DownloadItemStatus.Warning,
+                Message = "Missing from engine",
+                CanBeRemoved = false,
+                CanMoveFiles = false,
+                DownloadClientInfo = new DownloadClientItemClientInfo
+                {
+                    Protocol = downloadClient.Protocol,
+                    Type = downloadClient.Implementation,
+                    Id = downloadClient.Id,
+                    Name = downloadClient.Name
+                }
+            };
+
+            var trackedDownload = new TrackedDownload
+            {
+                DownloadClient = downloadClient.Id,
+                DownloadItem = downloadItem,
+                Protocol = downloadClient.Protocol,
+                State = TrackedDownloadState.Downloading,
+                IsTrackable = false,
+                IsMissingFromEngine = true,
+                Indexer = grab.Data?.GetValueOrDefault("Indexer"),
+                Added = grab.Date
+            };
+
+            try
+            {
+                var historyItems = FindHistory(grab.DownloadId);
+
+                if (historyItems.Any())
+                {
+                    MapFromLinkHistory(trackedDownload, historyItems);
+                }
+
+                // Same release details as any other row (indexer, languages, custom formats, ...), so queue
+                // filters and scores treat it alike.
+                if (trackedDownload.RemoteEpisode != null)
+                {
+                    var remoteEpisode = trackedDownload.RemoteEpisode;
+
+                    remoteEpisode.Release ??= new ReleaseInfo();
+                    remoteEpisode.Release.Indexer = trackedDownload.Indexer;
+                    remoteEpisode.Release.IndexerId = grab.IndexerId;
+                    remoteEpisode.Release.Title = remoteEpisode.ParsedEpisodeInfo?.ReleaseTitle;
+
+                    if (Enum.TryParse(historyItems.FirstOrDefault(h => h.EventType == EpisodeHistoryEventType.Grabbed)?.Data?.GetValueOrDefault("indexerFlags"), true, out IndexerFlags flags))
+                    {
+                        remoteEpisode.Release.IndexerFlags = flags;
+                    }
+
+                    _aggregationService.Augment(remoteEpisode);
+                    remoteEpisode.CustomFormats = _formatCalculator.ParseCustomFormat(remoteEpisode, size);
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.Debug(e, "Failed to map missing engine download " + grab.SourceTitle);
+            }
+
+            trackedDownload.Warn(TrackedDownload.MissingFromEngineMessage);
+
+            _logger.Warn("'{0}' was grabbed but is no longer in the engine", grab.SourceTitle);
+
+            _cache.Set(grab.DownloadId, trackedDownload);
+            return trackedDownload;
+        }
+
         public List<TrackedDownload> GetTrackedDownloads()
         {
             return _cache.Values.ToList();
@@ -320,6 +407,15 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                                         Quality = firstHistoryItem.Quality,
                                         Languages = firstHistoryItem.Languages ?? new()
                                     };
+
+            // Embarr owns intent: the grabbed quality (including one restored from the sidecar) wins over
+            // whatever the title parses as.
+            var grabbedQuality = historyItems.FirstOrDefault(h => h.EventType == EpisodeHistoryEventType.Grabbed)?.Quality;
+
+            if (grabbedQuality?.Quality != null)
+            {
+                parsedEpisodeInfo.Quality = grabbedQuality;
+            }
 
             // Grabs record their episodes; a torrent linked by Manual Import only has import history.
             var grabbedEpisodeIds = historyItems.Where(h => h.EventType == EpisodeHistoryEventType.Grabbed).Select(h => h.EpisodeId);

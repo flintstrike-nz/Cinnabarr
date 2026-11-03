@@ -6,10 +6,13 @@ using System.Text.RegularExpressions;
 using NLog;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Serializer;
+using NzbDrone.Core.Download.History;
 using NzbDrone.Core.History;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Parser;
+using NzbDrone.Core.Parser.Model;
+using NzbDrone.Core.Qualities;
 using NzbDrone.Core.Tv;
 
 namespace NzbDrone.Core.Download.Engine
@@ -35,6 +38,7 @@ namespace NzbDrone.Core.Download.Engine
         private readonly ISeriesService _seriesService;
         private readonly IEpisodeService _episodeService;
         private readonly IHistoryRepository _historyRepository;
+        private readonly IDownloadHistoryRepository _downloadHistoryRepository;
         private readonly Logger _logger;
 
         public EngineLinkService(IEngineClientRegistry engineClientRegistry,
@@ -42,6 +46,7 @@ namespace NzbDrone.Core.Download.Engine
                                  ISeriesService seriesService,
                                  IEpisodeService episodeService,
                                  IHistoryRepository historyRepository,
+                                 IDownloadHistoryRepository downloadHistoryRepository,
                                  Logger logger)
         {
             _engineClientRegistry = engineClientRegistry;
@@ -49,6 +54,7 @@ namespace NzbDrone.Core.Download.Engine
             _seriesService = seriesService;
             _episodeService = episodeService;
             _historyRepository = historyRepository;
+            _downloadHistoryRepository = downloadHistoryRepository;
             _logger = logger;
         }
 
@@ -101,7 +107,7 @@ namespace NzbDrone.Core.Download.Engine
             }
 
             var sourceTitle = link.SourceTitle ?? string.Empty;
-            var quality = QualityParser.ParseQuality(sourceTitle);
+            var quality = ToQualityModel(link.Quality) ?? QualityParser.ParseQuality(sourceTitle);
             var languages = LanguageParser.ParseLanguages(sourceTitle);
 
             var historyItems = new List<EpisodeHistory>();
@@ -133,6 +139,34 @@ namespace NzbDrone.Core.Download.Engine
             // One transaction, so a failure can't leave part of the torrent linked.
             _historyRepository.InsertMany(historyItems);
 
+            // The download-level grab makes the restored torrent count as unfinished, so reconcile can report
+            // it if it later disappears from the engine.
+            try
+            {
+                var grab = new DownloadHistory
+                {
+                    EventType = DownloadHistoryEventType.DownloadGrabbed,
+                    SeriesId = series.Id,
+                    DownloadId = downloadId,
+                    SourceTitle = sourceTitle,
+                    Date = historyItems[0].Date,
+                    Protocol = DownloadProtocol.Torrent,
+                    DownloadClientId = downloadClient.Id,
+                    Release = new ReleaseInfo { Title = sourceTitle, Indexer = link.Indexer, DownloadProtocol = DownloadProtocol.Torrent }
+                };
+
+                grab.Data.Add("Indexer", link.Indexer);
+                grab.Data.Add("DownloadClient", downloadClient.Implementation);
+                grab.Data.Add("DownloadClientName", downloadClient.Name);
+                grab.Data.Add(RestoredFromKey, "EngineSidecar");
+
+                _downloadHistoryRepository.Insert(grab);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "Unable to record the restored grab for '{0}'", sourceTitle);
+            }
+
             _logger.Info("Restored link for '{0}' to {1} ({2} episode(s)) from the engine sidecar", sourceTitle, series.Title, episodes.Count);
 
             return true;
@@ -156,6 +190,7 @@ namespace NzbDrone.Core.Download.Engine
                     .ToList(),
                 SourceTitle = remoteEpisode.Release?.Title,
                 Indexer = remoteEpisode.Release?.Indexer,
+                Quality = FromQualityModel(remoteEpisode.ParsedEpisodeInfo?.Quality),
                 Grabbed = DateTime.UtcNow
             };
 
@@ -168,6 +203,40 @@ namespace NzbDrone.Core.Download.Engine
                 // The grab itself has succeeded; without a sidecar the torrent is still linked
                 // through Embarr's database, it just can't be recovered from the engine alone.
                 _logger.Warn(ex, "Unable to write the engine link for '{0}'", link.SourceTitle);
+            }
+        }
+
+        private static EngineLinkQuality FromQualityModel(QualityModel quality)
+        {
+            if (quality?.Quality == null)
+            {
+                return null;
+            }
+
+            return new EngineLinkQuality
+            {
+                Id = quality.Quality.Id,
+                Version = quality.Revision?.Version ?? 1,
+                Real = quality.Revision?.Real ?? 0,
+                IsRepack = quality.Revision?.IsRepack ?? false
+            };
+        }
+
+        private static QualityModel ToQualityModel(EngineLinkQuality quality)
+        {
+            if (quality == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                return new QualityModel(Quality.FindById(quality.Id), new Revision(quality.Version, quality.Real, quality.IsRepack));
+            }
+            catch (ArgumentException)
+            {
+                // An id this build doesn't know: fall back to parsing the title.
+                return null;
             }
         }
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using FizzWare.NBuilder;
@@ -48,6 +49,66 @@ namespace NzbDrone.Core.Test.Download.DownloadHistoryTests
 
             removedItems.Should().HaveCount(0);
             nonRemovedItems.Should().HaveCount(1);
+        }
+
+        private void GivenEvent(string downloadId, DownloadHistoryEventType eventType, int minutes, int downloadClientId = 3)
+        {
+            Db.Insert(new DownloadHistory
+            {
+                DownloadId = downloadId,
+                EventType = eventType,
+                Date = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMinutes(minutes),
+                DownloadClientId = downloadClientId,
+                SeriesId = _series1.Id,
+                SourceTitle = "Series.S01E01"
+            });
+        }
+
+        [Test]
+        public void should_find_grab_with_no_later_outcome()
+        {
+            GivenEvent("AAA", DownloadHistoryEventType.DownloadGrabbed, 1);
+
+            Subject.FindUnfinishedGrabs(3).Should().ContainSingle().Which.DownloadId.Should().Be("AAA");
+        }
+
+        [Test]
+        public void should_find_grab_that_has_only_imported_some_files()
+        {
+            GivenEvent("AAA", DownloadHistoryEventType.DownloadGrabbed, 1);
+            GivenEvent("AAA", DownloadHistoryEventType.FileImported, 2);
+
+            Subject.FindUnfinishedGrabs(3).Should().ContainSingle();
+        }
+
+        [TestCase(DownloadHistoryEventType.DownloadImported)]
+        [TestCase(DownloadHistoryEventType.DownloadFailed)]
+        [TestCase(DownloadHistoryEventType.DownloadIgnored)]
+        public void should_not_find_finished_grab(DownloadHistoryEventType outcome)
+        {
+            GivenEvent("AAA", DownloadHistoryEventType.DownloadGrabbed, 1);
+            GivenEvent("AAA", outcome, 2);
+
+            Subject.FindUnfinishedGrabs(3).Should().BeEmpty();
+        }
+
+        [Test]
+        public void should_find_only_the_latest_regrab_after_a_failure()
+        {
+            GivenEvent("AAA", DownloadHistoryEventType.DownloadGrabbed, 1);
+            GivenEvent("AAA", DownloadHistoryEventType.DownloadFailed, 2);
+            GivenEvent("AAA", DownloadHistoryEventType.DownloadGrabbed, 3);
+
+            Subject.FindUnfinishedGrabs(3).Should().ContainSingle()
+                .Which.Date.Should().Be(new DateTime(2026, 1, 1, 0, 3, 0, DateTimeKind.Utc));
+        }
+
+        [Test]
+        public void should_not_find_grabs_sent_to_other_clients()
+        {
+            GivenEvent("AAA", DownloadHistoryEventType.DownloadGrabbed, 1, downloadClientId: 4);
+
+            Subject.FindUnfinishedGrabs(3).Should().BeEmpty();
         }
     }
 }
