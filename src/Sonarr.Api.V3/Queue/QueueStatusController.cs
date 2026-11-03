@@ -48,7 +48,9 @@ namespace Sonarr.Api.V3.Queue
         {
             _broadcastDebounce.Pause();
 
-            var queue = _queueService.GetQueue();
+            // Rows listed only for visibility (an imported torrent still seeding, roadmap §4.4) aren't
+            // active downloads: leave them out of episode status and the queue badge.
+            var queue = _queueService.GetQueue().Where(q => q.IsTrackable).ToList();
             var pending = _pendingReleaseService.GetPendingQueue();
 
             var resource = new QueueStatusResource

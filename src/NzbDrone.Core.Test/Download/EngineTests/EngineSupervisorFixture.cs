@@ -167,6 +167,8 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             settings.Port.Should().Be(51234);
             settings.ApiKey.Should().Be(key);
             settings.UseSsl.Should().BeFalse();
+            settings.TvCategory.Should().BeEmpty();
+            settings.TvImportedCategory.Should().BeEmpty();
 
             Mocker.GetMock<IDownloadClientFactory>().Verify(v => v.Update(It.IsAny<DownloadClientDefinition>()), Times.Never());
         }
@@ -202,7 +204,10 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             settings.ApiKey.Should().Be(key);
             settings.Username.Should().BeEmpty();
             settings.Password.Should().BeEmpty();
-            settings.TvCategory.Should().Be("custom");
+
+            // The built-in client polls every torrent in the engine: no category routing.
+            settings.TvCategory.Should().BeEmpty();
+            settings.TvImportedCategory.Should().BeEmpty();
         }
 
         [Test]
@@ -231,7 +236,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             Mocker.GetMock<IDownloadClientFactory>().Verify(v => v.Create(It.IsAny<DownloadClientDefinition>()), Times.Never());
             Mocker.GetMock<IDownloadClientFactory>().Verify(v => v.Update(renamed), Times.Once());
             ((QBittorrentSettings)renamed.Settings).Port.Should().Be(40000);
-            ((QBittorrentSettings)renamed.Settings).TvCategory.Should().Be("custom");
+            renamed.Name.Should().Be("My Engine");
         }
 
         [Test]
@@ -248,6 +253,24 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             Subject.EnsureDownloadClient(40000, EngineSupervisor.GenerateApiKey());
 
             Mocker.GetMock<IDiskProvider>().Verify(v => v.WriteAllText(Path.Combine(_appData, "engine", "client.id"), "21"), Times.Once());
+        }
+
+        [Test]
+        public void should_identify_built_in_client_by_stored_id()
+        {
+            var clientIdFile = Path.Combine(_appData, "engine", "client.id");
+
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FileExists(clientIdFile)).Returns(true);
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.ReadAllText(clientIdFile)).Returns("12");
+
+            Subject.IsEngineClient(12).Should().BeTrue();
+            Subject.IsEngineClient(13).Should().BeFalse();
+        }
+
+        [Test]
+        public void should_not_identify_any_client_before_one_is_created()
+        {
+            Subject.IsEngineClient(1).Should().BeFalse();
         }
 
         [Test]

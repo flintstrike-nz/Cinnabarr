@@ -29,6 +29,10 @@ namespace NzbDrone.Core.Queue
         public QueueStatus Status { get; set; }
         public TrackedDownloadStatus? TrackedDownloadStatus { get; set; }
         public TrackedDownloadState? TrackedDownloadState { get; set; }
+
+        // False for rows only listed for visibility (e.g. a built-in engine torrent that was
+        // already imported and is seeding). Search and download decisions ignore those rows.
+        public bool IsTrackable { get; set; } = true;
         public List<TrackedDownloadStatusMessage> StatusMessages { get; set; }
         public string DownloadId { get; set; }
         public RemoteEpisode RemoteEpisode { get; set; }

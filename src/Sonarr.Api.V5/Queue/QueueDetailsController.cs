@@ -41,7 +41,9 @@ namespace Sonarr.Api.V5.Queue
         [Produces("application/json")]
         public Ok<List<QueueResource>> GetQueue(int? seriesId, [FromQuery]List<int> episodeIds, [FromQuery] QueueSubresource[]? includeSubresources = null)
         {
-            var queue = _queueService.GetQueue();
+            // Rows listed only for visibility (an imported torrent still seeding, roadmap §4.4) aren't
+            // active downloads: leave them out of episode status and the queue badge.
+            var queue = _queueService.GetQueue().Where(q => q.IsTrackable).ToList();
             var pending = _pendingReleaseService.GetPendingQueue();
             var fullQueue = queue.Concat(pending);
             var includeSeries = includeSubresources.Contains(QueueSubresource.Series);

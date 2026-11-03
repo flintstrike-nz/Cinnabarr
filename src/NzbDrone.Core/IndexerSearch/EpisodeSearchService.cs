@@ -226,8 +226,9 @@ namespace NzbDrone.Core.IndexerSearch
 
         private List<int> GetQueuedEpisodeIds()
         {
+            // Rows listed only for visibility (already imported/failed/ignored) don't block searches.
             return _queueService.GetQueue()
-                .Where(q => q.Episodes.Any())
+                .Where(q => q.IsTrackable && q.Episodes.Any())
                 .SelectMany(q => q.Episodes.Select(e => e.Id))
                 .ToList();
         }

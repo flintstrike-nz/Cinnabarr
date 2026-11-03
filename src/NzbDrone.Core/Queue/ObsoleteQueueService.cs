@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NzbDrone.Common.Crypto;
+using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.Languages;
 using NzbDrone.Core.Messaging.Events;
@@ -21,10 +22,12 @@ namespace NzbDrone.Core.Queue
     public class ObsoleteQueueService : IObsoleteQueueService, IHandle<TrackedDownloadRefreshedEvent>
     {
         private readonly IEventAggregator _eventAggregator;
+        private readonly IEngineSupervisor _engineSupervisor;
         private static List<Queue> _queue = new();
 
-        public ObsoleteQueueService(IEventAggregator eventAggregator)
+        public ObsoleteQueueService(IEventAggregator eventAggregator, IEngineSupervisor engineSupervisor)
         {
+            _engineSupervisor = engineSupervisor;
             _eventAggregator = eventAggregator;
         }
 
@@ -73,6 +76,7 @@ namespace NzbDrone.Core.Queue
                 Status = Enum.TryParse(trackedDownload.DownloadItem.Status.ToString(), out QueueStatus outValue) ? outValue : QueueStatus.Unknown,
                 TrackedDownloadStatus = trackedDownload.Status,
                 TrackedDownloadState = trackedDownload.State,
+                IsTrackable = trackedDownload.IsTrackable,
                 StatusMessages = trackedDownload.StatusMessages.ToList(),
                 ErrorMessage = trackedDownload.DownloadItem.Message,
                 RemoteEpisode = trackedDownload.RemoteEpisode,
@@ -98,12 +102,19 @@ namespace NzbDrone.Core.Queue
         public void Handle(TrackedDownloadRefreshedEvent message)
         {
             _queue = message.TrackedDownloads
-                .Where(t => t.IsTrackable)
+                .Where(IsVisible)
                 .OrderBy(c => c.DownloadItem.RemainingTime)
                 .SelectMany(MapQueue)
                 .ToList();
 
             _eventAggregator.PublishEvent(new ObsoleteQueueUpdatedEvent());
+        }
+
+        // Every torrent in the built-in engine is listed, including ones already imported,
+        // failed or ignored (they may still be seeding). Other clients keep the old rule.
+        private bool IsVisible(TrackedDownload trackedDownload)
+        {
+            return trackedDownload.IsTrackable || _engineSupervisor.IsEngineClient(trackedDownload.DownloadClient);
         }
     }
 }
