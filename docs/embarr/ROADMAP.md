@@ -588,3 +588,74 @@ All of this already fits the planned single `/api/v1` and API key (§4.6):
 - Does script injection give enough control, or is a small `jellyfin-webos` / `jellyfin-web` fork needed?
 - Should requests from non-admin Jellyfin users need approval before Embarr acts on them?
 - Does the Jellyfin multi-version naming match what Phase 5 locks in (§4.11)? Verify as already planned.
+
+---
+
+## Addendum B — Remote requests via a Vercel relay (future, not part of the current plan)
+
+> Status: **idea, not scheduled.** Nothing in Phases 1–7 depends on this. **Single-user, personal use only** for now: one person, one phone, one home server.
+
+### B.1 Goal
+
+Browse shows and movies on a phone and queue "add this" requests while away from home. The home Embarr instance picks the requests up later and adds them to the library, without any inbound port being opened on the home network.
+
+### B.2 Shape
+
+```
+Phone (APK) ──HTTPS──▶ Vercel relay ◀──HTTPS poll── Home Embarr
+  browse + request       queue + cache              claims, executes, reports back
+```
+
+- **The home server always connects outward.** It polls the relay on an interval. Embarr's own API and API key never leave the home network and are never stored on Vercel.
+- **The relay is a mailbox.** It stores requests and the latest library status snapshot, and optionally proxies and caches TMDb / TVDB lookups so the phone can browse without the home server. It never calls Embarr.
+- **Requests are a closed set of commands**, for example `add_series { tvdbId, options }` and `add_movie { tmdbId, options }`. The relay cannot carry arbitrary Embarr API calls. The home server validates every request against a schema and ignores anything else, so a compromised relay can do no more than queue adds.
+- **Each request has an ID and a status**: pending, claimed, done, failed. The phone generates the ID so retries don't create duplicates. The home server claims a request, runs it, then reports the result.
+- **Status flows back.** After each poll the home server sends a compact snapshot of what is in the library, queued or missing, so the phone can show "In library" and "Requested" without reaching the house.
+
+### B.3 Components
+
+| Component | Where | Notes |
+| --- | --- | --- |
+| **Relay** | Vercel, separate repository | Serverless functions plus a marketplace database (Neon Postgres or Upstash Redis). Functions keep no state of their own. |
+| **Relay client** | Inside Embarr (new background service) | Polls, validates, calls Embarr's own `/api/v1`, reports back. Off by default. |
+| **Phone app** | Android APK | A trimmed Embarr UI (Discover, Requests, Library status) with its API layer pointed at the relay. A Capacitor wrapper is the simplest route. Not the full admin UI. |
+
+### B.4 Shared contract with Addendum A
+
+Addendum A (Jellyfin + webOS) and this addendum need the same thing from Embarr: a stable "add this item with these options" command, plus an "already in Embarr" status. Define that contract once on the Embarr side; the Jellyfin plugin and the relay client are then two thin callers of it. This also fits the planned single `/api/v1` and API key (§4.6) and the version slots from Phase 5.
+
+### B.5 Security
+
+It is a public URL even for one user.
+
+- Two separate, individually revocable credentials: one for the phone, one for the home server. Store only hashes of them on the relay.
+- Sign requests, rate-limit the relay, and expire unclaimed requests.
+- Keep Embarr's API key, qBittorrent settings and indexer credentials off Vercel entirely.
+- The TMDb / TVDB keys, if proxied, live on the relay only.
+- The relay holds no personal data beyond the request queue and library snapshot. Keep the snapshot minimal (titles and IDs, not file paths).
+
+### B.6 Constraints and risks
+
+| Item | Detail |
+| --- | --- |
+| **Latency** | Polling every 30–60 seconds is enough for "add this show". An FCM push to wake the home server could shorten this but is not needed to start. |
+| **Home server offline** | Requests wait in the queue. The phone should show how long ago the home server last checked in. |
+| **Vercel plan** | The Hobby plan is for personal, non-commercial use, which matches single-user scope. Check the terms again if the scope ever widens. |
+| **Metadata licences** | If the relay proxies TMDb / TVDB, the same terms apply as in §4.14 and §8 (attribution, project keys). |
+| **APK upkeep** | Android tooling and the relay API need maintaining alongside Embarr releases. Keep the app small. |
+| **Alternative** | A mesh VPN (for example Tailscale) would let the phone reach Embarr directly with nothing to build or host. It offers no queue when the home server is off and needs the VPN app on the phone. The relay is worth it only if the queue and a purpose-built phone UI matter. |
+
+### B.7 Suggested order, once scheduled
+
+1. Settle the add-request contract and the "already in Embarr" status on Embarr's `/api/v1` (shared with Addendum A).
+2. Build the relay client in Embarr (off by default), with a local mock relay for testing.
+3. Build the Vercel relay: queue, auth, status snapshot, optional metadata proxy.
+4. Build the APK: Discover, Requests, Library status.
+5. Harden: key rotation, expiry, rate limits, offline indicators.
+
+### B.8 Open questions
+
+- Should the relay proxy TMDb / TVDB, or should the APK call them directly?
+- Poll only, or add FCM push to wake the home server?
+- Should the home server ever push richer status (download progress), or only library and request state?
+- If multi-user support is wanted later, should it reuse Jellyfin identities (Addendum A) or have its own accounts?
