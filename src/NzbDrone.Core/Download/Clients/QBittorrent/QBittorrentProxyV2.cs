@@ -6,6 +6,7 @@ using NzbDrone.Common.Cache;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
 using NzbDrone.Common.Serializer;
+using NzbDrone.Core.Download.Engine;
 
 namespace NzbDrone.Core.Download.Clients.QBittorrent
 {
@@ -143,13 +144,13 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             return response;
         }
 
-        public void AddTorrentFromUrl(string torrentUrl, TorrentSeedConfiguration seedConfiguration, QBittorrentSettings settings)
+        public void AddTorrentFromUrl(string torrentUrl, TorrentSeedConfiguration seedConfiguration, QBittorrentSettings settings, bool hold = false)
         {
             var request = BuildRequest(settings).Resource("/api/v2/torrents/add")
                                                 .Post()
                                                 .AddFormParameter("urls", torrentUrl);
 
-            AddTorrentDownloadFormParameters(request, settings, isMagnet: true);
+            AddTorrentDownloadFormParameters(request, settings, hold, isMagnet: true);
 
             if (seedConfiguration != null)
             {
@@ -165,13 +166,13 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             }
         }
 
-        public void AddTorrentFromFile(string fileName, byte[] fileContent, TorrentSeedConfiguration seedConfiguration, QBittorrentSettings settings)
+        public void AddTorrentFromFile(string fileName, byte[] fileContent, TorrentSeedConfiguration seedConfiguration, QBittorrentSettings settings, bool hold = false)
         {
             var request = BuildRequest(settings).Resource("/api/v2/torrents/add")
                                                 .Post()
                                                 .AddFormUpload("torrents", fileName, fileContent);
 
-            AddTorrentDownloadFormParameters(request, settings, isMagnet: false);
+            AddTorrentDownloadFormParameters(request, settings, hold, isMagnet: false);
 
             if (seedConfiguration != null)
             {
@@ -258,17 +259,20 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             return "seedingTimeLimit";
         }
 
-        private void AddTorrentDownloadFormParameters(HttpRequestBuilder request, QBittorrentSettings settings, bool isMagnet)
+        private void AddTorrentDownloadFormParameters(HttpRequestBuilder request, QBittorrentSettings settings, bool hold, bool isMagnet)
         {
             if (settings.TvCategory.IsNotNullOrWhiteSpace())
             {
                 request.AddFormParameter("category", settings.TvCategory);
             }
 
-            if (settings.HoldNewTorrents)
+            if (hold)
             {
                 // Built-in engine: nothing is downloaded until Embarr has set the file priorities (roadmap §4.8).
-                // A magnet fetches its metadata, then stops; a .torrent file already has it, so it starts stopped.
+                // The held tag marks the torrent for preparation. A magnet fetches its metadata, then stops; a
+                // .torrent file already has it, so it starts stopped.
+                request.AddFormParameter("tags", EngineTorrentTags.Held);
+
                 if (isMagnet)
                 {
                     request.AddFormParameter("stopCondition", "MetadataReceived");

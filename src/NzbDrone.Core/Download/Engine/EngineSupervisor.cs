@@ -311,8 +311,8 @@ namespace NzbDrone.Core.Download.Engine
             settings.TvCategory = string.Empty;
             settings.TvImportedCategory = string.Empty;
 
-            // Nothing downloads until EngineTorrentPreparationService has applied the file whitelist (roadmap §4.8).
-            settings.HoldNewTorrents = true;
+            // Held torrents are started by EngineTorrentPreparationService once the file whitelist is applied
+            // (roadmap §4.8); the client holds them because it is the engine, not because of a saved setting.
             settings.InitialState = (int)QBittorrentState.Start;
 
             if (definition == null)

@@ -4,6 +4,7 @@ using System.Linq;
 using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Download.Clients.QBittorrent;
+using NzbDrone.Core.Download.History;
 using NzbDrone.Core.History;
 
 namespace NzbDrone.Core.Download.Engine
@@ -17,7 +18,6 @@ namespace NzbDrone.Core.Download.Engine
 
     public class EngineTorrentPreparationService : IEngineTorrentPreparationService
     {
-        public const string PreparedTag = "embarr-prepared";
         public const string NoVideoMessage = "The torrent has no video file";
 
         private static readonly HashSet<string> HeldStates = new(StringComparer.OrdinalIgnoreCase)
@@ -28,22 +28,25 @@ namespace NzbDrone.Core.Download.Engine
         private readonly IQBittorrentProxySelector _proxySelector;
         private readonly IHistoryService _historyService;
         private readonly IFailedDownloadService _failedDownloadService;
+        private readonly IDownloadHistoryService _downloadHistoryService;
         private readonly Logger _logger;
 
         public EngineTorrentPreparationService(IQBittorrentProxySelector proxySelector,
                                                IHistoryService historyService,
                                                IFailedDownloadService failedDownloadService,
+                                               IDownloadHistoryService downloadHistoryService,
                                                Logger logger)
         {
             _proxySelector = proxySelector;
             _historyService = historyService;
             _failedDownloadService = failedDownloadService;
+            _downloadHistoryService = downloadHistoryService;
             _logger = logger;
         }
 
         public void Prepare(IDownloadClient downloadClient)
         {
-            if (downloadClient.Definition.Settings is not QBittorrentSettings { HoldNewTorrents: true } settings)
+            if (downloadClient.Definition.Settings is not QBittorrentSettings settings)
             {
                 return;
             }
@@ -64,11 +67,16 @@ namespace NzbDrone.Core.Download.Engine
             }
         }
 
+        // Only torrents the engine was told to hold (the held tag, added with the torrent) are prepared, so
+        // torrents grabbed before preparation existed, or stopped later, are never restarted or rejected.
         private static bool NeedsPreparation(QBittorrentTorrent torrent)
         {
+            var tags = (torrent.Tags ?? string.Empty).Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
             return torrent.HasMetadata &&
                    HeldStates.Contains(torrent.State ?? string.Empty) &&
-                   !(torrent.Tags ?? string.Empty).Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Contains(PreparedTag);
+                   tags.Contains(EngineTorrentTags.Held) &&
+                   !tags.Contains(EngineTorrentTags.Prepared);
         }
 
         private void PrepareTorrent(IQBittorrentProxy proxy, QBittorrentSettings settings, QBittorrentTorrent torrent)
@@ -89,9 +97,13 @@ namespace NzbDrone.Core.Download.Engine
 
             if (!files.Any(f => EngineFileWhitelist.IsVideo(f.Name)))
             {
-                _logger.Warn("'{0}' has no video file ({1}); rejecting it and searching again", torrent.Name, files.Select(f => f.Name).ConcatToString());
+                // Record the failure once per grab; if removal failed last time, only retry the removal.
+                if (_downloadHistoryService.GetLatestDownloadHistoryItem(torrent.Hash.ToUpperInvariant()) is not { EventType: DownloadHistoryEventType.DownloadFailed })
+                {
+                    _logger.Warn("'{0}' has no video file ({1}); rejecting it and searching again", torrent.Name, files.Select(f => f.Name).ConcatToString());
 
-                _failedDownloadService.MarkAsFailed(grab.Id, NoVideoMessage, "Embarr");
+                    _failedDownloadService.MarkAsFailed(grab.Id, NoVideoMessage, "Embarr");
+                }
 
                 // Nothing was downloaded: the torrent was held before any data.
                 proxy.RemoveTorrent(hash, true, settings);
@@ -112,7 +124,7 @@ namespace NzbDrone.Core.Download.Engine
 
             // Start first, then tag: if tagging fails the torrent is already running and isn't held again.
             proxy.StartTorrent(hash, settings);
-            proxy.AddTags(hash, new[] { PreparedTag }, settings);
+            proxy.AddTags(hash, new[] { EngineTorrentTags.Prepared }, settings);
 
             _logger.Info("Prepared '{0}': {1} of {2} file(s) will be downloaded", torrent.Name, files.Count - excluded.Count, files.Count);
         }

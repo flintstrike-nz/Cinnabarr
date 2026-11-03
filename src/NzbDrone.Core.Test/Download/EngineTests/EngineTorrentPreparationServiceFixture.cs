@@ -6,6 +6,7 @@ using NUnit.Framework;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.Clients.QBittorrent;
 using NzbDrone.Core.Download.Engine;
+using NzbDrone.Core.Download.History;
 using NzbDrone.Core.History;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Test.Common;
@@ -25,9 +26,9 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         [SetUp]
         public void Setup()
         {
-            _settings = new QBittorrentSettings { HoldNewTorrents = true };
+            _settings = new QBittorrentSettings();
             _proxy = new Mock<IQBittorrentProxy>();
-            _torrent = new QBittorrentTorrent { Hash = Hash, Name = "Show.S01", State = "stoppedDL", HasMetadata = true, Tags = "" };
+            _torrent = new QBittorrentTorrent { Hash = Hash, Name = "Show.S01", State = "stoppedDL", HasMetadata = true, Tags = EngineTorrentTags.Held };
             _files = new List<QBittorrentTorrentFile>
             {
                 new QBittorrentTorrentFile { Name = "Show.S01/Show.S01E01.mkv" },
@@ -63,7 +64,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
 
             _proxy.Verify(p => p.SetFilePriority(Hash, It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { 2, 3 })), 0, _settings), Times.Once());
             _proxy.Verify(p => p.StartTorrent(Hash, _settings), Times.Once());
-            _proxy.Verify(p => p.AddTags(Hash, It.Is<IEnumerable<string>>(t => t.Single() == EngineTorrentPreparationService.PreparedTag), _settings), Times.Once());
+            _proxy.Verify(p => p.AddTags(Hash, It.Is<IEnumerable<string>>(t => t.Single() == EngineTorrentTags.Prepared), _settings), Times.Once());
         }
 
         [Test]
@@ -96,10 +97,12 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             ExceptionVerification.ExpectedWarns(1);
         }
 
-        [TestCase("metaDL", true, "")]
-        [TestCase("stoppedDL", false, "")]
-        [TestCase("downloading", true, "")]
-        [TestCase("stoppedDL", true, "other,embarr-prepared")]
+        [TestCase("metaDL", true, "embarr-held")]
+        [TestCase("stoppedDL", false, "embarr-held")]
+        [TestCase("downloading", true, "embarr-held")]
+        [TestCase("stoppedDL", true, "embarr-held,embarr-prepared")]
+        [TestCase("stoppedDL", true, "")]
+        [TestCase("stoppedUP", true, "other")]
         public void should_leave_torrents_that_are_not_held_for_preparation(string state, bool hasMetadata, string tags)
         {
             _torrent.State = state;
@@ -125,17 +128,25 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
-        public void should_do_nothing_for_clients_that_do_not_hold_torrents()
+        public void should_only_retry_removal_once_no_video_failure_is_recorded()
         {
-            Subject.Prepare(GivenClient(new QBittorrentSettings()));
+            _files = new List<QBittorrentTorrentFile> { new QBittorrentTorrentFile { Name = "Show.S01/Show.S01E01.rar" } };
 
-            Mocker.GetMock<IQBittorrentProxySelector>().Verify(s => s.GetProxy(It.IsAny<QBittorrentSettings>(), It.IsAny<bool>()), Times.Never());
+            Mocker.GetMock<IDownloadHistoryService>()
+                .Setup(s => s.GetLatestDownloadHistoryItem(Hash.ToUpperInvariant()))
+                .Returns(new DownloadHistory { EventType = DownloadHistoryEventType.DownloadFailed });
+
+            Subject.Prepare(GivenClient());
+
+            Mocker.GetMock<IFailedDownloadService>()
+                .Verify(s => s.MarkAsFailed(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()), Times.Never());
+            _proxy.Verify(p => p.RemoveTorrent(Hash, true, _settings), Times.Once());
         }
 
         [Test]
         public void should_keep_going_when_one_torrent_fails()
         {
-            var second = new QBittorrentTorrent { Hash = "1111111111111111111111111111111111111111", Name = "Other", State = "stoppedDL", HasMetadata = true };
+            var second = new QBittorrentTorrent { Hash = "1111111111111111111111111111111111111111", Name = "Other", State = "stoppedDL", HasMetadata = true, Tags = EngineTorrentTags.Held };
 
             _proxy.Setup(p => p.GetTorrents(_settings)).Returns(new List<QBittorrentTorrent> { second, _torrent });
             _proxy.Setup(p => p.GetTorrentFiles(second.Hash, _settings)).Throws(new InvalidOperationException("engine error"));

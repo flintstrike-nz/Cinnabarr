@@ -131,7 +131,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             return response;
         }
 
-        public void AddTorrentFromUrl(string torrentUrl, TorrentSeedConfiguration seedConfiguration, QBittorrentSettings settings)
+        public void AddTorrentFromUrl(string torrentUrl, TorrentSeedConfiguration seedConfiguration, QBittorrentSettings settings, bool hold = false)
         {
             var request = BuildRequest(settings).Resource("/command/download")
                                                 .Post()
@@ -161,7 +161,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             }
         }
 
-        public void AddTorrentFromFile(string fileName, byte[] fileContent, TorrentSeedConfiguration seedConfiguration, QBittorrentSettings settings)
+        public void AddTorrentFromFile(string fileName, byte[] fileContent, TorrentSeedConfiguration seedConfiguration, QBittorrentSettings settings, bool hold = false)
         {
             var request = BuildRequest(settings).Resource("/command/upload")
                                                 .Post()

@@ -86,11 +86,6 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         [FieldDefinition(15, Label = "DownloadClientQbittorrentSettingsAddSeriesTags", Type = FieldType.Checkbox, HelpText = "DownloadClientQbittorrentSettingsAddSeriesTagsHelpText")]
         public bool AddSeriesTags { get; set; }
 
-        // Set only on the built-in Embarr engine (not shown in the UI): new torrents are held until Embarr has
-        // chosen which files to download. Magnets stop once their metadata arrives; .torrent files are added
-        // stopped (roadmap §4.8).
-        public bool HoldNewTorrents { get; set; }
-
         [FieldDefinition(16, Label = "DownloadClientQbittorrentSettingsSeedTimeType", Type = FieldType.Select, SelectOptions = typeof(QBittorrentSeedTimeType), HelpText = "DownloadClientQbittorrentSettingsSeedTimeTypeHelpText")]
         public int SeedTimeType { get; set; }
 
