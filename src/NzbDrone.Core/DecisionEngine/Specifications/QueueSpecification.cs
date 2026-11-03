@@ -35,7 +35,8 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
 
         public DownloadSpecDecision IsSatisfiedBy(RemoteEpisode subject, ReleaseDecisionInformation information)
         {
-            var queue = _queueService.GetQueue();
+            // Rows listed only for visibility (already imported/failed/ignored) don't block grabs.
+            var queue = _queueService.GetQueue().Where(q => q.IsTrackable);
             var matchingEpisode = queue.Where(q => q.RemoteEpisode?.Series != null &&
                                                    q.RemoteEpisode.Series.Id == subject.Series.Id &&
                                                    q.RemoteEpisode.Episodes.Select(e => e.Id).Intersect(subject.Episodes.Select(e => e.Id)).Any())

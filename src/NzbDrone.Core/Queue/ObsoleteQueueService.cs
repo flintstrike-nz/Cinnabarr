@@ -76,6 +76,7 @@ namespace NzbDrone.Core.Queue
                 Status = Enum.TryParse(trackedDownload.DownloadItem.Status.ToString(), out QueueStatus outValue) ? outValue : QueueStatus.Unknown,
                 TrackedDownloadStatus = trackedDownload.Status,
                 TrackedDownloadState = trackedDownload.State,
+                IsTrackable = trackedDownload.IsTrackable,
                 StatusMessages = trackedDownload.StatusMessages.ToList(),
                 ErrorMessage = trackedDownload.DownloadItem.Message,
                 RemoteEpisode = trackedDownload.RemoteEpisode,

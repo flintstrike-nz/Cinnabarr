@@ -78,7 +78,9 @@ namespace NzbDrone.Core.Test.QueueTests
 
             Subject.Handle(new TrackedDownloadRefreshedEvent(_trackedDownloads));
 
-            Subject.GetQueue().Should().HaveCount(1);
+            var queue = Subject.GetQueue();
+            queue.Should().HaveCount(1);
+            queue.Should().OnlyContain(q => !q.IsTrackable);
         }
 
         [Test]

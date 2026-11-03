@@ -93,12 +93,13 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
                   .Returns(formats);
         }
 
-        private void GivenQueue(IEnumerable<RemoteEpisode> remoteEpisodes, TrackedDownloadState trackedDownloadState = TrackedDownloadState.Downloading)
+        private void GivenQueue(IEnumerable<RemoteEpisode> remoteEpisodes, TrackedDownloadState trackedDownloadState = TrackedDownloadState.Downloading, bool isTrackable = true)
         {
             var queue = remoteEpisodes.Select(remoteEpisode => new Queue.Queue
             {
                 RemoteEpisode = remoteEpisode,
-                TrackedDownloadState = trackedDownloadState
+                TrackedDownloadState = trackedDownloadState,
+                IsTrackable = isTrackable
             });
 
             Mocker.GetMock<IQueueService>()
@@ -147,6 +148,29 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
             GivenQueue(new List<RemoteEpisode> { remoteEpisode });
 
             Subject.IsSatisfiedBy(_remoteEpisode, new()).Accepted.Should().BeFalse();
+        }
+
+        [Test]
+        public void should_return_true_if_same_release_is_only_listed_for_visibility()
+        {
+            _series.QualityProfile.Value.Cutoff = Quality.Bluray1080p.Id;
+
+            var remoteEpisode = Builder<RemoteEpisode>.CreateNew()
+                .With(r => r.Series = _series)
+                .With(r => r.Episodes = new List<Episode> { _episode })
+                .With(r => r.ParsedEpisodeInfo = new ParsedEpisodeInfo
+                {
+                    Quality = new QualityModel(Quality.DVD),
+                    Languages = new List<Language> { Language.Spanish }
+                })
+                .With(r => r.CustomFormats = new List<CustomFormat>())
+                .With(r => r.Release = _releaseInfo)
+                .Build();
+
+            // e.g. a built-in engine torrent that was already imported and is still seeding
+            GivenQueue(new List<RemoteEpisode> { remoteEpisode }, TrackedDownloadState.Imported, isTrackable: false);
+
+            Subject.IsSatisfiedBy(_remoteEpisode, new()).Accepted.Should().BeTrue();
         }
 
         [Test]

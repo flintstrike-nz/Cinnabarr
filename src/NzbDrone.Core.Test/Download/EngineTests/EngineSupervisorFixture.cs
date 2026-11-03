@@ -167,6 +167,8 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             settings.Port.Should().Be(51234);
             settings.ApiKey.Should().Be(key);
             settings.UseSsl.Should().BeFalse();
+            settings.TvCategory.Should().BeEmpty();
+            settings.TvImportedCategory.Should().BeEmpty();
 
             Mocker.GetMock<IDownloadClientFactory>().Verify(v => v.Update(It.IsAny<DownloadClientDefinition>()), Times.Never());
         }
@@ -202,7 +204,10 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             settings.ApiKey.Should().Be(key);
             settings.Username.Should().BeEmpty();
             settings.Password.Should().BeEmpty();
-            settings.TvCategory.Should().Be("custom");
+
+            // The built-in client polls every torrent in the engine: no category routing.
+            settings.TvCategory.Should().BeEmpty();
+            settings.TvImportedCategory.Should().BeEmpty();
         }
 
         [Test]
@@ -231,7 +236,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             Mocker.GetMock<IDownloadClientFactory>().Verify(v => v.Create(It.IsAny<DownloadClientDefinition>()), Times.Never());
             Mocker.GetMock<IDownloadClientFactory>().Verify(v => v.Update(renamed), Times.Once());
             ((QBittorrentSettings)renamed.Settings).Port.Should().Be(40000);
-            ((QBittorrentSettings)renamed.Settings).TvCategory.Should().Be("custom");
+            renamed.Name.Should().Be("My Engine");
         }
 
         [Test]

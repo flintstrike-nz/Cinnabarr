@@ -129,8 +129,10 @@ namespace NzbDrone.Core.Download.Engine
 
             if (clientId < 0)
             {
-                clientId = ReadClientId();
-                Volatile.Write(ref _clientId, clientId);
+                // Only fill in the initial value; never overwrite an id the supervisor has
+                // published meanwhile (WriteClientId).
+                Interlocked.CompareExchange(ref _clientId, ReadClientId(), -1);
+                clientId = Volatile.Read(ref _clientId);
             }
 
             return clientId > 0 && clientId == downloadClientId;
@@ -321,6 +323,12 @@ namespace NzbDrone.Core.Download.Engine
             settings.Username = string.Empty;
             settings.Password = string.Empty;
 
+            // Every torrent in the engine is Embarr's, so the built-in client doesn't route by
+            // category (roadmap §4.4). With no category it polls all torrents, so imported or
+            // hand-added ones are never filtered out of tracking.
+            settings.TvCategory = string.Empty;
+            settings.TvImportedCategory = string.Empty;
+
             if (definition == null)
             {
                 definition = _downloadClientFactory.Create(new DownloadClientDefinition
@@ -451,6 +459,15 @@ namespace NzbDrone.Core.Download.Engine
                 try
                 {
                     StopEngine();
+                }
+                catch (Exception ex)
+                {
+                    // Never let cleanup end supervision, and still back off below.
+                    _logger.Error(ex, "Error while stopping embarr-engine; will retry");
+                }
+
+                try
+                {
                     await BackoffDelay(backoff, token);
                 }
                 catch (OperationCanceledException)
@@ -459,8 +476,7 @@ namespace NzbDrone.Core.Download.Engine
                 }
                 catch (Exception ex)
                 {
-                    // Never let cleanup end supervision: keep retrying.
-                    _logger.Error(ex, "Error while stopping embarr-engine; will retry");
+                    _logger.Error(ex, "Error while waiting to restart embarr-engine");
                 }
 
                 backoff = TimeSpan.FromTicks(Math.Min(backoff.Ticks * 2, Timings.MaxBackoff.Ticks));
