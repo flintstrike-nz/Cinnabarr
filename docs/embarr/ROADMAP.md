@@ -523,3 +523,68 @@ Each phase ends in a working, shippable build.
 7. **Plex multi-version naming.** Plex uses a different convention from Emby. Proposal: Emby format by default (§4.11), Plex as an optional template in Phase 5.
 
 Decided since the first draft: metadata comes from TVDB, TMDb and IMDb (§4.14); video files are always kept after seeding (§4.10); downloads go straight to the final location with an optional same-drive staging folder (§4.8).
+
+---
+
+## Addendum A — Jellyfin + webOS integration (future, not part of the current plan)
+
+> Status: **idea, not scheduled.** Nothing in Phases 1–7 depends on this, and no phase should be delayed or reshaped for it. It is recorded here so that decisions made in the main plan don't accidentally close the door.
+
+### A.1 Goal
+
+Browse shows and movies from an LG **webOS** TV and add them to Embarr without leaving the TV. Android TV / Google TV is **out of scope** for now.
+
+### A.2 Why Jellyfin instead of Emby
+
+- Jellyfin is open source and split into a server plus separate client apps, much like Emby (it was forked from Emby 3.5.2 in 2018). Emby's TV apps can't be given custom screens or buttons; Jellyfin's can.
+- The Jellyfin webOS app is a thin wrapper that loads `jellyfin-web` from the user's own server. Anything added to the web interface therefore also appears on the TV, including real buttons, dialogs and pickers.
+- Emby's closed-source SDK changes between major versions. Jellyfin's code is public.
+- This means **Jellyfin becomes the primary media server target** in this addendum. The main plan still mentions Emby in §4.9, §4.11 and the risk and open-decision lists; those stay as written until this addendum is scheduled.
+
+### A.3 Approach: use stock Jellyfin and extend it
+
+Do **not** fork the Jellyfin server. Build:
+
+1. **A Jellyfin server plugin** (C# / .NET), kept in its own repository. It:
+   - stores the Embarr URL and API key in its dashboard settings page;
+   - decides which Jellyfin users may add items (for example admins only, or an allow-list), because Embarr has a single API key and no users;
+   - exposes small authenticated endpoints under the Jellyfin server that the web interface calls, so the Embarr API key never reaches the TV or browser;
+   - records who requested what.
+2. **A web interface layer** that adds a *Discover* area and an **Add to Embarr** action, with options such as quality profile and version slot. Start with injected JavaScript and CSS delivered by the plugin. Only fork `jellyfin-web` if injection can't do the job.
+3. **The stock `jellyfin-webos` app**, unmodified, pointed at the user's server. Updating the web layer needs no reinstall on the TV.
+
+### A.4 What Embarr must provide
+
+All of this already fits the planned single `/api/v1` and API key (§4.6):
+
+- Lookup and search endpoints for series and movies.
+- Add series / add movie endpoints with sensible defaults, plus optional quality profile, version slot and monitoring options.
+- A discover-lists endpoint (trending, popular, upcoming) so the plugin doesn't need its own TMDb / TVDB keys.
+- A way to report whether an item is already in Embarr, so the TV can show "Requested" / "In library".
+- Version slots (Phase 5) must exist before an *Add as 4K* style option makes sense.
+
+### A.5 Constraints and risks
+
+| Item | Detail |
+| --- | --- |
+| **Remote control input** | Typing on a TV remote is slow. Favour curated lists and short search flows over free-text search. |
+| **Reachability** | The Jellyfin server must be able to reach Embarr. Run them on the same machine or network. Do not expose Embarr's API to the internet for this. |
+| **Plugin API drift** | Jellyfin plugins are built against a specific server version. Expect to rebuild for each Jellyfin release. |
+| **Web injection fragility** | Injected scripts depend on `jellyfin-web` internals, which can change between releases. Keep selectors and hooks in one place. |
+| **webOS sideloading** | The stock webOS app needs LG Developer Mode (periodic renewal) or the community Homebrew Channel. |
+| **Licensing** | The Jellyfin server and web are GPL-2.0, which is compatible with Embarr's licence if anything derived from them is shared. Check the `jellyfin-webos` licence before modifying that app. |
+| **Reference implementation** | Seerr (Jellyseerr / Overseerr) already does browse, request and send-to-Sonarr/Radarr, and is a useful model for request flows and permissions. It also relates to open decision 2 (v3 API compatibility shims). |
+
+### A.6 Suggested order, once scheduled
+
+1. Confirm Embarr's lookup, discover and add endpoints are stable (after Phase 4, ideally after Phase 5).
+2. Build the Jellyfin plugin with settings, the user allow-list and proxy endpoints.
+3. Build the *Discover* and *Add to Embarr* web layer.
+4. Test on a webOS TV, including remote-only navigation.
+5. Release as a separate repository so it can track Jellyfin releases independently of Embarr.
+
+### A.7 Open questions
+
+- Does script injection give enough control, or is a small `jellyfin-webos` / `jellyfin-web` fork needed?
+- Should requests from non-admin Jellyfin users need approval before Embarr acts on them?
+- Does the Jellyfin multi-version naming match what Phase 5 locks in (§4.11)? Verify as already planned.
