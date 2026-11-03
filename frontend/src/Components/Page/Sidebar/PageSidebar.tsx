@@ -64,9 +64,9 @@ const GROUPS: SidebarGroup[] = [
       },
       {
         iconName: icons.SERIES_CONTINUING,
-        title: () => translate('Series'),
-        to: '/series',
-        alias: '/serieseditor',
+        title: () => translate('Library'),
+        to: '/library',
+        alias: '/series',
         children: [
           {
             title: () => translate('AddNew'),
@@ -84,11 +84,6 @@ const GROUPS: SidebarGroup[] = [
         to: '/calendar',
       },
       {
-        iconName: icons.STATISTICS,
-        title: () => translate('Statistics'),
-        to: '/statistics',
-      },
-      {
         iconName: icons.WARNING,
         title: () => translate('Wanted'),
         to: '/wanted/missing',
@@ -103,26 +98,27 @@ const GROUPS: SidebarGroup[] = [
           },
         ],
       },
-    ],
-  },
-  {
-    label: () => translate('Activity'),
-    items: [
       {
         iconName: icons.DOWNLOAD,
-        title: () => translate('Queue'),
-        to: '/activity/queue',
+        title: () => translate('Downloads'),
+        to: '/downloads',
         statusComponent: QueueStatus,
       },
       {
         iconName: icons.HISTORY,
-        title: () => translate('History'),
+        title: () => translate('Activity'),
         to: '/activity/history',
-      },
-      {
-        iconName: icons.BLOCKLIST,
-        title: () => translate('Blocklist'),
-        to: '/activity/blocklist',
+        alias: '/activity',
+        children: [
+          {
+            title: () => translate('History'),
+            to: '/activity/history',
+          },
+          {
+            title: () => translate('Blocklist'),
+            to: '/activity/blocklist',
+          },
+        ],
       },
     ],
   },
@@ -174,6 +170,7 @@ const GROUPS: SidebarGroup[] = [
             statusComponent: HealthStatus,
           },
           { title: () => translate('Tasks'), to: '/system/tasks' },
+          { title: () => translate('Statistics'), to: '/statistics' },
           { title: () => translate('Backups'), to: '/system/backups' },
           { title: () => translate('Updates'), to: '/system/updates' },
           { title: () => translate('Events'), to: '/system/events' },

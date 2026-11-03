@@ -40,16 +40,21 @@ export function appRouteElements() {
     <>
       {/*
         Home (v5) — TODO: swap to <HomePage /> when the homepage redesign lands.
-        Until then, "/" redirects to SeriesIndex and the sidebar's "Home" nav is hidden.
+        Until then, "/" redirects to the Library (SeriesIndex) and the sidebar's "Home" nav is hidden.
       */}
 
-      <Route path="/" element={<Navigate to="/series" replace={true} />} />
+      <Route path="/" element={<Navigate to="/library" replace={true} />} />
 
       {/*
         Series
       */}
 
-      <Route path="/series" element={<SeriesIndex />} />
+      <Route path="/library" element={<SeriesIndex />} />
+
+      <Route
+        path="/series"
+        element={<Navigate to="/library" replace={true} />}
+      />
 
       <Route path="/add/new" element={<AddNewSeries />} />
 
@@ -59,12 +64,12 @@ export function appRouteElements() {
 
       <Route
         path="/serieseditor"
-        element={<Navigate to="/series" replace={true} />}
+        element={<Navigate to="/library" replace={true} />}
       />
 
       <Route
         path="/seasonpass"
-        element={<Navigate to="/series" replace={true} />}
+        element={<Navigate to="/library" replace={true} />}
       />
 
       <Route
@@ -88,7 +93,12 @@ export function appRouteElements() {
 
       <Route path="/activity/history" element={<History />} />
 
-      <Route path="/activity/queue" element={<Queue />} />
+      <Route path="/downloads" element={<Queue />} />
+
+      <Route
+        path="/activity/queue"
+        element={<Navigate to="/downloads" replace={true} />}
+      />
 
       <Route path="/activity/blocklist" element={<Blocklist />} />
 
