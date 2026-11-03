@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using FluentAssertions;
@@ -202,6 +203,56 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             settings.Username.Should().BeEmpty();
             settings.Password.Should().BeEmpty();
             settings.TvCategory.Should().Be("custom");
+        }
+
+        [Test]
+        public void should_clear_download_client_failures_when_engine_recovers()
+        {
+            var existing = new DownloadClientDefinition
+            {
+                Id = 7,
+                Name = EngineSupervisor.EngineDefinitionName,
+                Implementation = nameof(QBittorrent),
+                ConfigContract = nameof(QBittorrentSettings),
+                Settings = new QBittorrentSettings()
+            };
+
+            Mocker.GetMock<IDownloadClientFactory>()
+                .Setup(s => s.All())
+                .Returns(new List<DownloadClientDefinition> { existing });
+
+            Subject.EnsureDownloadClient(40000, EngineSupervisor.GenerateApiKey());
+
+            Mocker.GetMock<IDownloadClientStatusService>().Verify(v => v.RecordSuccess(7), Times.Once());
+        }
+
+        [Test]
+        public void pid_file_should_match_same_pid_and_start_time()
+        {
+            var start = new DateTime(2026, 11, 3, 1, 2, 3, DateTimeKind.Utc);
+            var contents = $"1234\n{start.Ticks}\n";
+
+            EngineSupervisor.IsSameProcess(contents, 1234, start).Should().BeTrue();
+            EngineSupervisor.IsSameProcess(contents, 1234, start.AddMilliseconds(500)).Should().BeTrue();
+        }
+
+        [Test]
+        public void pid_file_should_not_match_reused_pid()
+        {
+            var start = new DateTime(2026, 11, 3, 1, 2, 3, DateTimeKind.Utc);
+            var contents = $"1234\n{start.Ticks}\n";
+
+            EngineSupervisor.IsSameProcess(contents, 1234, start.AddMinutes(5)).Should().BeFalse();
+            EngineSupervisor.IsSameProcess(contents, 4321, start).Should().BeFalse();
+        }
+
+        [TestCase(null)]
+        [TestCase("")]
+        [TestCase("1234")]
+        [TestCase("1234\nnot-a-number")]
+        public void pid_file_without_start_time_should_not_match(string contents)
+        {
+            EngineSupervisor.IsSameProcess(contents, 1234, DateTime.UtcNow).Should().BeFalse();
         }
     }
 }

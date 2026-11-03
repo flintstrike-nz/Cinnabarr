@@ -59,6 +59,7 @@ namespace NzbDrone.Core.Download.Engine
         private const int ApiKeyLength = 28;
         private const string ApiKeyChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         private const int MaxFailedHealthChecks = 3;
+        private static readonly TimeSpan StableUptime = TimeSpan.FromSeconds(60);
 
         private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(60);
         private static readonly TimeSpan HealthInterval = TimeSpan.FromSeconds(10);
@@ -70,6 +71,7 @@ namespace NzbDrone.Core.Download.Engine
         private readonly IProcessProvider _processProvider;
         private readonly IHttpClient _httpClient;
         private readonly IDownloadClientFactory _downloadClientFactory;
+        private readonly IDownloadClientStatusService _downloadClientStatusService;
         private readonly IEventAggregator _eventAggregator;
         private readonly Logger _logger;
 
@@ -86,6 +88,7 @@ namespace NzbDrone.Core.Download.Engine
                                 IProcessProvider processProvider,
                                 IHttpClient httpClient,
                                 IDownloadClientFactory downloadClientFactory,
+                                IDownloadClientStatusService downloadClientStatusService,
                                 IEventAggregator eventAggregator,
                                 Logger logger)
         {
@@ -94,6 +97,7 @@ namespace NzbDrone.Core.Download.Engine
             _processProvider = processProvider;
             _httpClient = httpClient;
             _downloadClientFactory = downloadClientFactory;
+            _downloadClientStatusService = downloadClientStatusService;
             _eventAggregator = eventAggregator;
             _logger = logger;
         }
@@ -208,6 +212,8 @@ namespace NzbDrone.Core.Download.Engine
         {
             var keyFile = Path.Combine(EngineFolder, "api.key");
 
+            EnsurePrivateEngineFolder();
+
             if (_diskProvider.FileExists(keyFile))
             {
                 var existing = _diskProvider.ReadAllText(keyFile).Trim();
@@ -222,10 +228,36 @@ namespace NzbDrone.Core.Download.Engine
 
             var key = GenerateApiKey();
 
-            _diskProvider.EnsureFolder(EngineFolder);
             _diskProvider.WriteAllText(keyFile, key);
+            RestrictToOwner(keyFile, UnixFileMode.UserRead | UnixFileMode.UserWrite);
 
             return key;
+        }
+
+        // The engine folder holds the API key and the engine's own state, so on Unix it's
+        // owner-only (0700) and the key file 0600, whatever the umask.
+        private void EnsurePrivateEngineFolder()
+        {
+            _diskProvider.EnsureFolder(EngineFolder);
+            RestrictToOwner(EngineFolder, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            RestrictToOwner(Path.Combine(EngineFolder, "api.key"), UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        }
+
+        private void RestrictToOwner(string path, UnixFileMode mode)
+        {
+            if (OperatingSystem.IsWindows() || !(File.Exists(path) || Directory.Exists(path)))
+            {
+                return;
+            }
+
+            try
+            {
+                File.SetUnixFileMode(path, mode);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "Unable to restrict permissions on {0}", path);
+            }
         }
 
         public static string GenerateApiKey()
@@ -272,6 +304,10 @@ namespace NzbDrone.Core.Download.Engine
                 return;
             }
 
+            // Failures while the engine was down may have put the client into back-off;
+            // clear it before the update triggers a queue refresh.
+            _downloadClientStatusService.RecordSuccess(definition.Id);
+
             definition.Settings = settings;
             definition.Enable = true;
             _downloadClientFactory.Update(definition);
@@ -301,11 +337,19 @@ namespace NzbDrone.Core.Download.Engine
                     if (await WaitUntilHealthy(token))
                     {
                         SetStatus(EngineStatus.Running);
-                        backoff = TimeSpan.FromSeconds(1);
                         _logger.Info("embarr-engine is running on 127.0.0.1:{0}", _port);
 
                         EnsureDownloadClient(_port, _apiKey);
+
+                        var runningSince = DateTime.UtcNow;
                         await WatchUntilUnhealthy(token);
+
+                        // Only a run that stayed up for a while resets the backoff, so an engine
+                        // that keeps crashing soon after starting still backs off.
+                        if (DateTime.UtcNow - runningSince >= StableUptime)
+                        {
+                            backoff = TimeSpan.FromSeconds(1);
+                        }
                     }
 
                     if (token.IsCancellationRequested)
@@ -346,7 +390,7 @@ namespace NzbDrone.Core.Download.Engine
         private bool StartEngine(CancellationToken token)
         {
             _port = GetFreeLoopbackPort();
-            _diskProvider.EnsureFolder(EngineFolder);
+            EnsurePrivateEngineFolder();
 
             // Started directly rather than through IProcessProvider: its environment
             // dictionary lower-cases variable names (Linux is case-sensitive) and it
@@ -391,7 +435,7 @@ namespace NzbDrone.Core.Download.Engine
 
             try
             {
-                _diskProvider.WriteAllText(PidFile, process.Id.ToString());
+                _diskProvider.WriteAllText(PidFile, FormatPidFile(process));
             }
             catch (Exception ex)
             {
@@ -420,32 +464,69 @@ namespace NzbDrone.Core.Download.Engine
 
             lock (_lock)
             {
+                // Keep _process set until the child has really exited, so a concurrent stop
+                // (e.g. ProcessExit while the watchdog is stopping an unresponsive engine)
+                // still sees it and can force it down within its own timeout.
                 process = _process;
-                _process = null;
             }
 
-            if (process == null || process.HasExited)
+            if (process == null)
             {
-                DeletePidFile();
                 return;
             }
 
-            try
+            if (!process.HasExited)
             {
-                _httpClient.Post(BuildRequest("/api/v2/app/shutdown"));
-            }
-            catch (Exception ex)
-            {
-                _logger.Debug(ex, "Engine shutdown request failed");
+                try
+                {
+                    _httpClient.Post(BuildRequest("/api/v2/app/shutdown"));
+                }
+                catch (Exception ex)
+                {
+                    _logger.Debug(ex, "Engine shutdown request failed");
+                }
+
+                if (!process.WaitForExit((int)timeout.TotalMilliseconds))
+                {
+                    _logger.Warn("embarr-engine didn't exit within {0}s; killing it", timeout.TotalSeconds);
+                    _processProvider.Kill(process.Id);
+                }
+
+                if (!process.WaitForExit((int)TimeSpan.FromSeconds(5).TotalMilliseconds))
+                {
+                    // Leave the pid file so the next start can stop it.
+                    _logger.Error("embarr-engine (pid {0}) is still running after being killed", process.Id);
+                    return;
+                }
             }
 
-            if (!process.WaitForExit((int)timeout.TotalMilliseconds))
+            lock (_lock)
             {
-                _logger.Warn("embarr-engine didn't exit within {0}s; killing it", timeout.TotalSeconds);
-                _processProvider.Kill(process.Id);
+                if (ReferenceEquals(_process, process))
+                {
+                    _process = null;
+                }
             }
 
             DeletePidFile();
+        }
+
+        public static string FormatPidFile(Process process)
+        {
+            return $"{process.Id}\n{process.StartTime.ToUniversalTime().Ticks}\n";
+        }
+
+        // The pid file stores the pid and the process start time, so a reused pid
+        // (a different process that happens to get the same number) is never killed.
+        public static bool IsSameProcess(string pidFileContents, int pid, DateTime startTimeUtc)
+        {
+            var lines = (pidFileContents ?? string.Empty).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            return lines.Length >= 2 &&
+                   int.TryParse(lines[0], out var storedPid) &&
+                   long.TryParse(lines[1], out var storedTicks) &&
+                   storedPid == pid &&
+                   Math.Abs(startTimeUtc.Ticks - storedTicks) < TimeSpan.TicksPerSecond;
         }
 
         // An engine left running by a previous Embarr process that didn't shut down cleanly
@@ -454,19 +535,29 @@ namespace NzbDrone.Core.Download.Engine
         {
             try
             {
-                if (!_diskProvider.FileExists(PidFile) ||
-                    !int.TryParse(_diskProvider.ReadAllText(PidFile).Trim(), out var pid) ||
-                    !_processProvider.Exists(pid))
+                if (!_diskProvider.FileExists(PidFile))
+                {
+                    return;
+                }
+
+                var contents = _diskProvider.ReadAllText(PidFile);
+                var firstLine = contents.Split('\n')[0].Trim();
+
+                if (!int.TryParse(firstLine, out var pid) || !_processProvider.Exists(pid))
                 {
                     return;
                 }
 
                 using var stale = Process.GetProcessById(pid);
 
-                if (stale.ProcessName == "embarr-engine")
+                if (IsSameProcess(contents, pid, stale.StartTime.ToUniversalTime()))
                 {
                     _logger.Warn("Stopping embarr-engine left running by a previous session (pid {0})", pid);
                     _processProvider.Kill(pid);
+                }
+                else
+                {
+                    _logger.Debug("Pid {0} from the engine pid file now belongs to another process; leaving it alone", pid);
                 }
             }
             catch (Exception ex)
