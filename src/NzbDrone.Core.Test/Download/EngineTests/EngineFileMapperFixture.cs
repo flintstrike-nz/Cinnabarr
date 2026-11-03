@@ -21,6 +21,8 @@ namespace NzbDrone.Core.Test.Download.EngineTests
     [TestFixture]
     public class EngineFileMapperFixture : CoreTest<EngineFileMapper>
     {
+        private const string Hash = "ABCDEF0123456789ABCDEF0123456789ABCDEF01";
+
         private Series _series;
         private List<Episode> _episodes;
         private string _seasonFolder;
@@ -49,7 +51,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
 
         private EngineFileMap Map(params (string Name, long Size)[] files)
         {
-            return Subject.Map(_series, _episodes, new QualityModel(Quality.HDTV720p), "Show.S01.720p.HDTV-Grp", files.Select(f => new QBittorrentTorrentFile { Name = f.Name, Size = f.Size }).ToList());
+            return Subject.Map(Hash, _series, _episodes, new QualityModel(Quality.HDTV720p), "Show.S01.720p.HDTV-Grp", files.Select(f => new QBittorrentTorrentFile { Name = f.Name, Size = f.Size }).ToList());
         }
 
         [Test]
@@ -62,7 +64,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             map.Files[0].Index.Should().Be(0);
             map.Files[0].Episodes.Should().HaveCount(2);
             map.Files[0].FinalPath.Should().Be("Show - S01E01.mkv");
-            map.Files[0].PendingPath.Should().Be(".Show - S01E01.mkv.pending");
+            map.Files[0].PendingPath.Should().Be(".Show - S01E01.mkv.abcdef01.pending");
             map.Files[0].State.Should().Be(EngineLinkFileState.Pending);
         }
 
@@ -106,7 +108,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             subtitle.Index.Should().Be(2);
             subtitle.VideoIndex.Should().Be(1);
             subtitle.FinalPath.Should().Be("Show - S01E02.en.srt");
-            subtitle.PendingPath.Should().Be(".Show - S01E02.en.srt.pending");
+            subtitle.PendingPath.Should().Be(".Show - S01E02.en.srt.abcdef01.pending");
         }
 
         [Test]
@@ -120,7 +122,56 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             var map = Map(("Show/Show.S01E01.mkv", 1000), ("Show/Show.S01E02.mkv", 1000));
 
             map.SavePath.Should().Be(_series.Path);
-            map.Files.Select(f => f.PendingPath).Should().Equal("Season 01/.Show - E1.mkv.pending", "Season 02/.Show - E2.mkv.pending");
+            map.Files.Select(f => f.PendingPath).Should().Equal("Season 01/.Show - E1.mkv.abcdef01.pending", "Season 02/.Show - E2.mkv.abcdef01.pending");
+        }
+
+        [Test]
+        public void should_name_each_pack_file_after_its_own_name()
+        {
+            Map(("Show.S01/Show.S01E01.mkv", 1000), ("Show.S01/Show.S01E02.mkv", 1000));
+
+            Mocker.GetMock<IBuildFileNames>()
+                .Verify(s => s.BuildFilePath(It.IsAny<List<Episode>>(), _series, It.Is<EpisodeFile>(f => f.SceneName == "Show.S01E02" && f.RelativePath == "Show.S01E02.mkv"), ".mkv", null, null), Times.Once());
+        }
+
+        [Test]
+        public void should_name_a_single_file_after_the_release()
+        {
+            Map(("Show.S01E01E02.720p/Show.S01E01E02.720p.mkv", 1000));
+
+            Mocker.GetMock<IBuildFileNames>()
+                .Verify(s => s.BuildFilePath(It.IsAny<List<Episode>>(), _series, It.Is<EpisodeFile>(f => f.SceneName == "Show.S01.720p.HDTV-Grp"), ".mkv", null, null), Times.Once());
+        }
+
+        [Test]
+        public void should_keep_pending_names_within_the_file_name_limit()
+        {
+            Mocker.GetMock<IBuildFileNames>()
+                .Setup(s => s.BuildFilePath(It.IsAny<List<Episode>>(), _series, It.IsAny<EpisodeFile>(), It.IsAny<string>(), null, null))
+                .Returns((List<Episode> episodes, Series series, EpisodeFile file, string extension, NamingConfig naming, List<CustomFormat> formats) =>
+                    Path.Combine(_seasonFolder, new string('a', 250) + extension));
+
+            var file = Map(("Show.S01E01.mkv", 1000)).Files.Single();
+
+            (System.Text.Encoding.UTF8.GetByteCount(file.PendingPath) + 4).Should().BeLessOrEqualTo(255);
+            file.FinalPath.Should().EndWith(".mkv");
+        }
+
+        [Test]
+        public void should_give_each_torrent_its_own_pending_name()
+        {
+            var other = Subject.Map("1234567890ABCDEF1234567890ABCDEF12345678", _series, _episodes, new QualityModel(Quality.HDTV720p), "Show.S01.720p.HDTV-Grp", new List<QBittorrentTorrentFile> { new QBittorrentTorrentFile { Name = "Show.S01E01.mkv" } });
+
+            other.Files.Single().PendingPath.Should().Be(".Show - S01E01.mkv.12345678.pending");
+            Map(("Show.S01E01.mkv", 1000)).Files.Single().PendingPath.Should().Be(".Show - S01E01.mkv.abcdef01.pending");
+        }
+
+        [TestCase(".Show - S01E01.mkv.abcdef01.pending", ".Show - S01E01.mkv")]
+        [TestCase("Show - S01E01.mkv", "Show - S01E01.mkv")]
+        [TestCase("Show.pending.mkv", "Show.pending.mkv")]
+        public void should_strip_only_the_pending_suffix(string name, string expected)
+        {
+            EngineFileMapper.GetNameWithoutPendingSuffix(name).Should().Be(expected);
         }
     }
 }

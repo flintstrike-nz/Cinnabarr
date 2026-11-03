@@ -24,12 +24,18 @@ namespace NzbDrone.Core.Download.Engine
     {
         // Maps each wanted file of a torrent to its final library path (roadmap §4.8 steps 4-6). Returns null when no
         // video file matches the grabbed episodes.
-        EngineFileMap Map(Series series, List<Episode> episodes, QualityModel quality, string releaseTitle, List<QBittorrentTorrentFile> files);
+        EngineFileMap Map(string downloadId, Series series, List<Episode> episodes, QualityModel quality, string releaseTitle, List<QBittorrentTorrentFile> files);
     }
 
     public class EngineFileMapper : IEngineFileMapper
     {
         public const string PendingSuffix = ".pending";
+
+        // Leading dot, ".{8 hex}" torrent id, ".pending", and the engine's ".!qB" while incomplete.
+        public const int PendingOverheadBytes = 1 + 9 + 8 + 4;
+        public const int MaxFileNameBytes = 255;
+
+        private static readonly Regex PendingRegex = new(@"\.[0-9a-f]{8}\.pending$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         private static readonly Regex SampleRegex = new(@"(?:^|[\W_])sample(?:[\W_]|$)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
@@ -44,9 +50,7 @@ namespace NzbDrone.Core.Download.Engine
 
         public static string GetNameWithoutPendingSuffix(string path)
         {
-            return path != null && path.EndsWith(PendingSuffix, StringComparison.OrdinalIgnoreCase)
-                ? path.Substring(0, path.Length - PendingSuffix.Length)
-                : path;
+            return path == null ? null : PendingRegex.Replace(path, string.Empty);
         }
 
         public static string GetFileName(string torrentPath)
@@ -54,8 +58,11 @@ namespace NzbDrone.Core.Download.Engine
             return torrentPath.Replace('\\', '/').Split('/').Last();
         }
 
-        public EngineFileMap Map(Series series, List<Episode> episodes, QualityModel quality, string releaseTitle, List<QBittorrentTorrentFile> files)
+        public EngineFileMap Map(string downloadId, Series series, List<Episode> episodes, QualityModel quality, string releaseTitle, List<QBittorrentTorrentFile> files)
         {
+            // Pending names carry part of the info-hash, so two torrents for the same target never share one.
+            var pendingSuffix = "." + downloadId.Substring(0, 8).ToLowerInvariant() + PendingSuffix;
+
             var indexed = files.Select((file, index) => (File: file, Index: index)).ToList();
             var videos = indexed.Where(f => EngineFileWhitelist.IsVideo(f.File.Name)).ToList();
 
@@ -85,11 +92,14 @@ namespace NzbDrone.Core.Download.Engine
                     continue;
                 }
 
+                // As for any import: a single file takes the release title as its original title; each file of a
+                // pack keeps its own name, so files don't collide when episode renaming is off.
                 var episodeFile = new EpisodeFile
                 {
                     Quality = quality,
                     ReleaseGroup = fileInfo?.ReleaseGroup ?? releaseInfo?.ReleaseGroup,
-                    SceneName = releaseTitle,
+                    SceneName = candidates.Count == 1 ? releaseTitle : Path.GetFileNameWithoutExtension(GetFileName(file.Name)),
+                    RelativePath = GetFileName(file.Name),
                     Languages = releaseInfo?.Languages ?? new(),
                     Size = file.Size
                 };
@@ -99,7 +109,7 @@ namespace NzbDrone.Core.Download.Engine
                                                               episodeFile,
                                                               Path.GetExtension(GetFileName(file.Name)));
 
-                mappedVideos.Add(new MappedVideo { File = file, Index = index, Episodes = fileEpisodes, FinalPath = finalPath });
+                mappedVideos.Add(new MappedVideo { File = file, Index = index, Episodes = fileEpisodes, FinalPath = FitFileName(finalPath) });
             }
 
             // Two files for the same episodes (for example a release and a re-encode): keep the larger one.
@@ -118,7 +128,7 @@ namespace NzbDrone.Core.Download.Engine
 
             foreach (var video in mappedVideos)
             {
-                map.Files.Add(CreateFile(savePath, video.Index, video.FinalPath, video.Episodes, null));
+                map.Files.Add(CreateFile(savePath, pendingSuffix, video.Index, video.FinalPath, video.Episodes, null));
             }
 
             foreach (var (file, index) in indexed.Where(f => EngineFileWhitelist.IsSubtitle(f.File.Name)))
@@ -138,7 +148,7 @@ namespace NzbDrone.Core.Download.Engine
 
                 var finalPath = Path.Combine(Path.GetDirectoryName(video.FinalPath), Path.GetFileNameWithoutExtension(video.FinalPath) + suffix);
 
-                map.Files.Add(CreateFile(savePath, index, finalPath, new List<Episode>(), video.Index));
+                map.Files.Add(CreateFile(savePath, pendingSuffix, index, FitFileName(finalPath), new List<Episode>(), video.Index));
             }
 
             return map;
@@ -153,7 +163,28 @@ namespace NzbDrone.Core.Download.Engine
             return byName ?? (videos.Count == 1 ? videos[0] : null);
         }
 
-        private static EngineLinkFile CreateFile(string savePath, int index, string finalPath, List<Episode> episodes, int? videoIndex)
+        // Keeps the pending name (final name plus the pending overhead) within the filesystem's 255-byte limit.
+        private static string FitFileName(string path)
+        {
+            var name = Path.GetFileName(path);
+            var extension = Path.GetExtension(name);
+            var stem = Path.GetFileNameWithoutExtension(name);
+            var limit = MaxFileNameBytes - PendingOverheadBytes;
+
+            if (System.Text.Encoding.UTF8.GetByteCount(name) <= limit)
+            {
+                return path;
+            }
+
+            while (stem.Length > 0 && System.Text.Encoding.UTF8.GetByteCount(stem + extension) > limit)
+            {
+                stem = stem.Substring(0, stem.Length - 1);
+            }
+
+            return Path.Combine(Path.GetDirectoryName(path), stem.TrimEnd(' ', '.') + extension);
+        }
+
+        private static EngineLinkFile CreateFile(string savePath, string pendingSuffix, int index, string finalPath, List<Episode> episodes, int? videoIndex)
         {
             var finalRelative = Path.GetRelativePath(savePath, finalPath).Replace('\\', '/');
             var folder = finalRelative.Contains('/') ? finalRelative.Substring(0, finalRelative.LastIndexOf('/') + 1) : string.Empty;
@@ -168,7 +199,7 @@ namespace NzbDrone.Core.Download.Engine
                 FinalPath = finalRelative,
 
                 // Hidden while it downloads and until it passes its checks; the engine adds .!qB while incomplete.
-                PendingPath = folder + "." + name + PendingSuffix,
+                PendingPath = folder + "." + name + pendingSuffix,
                 State = EngineLinkFileState.Pending
             };
         }

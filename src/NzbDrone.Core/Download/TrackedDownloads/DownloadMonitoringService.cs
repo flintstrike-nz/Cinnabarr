@@ -149,6 +149,13 @@ namespace NzbDrone.Core.Download.TrackedDownloads
 
             trackedDownloads.AddRange(missingFromEngine);
 
+            // After tracking, so each torrent's tracked download (and its ignored or failed state) is known. Like the
+            // folder import, it only runs with completed download handling on.
+            if (_configService.EnableCompletedDownloadHandling && _engineClientRegistry.IsEngineClient(downloadClient.Definition.Id))
+            {
+                ImportEngineFiles(downloadClient);
+            }
+
             return trackedDownloads;
         }
 
@@ -162,7 +169,10 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             {
                 _logger.Warn(ex, "Unable to prepare new torrents in the engine");
             }
+        }
 
+        private void ImportEngineFiles(IDownloadClient downloadClient)
+        {
             try
             {
                 _engineFileImportService.Process(downloadClient);

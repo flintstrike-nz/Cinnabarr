@@ -120,7 +120,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             Mocker.GetMock<ISeriesService>().Setup(s => s.GetSeries(It.IsAny<int>())).Returns(new Series { Id = 1 });
             Mocker.GetMock<IEpisodeService>().Setup(s => s.GetEpisodeBySeries(1)).Returns(new List<Episode> { new Episode { Id = 0 } });
             Mocker.GetMock<IEngineFileMapper>()
-                .Setup(s => s.Map(It.IsAny<Series>(), It.IsAny<List<Episode>>(), It.IsAny<QualityModel>(), It.IsAny<string>(), _files))
+                .Setup(s => s.Map(Hash.ToUpperInvariant(), It.IsAny<Series>(), It.IsAny<List<Episode>>(), It.IsAny<QualityModel>(), It.IsAny<string>(), _files))
                 .Returns(map);
 
             Mocker.GetMock<IEngineLinkService>().Setup(s => s.Save(Hash.ToUpperInvariant(), link)).Callback(() => order.Add("save"));
@@ -151,7 +151,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
 
             Subject.Prepare(GivenClient());
 
-            Mocker.GetMock<IEngineFileMapper>().Verify(s => s.Map(It.IsAny<Series>(), It.IsAny<List<Episode>>(), It.IsAny<QualityModel>(), It.IsAny<string>(), It.IsAny<List<QBittorrentTorrentFile>>()), Times.Never());
+            Mocker.GetMock<IEngineFileMapper>().Verify(s => s.Map(It.IsAny<string>(), It.IsAny<Series>(), It.IsAny<List<Episode>>(), It.IsAny<QualityModel>(), It.IsAny<string>(), It.IsAny<List<QBittorrentTorrentFile>>()), Times.Never());
             _proxy.Verify(p => p.RenameFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
             _proxy.Verify(p => p.StartTorrent(Hash, _settings), Times.Once());
         }

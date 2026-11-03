@@ -174,7 +174,7 @@ namespace NzbDrone.Core.Download.Engine
 
             var episodes = _episodeService.GetEpisodeBySeries(series.Id).Where(e => episodeIds.Contains(e.Id)).ToList();
 
-            return episodes.Any() ? _engineFileMapper.Map(series, episodes, grab.Quality, grab.SourceTitle, files) : null;
+            return episodes.Any() ? _engineFileMapper.Map(downloadId, series, episodes, grab.Quality, grab.SourceTitle, files) : null;
         }
 
         // Downloads straight into the library: the engine saves into the lowest library folder that holds every
