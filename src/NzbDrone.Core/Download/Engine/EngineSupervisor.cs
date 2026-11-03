@@ -72,6 +72,10 @@ namespace NzbDrone.Core.Download.Engine
         private Task _monitor;
         private IEngineProcess _process;
         private IEngineProcess _exitedProcess;
+
+        // Set while a pid from a previous session couldn't be verified (e.g. its start time
+        // couldn't be read). Launches wait until it's resolved; that process is never killed.
+        private volatile bool _staleCheckPending;
         private int _port;
         private string _apiKey;
 
@@ -444,6 +448,16 @@ namespace NzbDrone.Core.Download.Engine
 
         private bool PreviousEngineGone()
         {
+            if (_staleCheckPending)
+            {
+                KillStaleEngine();
+
+                if (_staleCheckPending)
+                {
+                    return false;
+                }
+            }
+
             if (ProcessExited())
             {
                 return true;
@@ -612,6 +626,9 @@ namespace NzbDrone.Core.Download.Engine
         private void KillStaleEngine()
         {
             IEngineProcess stale = null;
+            var verified = false;
+
+            _staleCheckPending = false;
 
             try
             {
@@ -641,9 +658,12 @@ namespace NzbDrone.Core.Download.Engine
                 {
                     _logger.Debug("Pid {0} from the engine pid file now belongs to another process; leaving it alone", pid);
                     stale.Dispose();
+                    stale = null;
                     DeletePidFile();
                     return;
                 }
+
+                verified = true;
 
                 _logger.Warn("Stopping embarr-engine left running by a previous session (pid {0})", pid);
                 stale.Kill();
@@ -651,6 +671,7 @@ namespace NzbDrone.Core.Download.Engine
                 if (stale.WaitForExit(Timings.KillTimeout))
                 {
                     stale.Dispose();
+                    stale = null;
                     DeletePidFile();
                     return;
                 }
@@ -659,19 +680,31 @@ namespace NzbDrone.Core.Download.Engine
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Unable to stop embarr-engine left running by a previous session");
+                _logger.Error(ex, "Unable to check or stop embarr-engine left running by a previous session");
             }
 
-            // Kill failed or the old engine survived it: keep the pid file and treat it as our
-            // current child, so supervision keeps trying to stop it and never launches a
-            // second engine on the locked profile.
-            if (stale != null)
+            if (stale == null)
             {
+                return;
+            }
+
+            if (verified)
+            {
+                // Confirmed to be our engine but it survived the kill: keep the pid file and
+                // track it as the current child, so supervision keeps trying to stop it and
+                // never launches a second engine on the locked profile.
                 lock (_lock)
                 {
                     _process = stale;
                 }
+
+                return;
             }
+
+            // Couldn't verify it's ours: never kill it, keep the pid file, and hold off
+            // launching until a later check resolves it.
+            stale.Dispose();
+            _staleCheckPending = true;
         }
 
         private void DeletePidFile()

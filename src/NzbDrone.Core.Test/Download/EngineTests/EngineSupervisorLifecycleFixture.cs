@@ -251,6 +251,34 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             _launcher.Started.Should().HaveCount(1);
         }
 
+        [Test]
+        public void should_not_kill_or_launch_while_a_stale_pid_cannot_be_verified()
+        {
+            var unknown = new FakeProcess(4343, "qbt_old", stuck: false) { ThrowOnStartTime = true };
+            _launcher.Stale = unknown;
+
+            var pidFile = Path.Combine(@"C:\Test\AppData".AsOsAgnostic(), "engine", "engine.pid");
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FileExists(pidFile)).Returns(true);
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.ReadAllText(pidFile)).Returns(EngineSupervisor.FormatPidFile(unknown.Id, DateTime.UtcNow.AddHours(-1)));
+
+            Subject.Handle(new ApplicationStartedEvent());
+
+            WaitFor(() => _backoffs.Count >= 2, "several retries");
+
+            _launcher.Started.Should().BeEmpty();
+            unknown.HasExited.Should().BeFalse();
+            unknown.KillCalls.Should().Be(0);
+            Mocker.GetMock<IDiskProvider>().Verify(v => v.DeleteFile(pidFile), Times.Never());
+
+            // Once it can be checked (and turns out to be some other process), launching proceeds
+            // and that process is still left alone.
+            unknown.ThrowOnStartTime = false;
+
+            WaitFor(() => Subject.Status == EngineStatus.Running, "the new engine to be running");
+            _launcher.Started.Should().HaveCount(1);
+            unknown.KillCalls.Should().Be(0);
+        }
+
         private class FakeLauncher : IEngineProcessLauncher
         {
             private readonly object _lock = new object();
@@ -312,9 +340,14 @@ namespace NzbDrone.Core.Test.Download.EngineTests
                 _stuck = stuck;
             }
 
+            private readonly DateTime _startTimeUtc = DateTime.UtcNow;
+
             public int Id { get; }
             public string ApiKey { get; }
-            public DateTime StartTimeUtc { get; } = DateTime.UtcNow;
+            public volatile bool ThrowOnStartTime;
+            public int KillCalls;
+
+            public DateTime StartTimeUtc => ThrowOnStartTime ? throw new InvalidOperationException("No access") : _startTimeUtc;
             public bool HasExited => _exited.IsSet;
 
             public bool WaitForExit(TimeSpan timeout)
@@ -324,6 +357,8 @@ namespace NzbDrone.Core.Test.Download.EngineTests
 
             public void Kill()
             {
+                Interlocked.Increment(ref KillCalls);
+
                 if (!_stuck)
                 {
                     _exited.Set();
