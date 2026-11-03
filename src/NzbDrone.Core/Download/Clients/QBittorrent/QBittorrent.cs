@@ -91,7 +91,9 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             var addHasSetShareLimits = setShareLimits && ProxyApiVersion >= new Version(2, 8, 1);
             var isRecentEpisode = remoteEpisode.IsRecentEpisode();
             var moveToTop = (isRecentEpisode && Settings.RecentTvPriority == (int)QBittorrentPriority.First) || (!isRecentEpisode && Settings.OlderTvPriority == (int)QBittorrentPriority.First);
-            var forceStart = (QBittorrentState)Settings.InitialState == QBittorrentState.ForceStart;
+
+            // A held torrent is force-started by preparation, once its file whitelist is applied (roadmap §4.8).
+            var forceStart = !HoldNewTorrents && (QBittorrentState)Settings.InitialState == QBittorrentState.ForceStart;
 
             try
             {
@@ -167,7 +169,9 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             var addHasSetShareLimits = setShareLimits && ProxyApiVersion >= new Version(2, 8, 1);
             var isRecentEpisode = remoteEpisode.IsRecentEpisode();
             var moveToTop = (isRecentEpisode && Settings.RecentTvPriority == (int)QBittorrentPriority.First) || (!isRecentEpisode && Settings.OlderTvPriority == (int)QBittorrentPriority.First);
-            var forceStart = (QBittorrentState)Settings.InitialState == QBittorrentState.ForceStart;
+
+            // A held torrent is force-started by preparation, once its file whitelist is applied (roadmap §4.8).
+            var forceStart = !HoldNewTorrents && (QBittorrentState)Settings.InitialState == QBittorrentState.ForceStart;
 
             try
             {

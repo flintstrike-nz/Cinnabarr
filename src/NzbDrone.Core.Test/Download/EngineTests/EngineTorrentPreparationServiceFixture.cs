@@ -68,6 +68,24 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_force_start_after_preparation_when_client_is_set_to_force_start()
+        {
+            _settings.InitialState = (int)QBittorrentState.ForceStart;
+
+            Subject.Prepare(GivenClient());
+
+            _proxy.Verify(p => p.SetForceStart(Hash, true, _settings), Times.Once());
+        }
+
+        [Test]
+        public void should_not_force_start_by_default()
+        {
+            Subject.Prepare(GivenClient());
+
+            _proxy.Verify(p => p.SetForceStart(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+        }
+
+        [Test]
         public void should_not_set_priorities_when_every_file_is_wanted()
         {
             _files.RemoveRange(2, 2);

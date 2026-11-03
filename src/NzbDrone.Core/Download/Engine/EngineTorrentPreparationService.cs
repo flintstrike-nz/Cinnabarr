@@ -124,6 +124,12 @@ namespace NzbDrone.Core.Download.Engine
 
             // Start first, then tag: if tagging fails the torrent is already running and isn't held again.
             proxy.StartTorrent(hash, settings);
+
+            if ((QBittorrentState)settings.InitialState == QBittorrentState.ForceStart)
+            {
+                proxy.SetForceStart(hash, true, settings);
+            }
+
             proxy.AddTags(hash, new[] { EngineTorrentTags.Prepared }, settings);
 
             _logger.Info("Prepared '{0}': {1} of {2} file(s) will be downloaded", torrent.Name, files.Count - excluded.Count, files.Count);

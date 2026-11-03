@@ -698,6 +698,21 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.QBittorrentTests
         }
 
         [Test]
+        public async Task Download_should_not_force_start_held_torrents()
+        {
+            Mocker.GetMock<IEngineClientRegistry>()
+                  .Setup(s => s.IsEngineClient(Subject.Definition.Id))
+                  .Returns(true);
+
+            (Subject.Definition.Settings as QBittorrentSettings).InitialState = (int)QBittorrentState.ForceStart;
+
+            await Subject.Download(CreateRemoteEpisode(), CreateIndexer());
+
+            Mocker.GetMock<IQBittorrentProxy>()
+                  .Verify(s => s.SetForceStart(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+        }
+
+        [Test]
         public async Task Download_should_not_hold_torrents_for_other_clients()
         {
             GivenSuccessfulDownload();
