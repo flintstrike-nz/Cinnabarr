@@ -165,7 +165,7 @@ flowchart LR
 2. **Embarr owns intent; the engine owns facts.** Intent: linked item, version slot, seeding rule. Facts: progress, state, files.
 3. **Reconcile at startup and on every poll.**
    - A torrent in the engine with no Embarr record is adopted as **Unlinked** and shown in Downloads.
-   - An Embarr record whose torrent is gone is shown as **Missing from engine**, with Re-add and Re-check actions.
+   - An Embarr record whose torrent is gone is shown as **Missing from engine**, with **Re-add** (sends the stored release back to the engine, which re-checks any data already at the target) and **Dismiss** (records the grab as ignored; nothing is deleted).
 4. **Reconcile never deletes anything.** It only flags.
 5. **Link intent is also stored next to the engine's state.** At grab time Embarr writes a small sidecar file per torrent in the engine profile (`<AppData>/engine/embarr/<info-hash>.json`). It holds the media type, the item's **external ids** (TVDB/TMDb, not database ids), season and episode numbers, slot label and seeding rule. If Embarr's database is restored from a backup taken before a grab, reconcile rebuilds the record from the sidecar instead of leaving the torrent Unlinked. Torrents with no sidecar (added by hand, or from before the sidecar existed) are adopted as Unlinked. This recovery guarantee covers only what the sidecar holds. The slot label and seeding rule fields are added with §4.9 and §4.10; until then the sidecar holds the media type, TVDB id, season and episode numbers, release title and indexer.
 

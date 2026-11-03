@@ -447,6 +447,31 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
         }
 
         [Test]
+        public void should_keep_missing_from_engine_warning_when_episodes_are_refreshed()
+        {
+            var client = GivenEngineClient();
+
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(EngineHash))
+                .Returns([new EpisodeHistory { DownloadId = EngineHash, SourceTitle = "TV.Series.S01E01.720p.HDTV-Group", SeriesId = 5, EpisodeId = 4, EventType = EpisodeHistoryEventType.Grabbed }]);
+
+            GivenLinkedLibrary();
+
+            var grab = new DownloadHistory { DownloadId = EngineHash, SourceTitle = "TV.Series.S01E01.720p.HDTV-Group", EventType = DownloadHistoryEventType.DownloadGrabbed };
+            var trackedDownload = Subject.TrackMissingFromEngine(client, grab);
+
+            // The refresh removes episode 4, which would otherwise show the incomplete-link warning.
+            GivenLinkedLibrary(7);
+            Subject.Handle(new EpisodeInfoRefreshedEvent(new Series { Id = 5 }, new List<Episode>(), new List<Episode>(), new List<Episode> { new Episode { Id = 4 } }));
+
+            trackedDownload.HasIncompleteLink.Should().BeTrue();
+            trackedDownload.StatusMessages.Should().ContainSingle()
+                .Which.Messages.Should().Equal(TrackedDownload.MissingFromEngineMessage);
+
+            ExceptionVerification.IgnoreWarns();
+        }
+
+        [Test]
         public void should_not_try_to_restore_or_unlink_downloads_from_other_clients()
         {
             var client = GivenEngineClient(false);
