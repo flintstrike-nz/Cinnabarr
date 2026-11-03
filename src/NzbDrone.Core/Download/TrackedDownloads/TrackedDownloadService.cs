@@ -5,7 +5,9 @@ using NLog;
 using NzbDrone.Common.Cache;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.CustomFormats;
+using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Download.Aggregation;
+using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Download.History;
 using NzbDrone.Core.History;
 using NzbDrone.Core.Messaging.Events;
@@ -38,9 +40,12 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         private readonly IParsingService _parsingService;
         private readonly IHistoryService _historyService;
         private readonly ISeriesService _seriesService;
+        private readonly IEpisodeService _episodeService;
         private readonly IDownloadHistoryService _downloadHistoryService;
         private readonly IRemoteEpisodeAggregationService _aggregationService;
         private readonly ICustomFormatCalculationService _formatCalculator;
+        private readonly IEngineClientRegistry _engineClientRegistry;
+        private readonly IEngineLinkService _engineLinkService;
         private readonly IEventAggregator _eventAggregator;
         private readonly Logger _logger;
 
@@ -49,9 +54,12 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         public TrackedDownloadService(IParsingService parsingService,
                                       IHistoryService historyService,
                                       ISeriesService seriesService,
+                                      IEpisodeService episodeService,
                                       IDownloadHistoryService downloadHistoryService,
                                       IRemoteEpisodeAggregationService aggregationService,
                                       ICustomFormatCalculationService formatCalculator,
+                                      IEngineClientRegistry engineClientRegistry,
+                                      IEngineLinkService engineLinkService,
                                       IEventAggregator eventAggregator,
                                       ICacheManager cacheManager,
                                       Logger logger)
@@ -59,9 +67,12 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             _parsingService = parsingService;
             _historyService = historyService;
             _seriesService = seriesService;
+            _episodeService = episodeService;
             _downloadHistoryService = downloadHistoryService;
             _aggregationService = aggregationService;
             _formatCalculator = formatCalculator;
+            _engineClientRegistry = engineClientRegistry;
+            _engineLinkService = engineLinkService;
             _eventAggregator = eventAggregator;
             _logger = logger;
 
@@ -99,7 +110,8 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         {
             var existingItem = Find(downloadItem.DownloadId);
 
-            if (existingItem != null && existingItem.State != TrackedDownloadState.Downloading)
+            // Unlinked and incompletely linked torrents are re-evaluated on every poll, so a link made by Manual Import is picked up.
+            if (existingItem != null && existingItem.State != TrackedDownloadState.Downloading && !existingItem.IsUnlinked && !existingItem.HasIncompleteLink)
             {
                 LogItemChange(existingItem, existingItem.DownloadItem, downloadItem);
 
@@ -118,8 +130,23 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                 HasNotifiedManualInteractionRequired = existingItem?.HasNotifiedManualInteractionRequired ?? false
             };
 
+            var isEngine = _engineClientRegistry.IsEngineClient(downloadClient.Id);
+
             try
             {
+                var historyItems = FindHistory(downloadItem.DownloadId);
+
+                // Embarr's database may have lost the grab (for example after restoring an older backup):
+                // rebuild it from the link sidecar the engine keeps (roadmap §4.4 rule 5).
+                if (isEngine && historyItems.Empty() && _engineLinkService.TryRestore(downloadClient, downloadItem.DownloadId))
+                {
+                    historyItems = FindHistory(downloadItem.DownloadId);
+                }
+
+                // The info-hash is the only key for the built-in engine (roadmap §4.4 rule 1): a torrent
+                // Embarr has no record of is listed as Unlinked and is never matched to a series by name.
+                var isUnlinked = isEngine && historyItems.Empty();
+
                 var downloadHistory = _downloadHistoryService.GetLatestDownloadHistoryItem(downloadItem.DownloadId);
 
                 if (downloadHistory != null)
@@ -128,7 +155,8 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                     trackedDownload.State = state;
                 }
 
-                var parsedEpisodeInfo = Parser.Parser.ParseTitle(trackedDownload.DownloadItem.Title);
+                // Built-in engine downloads take their series and episodes from the info-hash history below.
+                var parsedEpisodeInfo = isEngine ? null : Parser.Parser.ParseTitle(trackedDownload.DownloadItem.Title);
 
                 if (parsedEpisodeInfo != null)
                 {
@@ -136,10 +164,6 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                         ? _parsingService.Map(parsedEpisodeInfo, _seriesService.GetSeries(downloadHistory.SeriesId))
                         : _parsingService.Map(parsedEpisodeInfo, 0, 0, null);
                 }
-
-                var historyItems = _historyService.FindByDownloadId(downloadItem.DownloadId)
-                    .OrderByDescending(h => h.Date)
-                    .ToList();
 
                 if (historyItems.Any())
                 {
@@ -149,7 +173,11 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                     trackedDownload.Indexer = grabbedEvent?.Data?.GetValueOrDefault("indexer");
                     trackedDownload.Added = grabbedEvent?.Date;
 
-                    if (parsedEpisodeInfo == null ||
+                    if (isEngine)
+                    {
+                        MapFromLinkHistory(trackedDownload, historyItems);
+                    }
+                    else if (parsedEpisodeInfo == null ||
                         trackedDownload.RemoteEpisode?.Series == null ||
                         trackedDownload.RemoteEpisode.Episodes.Empty())
                     {
@@ -183,6 +211,11 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                             trackedDownload.RemoteEpisode.Release.IndexerId = downloadHistory.IndexerId;
                         }
                     }
+                }
+
+                if (isUnlinked)
+                {
+                    MarkUnlinked(trackedDownload);
                 }
 
                 if (trackedDownload.RemoteEpisode != null)
@@ -244,6 +277,13 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             }
         }
 
+        private List<EpisodeHistory> FindHistory(string downloadId)
+        {
+            return _historyService.FindByDownloadId(downloadId)
+                .OrderByDescending(h => h.Date)
+                .ToList();
+        }
+
         private void LogItemChange(TrackedDownload trackedDownload, DownloadClientItem existingItem, DownloadClientItem downloadItem)
         {
             if (existingItem == null ||
@@ -262,8 +302,109 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             }
         }
 
+        // For the built-in engine the info-hash history decides the series and episodes (roadmap §4.4
+        // rule 1); titles are only parsed for release details.
+        private void MapFromLinkHistory(TrackedDownload trackedDownload, List<EpisodeHistory> historyItems)
+        {
+            var firstHistoryItem = historyItems.First();
+            var title = trackedDownload.DownloadItem.Title;
+
+            // An unparseable (for example obfuscated) name still links: the release details then come from
+            // the history row instead of the title.
+            var parsedEpisodeInfo = Parser.Parser.ParseTitle(title) ??
+                                    Parser.Parser.ParseTitle(firstHistoryItem.SourceTitle) ??
+                                    _parsingService.ParseSpecialEpisodeTitle(null, firstHistoryItem.SourceTitle, 0, 0, null) ??
+                                    new ParsedEpisodeInfo
+                                    {
+                                        ReleaseTitle = firstHistoryItem.SourceTitle ?? title,
+                                        Quality = firstHistoryItem.Quality,
+                                        Languages = firstHistoryItem.Languages ?? new()
+                                    };
+
+            // Grabs record their episodes; a torrent linked by Manual Import only has import history.
+            var grabbedEpisodeIds = historyItems.Where(h => h.EventType == EpisodeHistoryEventType.Grabbed).Select(h => h.EpisodeId);
+            var episodeIds = (grabbedEpisodeIds.Any() ? grabbedEpisodeIds : historyItems.Select(h => h.EpisodeId).Where(id => id > 0))
+                .ToHashSet();
+
+            Series series;
+
+            try
+            {
+                series = _seriesService.GetSeries(firstHistoryItem.SeriesId);
+            }
+            catch (ModelNotFoundException)
+            {
+                series = null;
+            }
+
+            // Episodes can disappear in a metadata refresh while their history stays. Never fill the gap by
+            // name and never drop it silently: keep what still exists and hold the torrent for Manual Import.
+            var episodes = series == null
+                ? new List<Episode>()
+                : _episodeService.GetEpisodeBySeries(series.Id).Where(e => episodeIds.Contains(e.Id)).ToList();
+
+            trackedDownload.RemoteEpisode = series == null
+                ? null
+                : new RemoteEpisode { ParsedEpisodeInfo = parsedEpisodeInfo, Series = series, Episodes = episodes };
+
+            // The hold only guards automatic import. Once the torrent is imported (for example by the Manual
+            // Import the warning asks for), its grab rows may still name the removed episode: don't keep flagging it.
+            if (trackedDownload.State != TrackedDownloadState.Imported &&
+                (series == null || episodes.Count != episodeIds.Count))
+            {
+                trackedDownload.HasIncompleteLink = true;
+                trackedDownload.Warn(TrackedDownload.IncompleteLinkMessage);
+                BlockPendingImport(trackedDownload);
+            }
+        }
+
+        // A pending import goes straight to Import, skipping Check: send it back through Check's link guards.
+        private static void BlockPendingImport(TrackedDownload trackedDownload)
+        {
+            if (trackedDownload.State == TrackedDownloadState.ImportPending)
+            {
+                trackedDownload.State = TrackedDownloadState.ImportBlocked;
+            }
+        }
+
+        private static void MarkUnlinked(TrackedDownload trackedDownload)
+        {
+            trackedDownload.IsUnlinked = true;
+            trackedDownload.HasIncompleteLink = false;
+            trackedDownload.RemoteEpisode = null;
+            trackedDownload.Warn(TrackedDownload.UnlinkedMessage);
+            BlockPendingImport(trackedDownload);
+        }
+
         private void UpdateCachedItem(TrackedDownload trackedDownload)
         {
+            if (_engineClientRegistry.IsEngineClient(trackedDownload.DownloadClient))
+            {
+                if (trackedDownload.IsUnlinked)
+                {
+                    return;
+                }
+
+                var historyItems = FindHistory(trackedDownload.DownloadItem.DownloadId);
+
+                // Its record is gone (for example the series was deleted): show it as Unlinked, which also makes
+                // the next poll re-evaluate it and retry the sidecar.
+                if (historyItems.Empty())
+                {
+                    MarkUnlinked(trackedDownload);
+                    return;
+                }
+
+                MapFromLinkHistory(trackedDownload, historyItems);
+
+                if (trackedDownload.RemoteEpisode != null)
+                {
+                    _aggregationService.Augment(trackedDownload.RemoteEpisode);
+                }
+
+                return;
+            }
+
             var parsedEpisodeInfo = Parser.Parser.ParseTitle(trackedDownload.DownloadItem.Title);
 
             trackedDownload.RemoteEpisode = parsedEpisodeInfo == null ? null : _parsingService.Map(parsedEpisodeInfo, 0, 0, null);
@@ -384,7 +525,19 @@ namespace NzbDrone.Core.Download.TrackedDownloads
 
             if (cachedItems.Any())
             {
-                cachedItems.ForEach(UpdateCachedItem);
+                // The series' history is deleted with it, so a built-in engine torrent loses its link whichever
+                // handler runs first.
+                foreach (var trackedDownload in cachedItems)
+                {
+                    if (_engineClientRegistry.IsEngineClient(trackedDownload.DownloadClient))
+                    {
+                        MarkUnlinked(trackedDownload);
+                    }
+                    else
+                    {
+                        UpdateCachedItem(trackedDownload);
+                    }
+                }
 
                 _eventAggregator.PublishEvent(new TrackedDownloadRefreshedEvent(GetTrackedDownloads()));
             }

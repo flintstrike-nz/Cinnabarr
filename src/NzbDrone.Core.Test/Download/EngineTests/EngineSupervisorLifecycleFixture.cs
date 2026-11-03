@@ -39,6 +39,8 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             Mocker.GetMock<IAppFolderInfo>().SetupGet(s => s.AppDataFolder).Returns(@"C:\Test\AppData".AsOsAgnostic());
             Mocker.GetMock<IAppFolderInfo>().SetupGet(s => s.StartUpFolder).Returns(@"C:\Test\App".AsOsAgnostic());
 
+            Mocker.SetConstant<IEngineClientRegistry>(Mocker.Resolve<EngineClientRegistry>());
+
             Mocker.GetMock<IDiskProvider>()
                 .Setup(s => s.FileExists(It.Is<string>(p => Path.GetFileNameWithoutExtension(p) == "embarr-engine")))
                 .Returns(true);

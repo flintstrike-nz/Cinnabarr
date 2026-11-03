@@ -72,7 +72,7 @@ namespace NzbDrone.Core.Test.QueueTests
             _trackedDownloads[0].State = TrackedDownloadState.Imported;
             _trackedDownloads[0].DownloadClient = 5;
 
-            Mocker.GetMock<IEngineSupervisor>()
+            Mocker.GetMock<IEngineClientRegistry>()
                 .Setup(s => s.IsEngineClient(5))
                 .Returns(true);
 
@@ -90,7 +90,7 @@ namespace NzbDrone.Core.Test.QueueTests
             _trackedDownloads[0].State = TrackedDownloadState.Imported;
             _trackedDownloads[0].DownloadClient = 6;
 
-            Mocker.GetMock<IEngineSupervisor>()
+            Mocker.GetMock<IEngineClientRegistry>()
                 .Setup(s => s.IsEngineClient(It.IsAny<int>()))
                 .Returns(false);
 

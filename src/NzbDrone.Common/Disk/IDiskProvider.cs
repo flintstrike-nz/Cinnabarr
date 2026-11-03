@@ -33,6 +33,10 @@ namespace NzbDrone.Common.Disk
         void CloneFile(string source, string destination, bool overwrite = false);
         void CopyFile(string source, string destination, bool overwrite = false);
         void MoveFile(string source, string destination, bool overwrite = false);
+
+        // Renames source over destination in one step, so destination always holds either the old
+        // or the new file. Both must be on the same volume.
+        void ReplaceFile(string source, string destination);
         void MoveFolder(string source, string destination);
         bool TryRenameFile(string source, string destination);
         bool TryCreateHardLink(string source, string destination);

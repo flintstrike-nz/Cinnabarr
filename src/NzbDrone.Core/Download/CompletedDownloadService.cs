@@ -6,6 +6,7 @@ using NLog;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Instrumentation.Extensions;
+using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.History;
 using NzbDrone.Core.MediaFiles;
@@ -38,6 +39,7 @@ namespace NzbDrone.Core.Download
         private readonly IRejectedImportService _rejectedImportService;
         private readonly IRejectedFileExtensionService _rejectedFileExtensionService;
         private readonly IProvideDownloadClient _downloadClientProvider;
+        private readonly IEngineClientRegistry _engineClientRegistry;
         private readonly Logger _logger;
 
         public CompletedDownloadService(IEventAggregator eventAggregator,
@@ -52,6 +54,7 @@ namespace NzbDrone.Core.Download
                                         IRejectedImportService rejectedImportService,
                                         IRejectedFileExtensionService rejectedFileExtensionService,
                                         IProvideDownloadClient downloadClientProvider,
+                                        IEngineClientRegistry engineClientRegistry,
                                         Logger logger)
         {
             _eventAggregator = eventAggregator;
@@ -66,6 +69,7 @@ namespace NzbDrone.Core.Download
             _rejectedImportService = rejectedImportService;
             _rejectedFileExtensionService = rejectedFileExtensionService;
             _downloadClientProvider = downloadClientProvider;
+            _engineClientRegistry = engineClientRegistry;
             _logger = logger;
         }
 
@@ -87,6 +91,18 @@ namespace NzbDrone.Core.Download
             var grabbedHistories = _historyService.FindByDownloadId(trackedDownload.DownloadItem.DownloadId).Where(h => h.EventType == EpisodeHistoryEventType.Grabbed).ToList();
             var historyItem = grabbedHistories.MaxBy(h => h.Date);
 
+            if (trackedDownload.IsUnlinked)
+            {
+                trackedDownload.Warn(TrackedDownload.UnlinkedMessage);
+                return;
+            }
+
+            if (trackedDownload.HasIncompleteLink)
+            {
+                trackedDownload.Warn(TrackedDownload.IncompleteLinkMessage);
+                return;
+            }
+
             if (historyItem == null && trackedDownload.DownloadItem.Category.IsNullOrWhiteSpace())
             {
                 trackedDownload.Warn("Download wasn't grabbed by Sonarr and not in a category, Skipping.");
@@ -98,7 +114,10 @@ namespace NzbDrone.Core.Download
                 return;
             }
 
-            var series = _parsingService.GetSeries(trackedDownload.DownloadItem.Title);
+            // The built-in engine links by info-hash (roadmap §4.4 rule 1): use the grab's series, not a title match.
+            var series = historyItem != null && _engineClientRegistry.IsEngineClient(trackedDownload.DownloadClient)
+                ? _seriesService.GetSeries(historyItem.SeriesId)
+                : _parsingService.GetSeries(trackedDownload.DownloadItem.Title);
 
             if (series == null)
             {

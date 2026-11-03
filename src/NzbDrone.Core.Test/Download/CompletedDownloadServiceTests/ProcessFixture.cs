@@ -5,6 +5,7 @@ using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.Disk;
 using NzbDrone.Core.Download;
+using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.History;
 using NzbDrone.Core.MediaFiles;
@@ -37,6 +38,8 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
                     .With(c => c.State = TrackedDownloadState.Downloading)
                     .With(c => c.DownloadItem = completed)
                     .With(c => c.RemoteEpisode = remoteEpisode)
+                    .With(c => c.IsUnlinked = false)
+                    .With(c => c.HasIncompleteLink = false)
                     .Build();
 
             Mocker.GetMock<IDownloadClient>()
@@ -126,6 +129,55 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             Subject.Check(_trackedDownload);
 
             AssertNotReadyToImport();
+        }
+
+        [Test]
+        public void should_not_process_unlinked_engine_download_even_if_category_specified()
+        {
+            _trackedDownload.IsUnlinked = true;
+            _trackedDownload.DownloadItem.Category = "tv";
+            GivenNoGrabbedHistory();
+            GivenSeriesMatch();
+
+            Subject.Check(_trackedDownload);
+
+            AssertNotReadyToImport();
+            _trackedDownload.StatusMessages.Should().ContainSingle()
+                .Which.Messages.Should().Equal(TrackedDownload.UnlinkedMessage);
+        }
+
+        [Test]
+        public void should_not_process_engine_download_with_incomplete_link()
+        {
+            _trackedDownload.HasIncompleteLink = true;
+            GivenSeriesMatch();
+
+            Subject.Check(_trackedDownload);
+
+            AssertNotReadyToImport();
+            _trackedDownload.StatusMessages.Should().ContainSingle()
+                .Which.Messages.Should().Equal(TrackedDownload.IncompleteLinkMessage);
+        }
+
+        [Test]
+        public void should_use_grabbed_series_for_engine_download_even_if_title_matches_another_series()
+        {
+            var grabbedSeries = new Series { Id = 7 };
+
+            Mocker.GetMock<IEngineClientRegistry>()
+                .Setup(s => s.IsEngineClient(_trackedDownload.DownloadClient))
+                .Returns(true);
+
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(_trackedDownload.DownloadItem.DownloadId))
+                .Returns(new List<EpisodeHistory> { new EpisodeHistory { SeriesId = 7, EventType = EpisodeHistoryEventType.Grabbed } });
+
+            Mocker.GetMock<ISeriesService>().Setup(s => s.GetSeries(7)).Returns(grabbedSeries);
+
+            Subject.Check(_trackedDownload);
+
+            AssertReadyToImport();
+            Mocker.GetMock<IParsingService>().Verify(s => s.GetSeries(It.IsAny<string>()), Times.Never());
         }
 
         [Test]

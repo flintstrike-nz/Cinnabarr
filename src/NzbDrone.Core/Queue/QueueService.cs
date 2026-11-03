@@ -22,12 +22,12 @@ namespace NzbDrone.Core.Queue
     public class QueueService : IQueueService, IHandle<TrackedDownloadRefreshedEvent>
     {
         private readonly IEventAggregator _eventAggregator;
-        private readonly IEngineSupervisor _engineSupervisor;
+        private readonly IEngineClientRegistry _engineClientRegistry;
         private static List<Queue> _queue = new();
 
-        public QueueService(IEventAggregator eventAggregator, IEngineSupervisor engineSupervisor)
+        public QueueService(IEventAggregator eventAggregator, IEngineClientRegistry engineClientRegistry)
         {
-            _engineSupervisor = engineSupervisor;
+            _engineClientRegistry = engineClientRegistry;
             _eventAggregator = eventAggregator;
         }
 
@@ -111,7 +111,7 @@ namespace NzbDrone.Core.Queue
         // failed or ignored (they may still be seeding). Other clients keep the old rule.
         private bool IsVisible(TrackedDownload trackedDownload)
         {
-            return trackedDownload.IsTrackable || _engineSupervisor.IsEngineClient(trackedDownload.DownloadClient);
+            return trackedDownload.IsTrackable || _engineClientRegistry.IsEngineClient(trackedDownload.DownloadClient);
         }
     }
 }

@@ -4,6 +4,7 @@ using FluentAssertions;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Core.Download;
+using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Download.History;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.History;
@@ -84,6 +85,312 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
             trackedDownload.RemoteEpisode.Episodes.First().Id.Should().Be(4);
             trackedDownload.RemoteEpisode.ParsedEpisodeInfo.SeasonNumbers.Should().Equal(1);
             trackedDownload.RemoteEpisode.MappedSeasonNumber.Should().Be(1);
+        }
+
+        private const string EngineHash = "0123456789abcdef0123456789abcdef01234567";
+
+        private DownloadClientDefinition GivenEngineClient(bool isEngine = true)
+        {
+            Mocker.GetMock<IEngineClientRegistry>()
+                .Setup(s => s.IsEngineClient(1))
+                .Returns(isEngine);
+
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(EngineHash))
+                .Returns([]);
+
+            return new DownloadClientDefinition { Id = 1, Name = "Embarr Engine", Protocol = DownloadProtocol.Torrent };
+        }
+
+        private DownloadClientItem GivenEngineItem(DownloadClientDefinition client)
+        {
+            return new DownloadClientItem
+            {
+                Title = "TV.Series.S01E01.720p.HDTV-Group",
+                DownloadId = EngineHash,
+                DownloadClientInfo = new DownloadClientItemClientInfo { Protocol = client.Protocol, Id = client.Id, Name = client.Name }
+            };
+        }
+
+        private void GivenLinkedLibrary(params int[] episodeIds)
+        {
+            Mocker.GetMock<ISeriesService>()
+                .Setup(s => s.GetSeries(5))
+                .Returns(new Series { Id = 5 });
+
+            Mocker.GetMock<IEpisodeService>()
+                .Setup(s => s.GetEpisodeBySeries(5))
+                .Returns((episodeIds.Length == 0 ? new[] { 4 } : episodeIds).Select(id => new Episode { Id = id }).ToList());
+        }
+
+        [Test]
+        public void should_mark_engine_download_without_any_record_as_unlinked_and_not_match_it_by_name()
+        {
+            var client = GivenEngineClient();
+
+            var trackedDownload = Subject.TrackDownload(client, GivenEngineItem(client));
+
+            trackedDownload.IsUnlinked.Should().BeTrue();
+            trackedDownload.RemoteEpisode.Should().BeNull();
+            trackedDownload.Status.Should().Be(TrackedDownloadStatus.Warning);
+            trackedDownload.StatusMessages.Should().ContainSingle()
+                .Which.Messages.Should().Equal(TrackedDownload.UnlinkedMessage);
+
+            Mocker.GetMock<IParsingService>()
+                .Verify(s => s.Map(It.IsAny<ParsedEpisodeInfo>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), null), Times.Never());
+        }
+
+        [Test]
+        public void should_link_engine_download_restored_from_its_sidecar()
+        {
+            var client = GivenEngineClient();
+            var item = GivenEngineItem(client);
+
+            var history = new EpisodeHistory
+            {
+                DownloadId = EngineHash,
+                SourceTitle = item.Title,
+                SeriesId = 5,
+                EpisodeId = 4,
+                EventType = EpisodeHistoryEventType.Grabbed
+            };
+
+            Mocker.GetMock<IHistoryService>()
+                .SetupSequence(s => s.FindByDownloadId(EngineHash))
+                .Returns([])
+                .Returns([history]);
+
+            Mocker.GetMock<IEngineLinkService>()
+                .Setup(s => s.TryRestore(client, EngineHash))
+                .Returns(true);
+
+            GivenLinkedLibrary();
+
+            var trackedDownload = Subject.TrackDownload(client, item);
+
+            trackedDownload.IsUnlinked.Should().BeFalse();
+            trackedDownload.RemoteEpisode.Should().NotBeNull();
+            trackedDownload.RemoteEpisode.Series.Id.Should().Be(5);
+            trackedDownload.Added.Should().Be(history.Date);
+        }
+
+        [Test]
+        public void should_take_engine_download_series_from_history_not_from_title()
+        {
+            var client = GivenEngineClient();
+            var item = GivenEngineItem(client);
+
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(EngineHash))
+                .Returns([new EpisodeHistory { DownloadId = EngineHash, SourceTitle = item.Title, SeriesId = 5, EpisodeId = 4, EventType = EpisodeHistoryEventType.Grabbed }]);
+
+            Mocker.GetMock<IParsingService>()
+                .Setup(s => s.Map(It.IsAny<ParsedEpisodeInfo>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), null))
+                .Returns(new RemoteEpisode { Series = new Series { Id = 9 }, Episodes = [new Episode { Id = 90 }] });
+
+            GivenLinkedLibrary();
+
+            var trackedDownload = Subject.TrackDownload(client, item);
+
+            trackedDownload.RemoteEpisode.Series.Id.Should().Be(5);
+            trackedDownload.RemoteEpisode.Episodes.Single().Id.Should().Be(4);
+
+            Mocker.GetMock<IParsingService>()
+                .Verify(s => s.Map(It.IsAny<ParsedEpisodeInfo>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), null), Times.Never());
+        }
+
+        [Test]
+        public void should_link_unlinked_engine_download_after_manual_import()
+        {
+            var client = GivenEngineClient();
+            var item = GivenEngineItem(client);
+
+            var trackedDownload = Subject.TrackDownload(client, item);
+            trackedDownload.IsUnlinked.Should().BeTrue();
+
+            // Manual Import records history for the download id and marks the cached item imported.
+            trackedDownload.State = TrackedDownloadState.Imported;
+
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(EngineHash))
+                .Returns([new EpisodeHistory { DownloadId = EngineHash, SourceTitle = item.Title, SeriesId = 5, EpisodeId = 4, EventType = EpisodeHistoryEventType.DownloadFolderImported }]);
+
+            Mocker.GetMock<IDownloadHistoryService>()
+                .Setup(s => s.GetLatestDownloadHistoryItem(EngineHash))
+                .Returns(new DownloadHistory { DownloadId = EngineHash, SeriesId = 5, EventType = DownloadHistoryEventType.DownloadImported });
+
+            GivenLinkedLibrary();
+
+            var relinked = Subject.TrackDownload(client, item);
+
+            relinked.IsUnlinked.Should().BeFalse();
+            relinked.State.Should().Be(TrackedDownloadState.Imported);
+            relinked.Status.Should().Be(TrackedDownloadStatus.Ok);
+            relinked.RemoteEpisode.Series.Id.Should().Be(5);
+        }
+
+        [Test]
+        public void should_keep_history_link_for_engine_download_with_unparseable_names()
+        {
+            var client = GivenEngineClient();
+            var item = GivenEngineItem(client);
+            item.Title = "a8f3e2c1d9b7";
+
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(EngineHash))
+                .Returns([new EpisodeHistory { DownloadId = EngineHash, SourceTitle = "x7k2q9", SeriesId = 5, EpisodeId = 4, EventType = EpisodeHistoryEventType.DownloadFolderImported }]);
+
+            GivenLinkedLibrary();
+
+            var trackedDownload = Subject.TrackDownload(client, item);
+
+            trackedDownload.IsUnlinked.Should().BeFalse();
+            trackedDownload.RemoteEpisode.Should().NotBeNull();
+            trackedDownload.RemoteEpisode.Series.Id.Should().Be(5);
+        }
+
+        [Test]
+        public void should_hold_engine_download_whose_linked_episodes_no_longer_exist()
+        {
+            var client = GivenEngineClient();
+            var item = GivenEngineItem(client);
+
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(EngineHash))
+                .Returns([
+                    new EpisodeHistory { DownloadId = EngineHash, SourceTitle = item.Title, SeriesId = 5, EpisodeId = 4, EventType = EpisodeHistoryEventType.Grabbed },
+                    new EpisodeHistory { DownloadId = EngineHash, SourceTitle = item.Title, SeriesId = 5, EpisodeId = 6, EventType = EpisodeHistoryEventType.Grabbed }
+                ]);
+
+            GivenLinkedLibrary(4);
+
+            var trackedDownload = Subject.TrackDownload(client, item);
+
+            trackedDownload.IsUnlinked.Should().BeFalse();
+            trackedDownload.HasIncompleteLink.Should().BeTrue();
+            trackedDownload.RemoteEpisode.Series.Id.Should().Be(5);
+            trackedDownload.RemoteEpisode.Episodes.Select(e => e.Id).Should().Equal(4);
+            trackedDownload.StatusMessages.Should().ContainSingle()
+                .Which.Messages.Should().Equal(TrackedDownload.IncompleteLinkMessage);
+
+            Mocker.GetMock<IParsingService>()
+                .Verify(s => s.Map(It.IsAny<ParsedEpisodeInfo>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), null), Times.Never());
+        }
+
+        [Test]
+        public void should_block_pending_import_when_a_linked_episode_is_removed()
+        {
+            var client = GivenEngineClient();
+            var item = GivenEngineItem(client);
+
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(EngineHash))
+                .Returns([new EpisodeHistory { DownloadId = EngineHash, SourceTitle = item.Title, SeriesId = 5, EpisodeId = 4, EventType = EpisodeHistoryEventType.Grabbed }]);
+
+            GivenLinkedLibrary();
+
+            var trackedDownload = Subject.TrackDownload(client, item);
+            trackedDownload.State = TrackedDownloadState.ImportPending;
+
+            // The metadata refresh removes episode 4.
+            GivenLinkedLibrary(7);
+            Subject.Handle(new EpisodeInfoRefreshedEvent(new Series { Id = 5 }, new List<Episode>(), new List<Episode>(), new List<Episode> { new Episode { Id = 4 } }));
+
+            trackedDownload.HasIncompleteLink.Should().BeTrue();
+            trackedDownload.State.Should().Be(TrackedDownloadState.ImportBlocked);
+        }
+
+        [Test]
+        public void should_not_flag_incomplete_link_once_the_download_is_imported()
+        {
+            var client = GivenEngineClient();
+            var item = GivenEngineItem(client);
+
+            // Grabbed for episodes 4 and 6; episode 6 was later removed and the rest was imported by hand.
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(EngineHash))
+                .Returns([
+                    new EpisodeHistory { DownloadId = EngineHash, SourceTitle = item.Title, SeriesId = 5, EpisodeId = 4, EventType = EpisodeHistoryEventType.DownloadFolderImported },
+                    new EpisodeHistory { DownloadId = EngineHash, SourceTitle = item.Title, SeriesId = 5, EpisodeId = 4, EventType = EpisodeHistoryEventType.Grabbed },
+                    new EpisodeHistory { DownloadId = EngineHash, SourceTitle = item.Title, SeriesId = 5, EpisodeId = 6, EventType = EpisodeHistoryEventType.Grabbed }
+                ]);
+
+            Mocker.GetMock<IDownloadHistoryService>()
+                .Setup(s => s.GetLatestDownloadHistoryItem(EngineHash))
+                .Returns(new DownloadHistory { DownloadId = EngineHash, SeriesId = 5, EventType = DownloadHistoryEventType.DownloadImported });
+
+            GivenLinkedLibrary(4);
+
+            var trackedDownload = Subject.TrackDownload(client, item);
+
+            trackedDownload.State.Should().Be(TrackedDownloadState.Imported);
+            trackedDownload.HasIncompleteLink.Should().BeFalse();
+            trackedDownload.Status.Should().Be(TrackedDownloadStatus.Ok);
+            trackedDownload.RemoteEpisode.Episodes.Select(e => e.Id).Should().Equal(4);
+
+            // Kept in the cache like any other imported item.
+            Subject.TrackDownload(client, item).Should().BeSameAs(trackedDownload);
+        }
+
+        [Test]
+        public void should_unlink_engine_download_when_its_series_is_deleted()
+        {
+            var client = GivenEngineClient();
+            var item = GivenEngineItem(client);
+
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(EngineHash))
+                .Returns([new EpisodeHistory { DownloadId = EngineHash, SourceTitle = item.Title, SeriesId = 5, EpisodeId = 4, EventType = EpisodeHistoryEventType.Grabbed }]);
+
+            GivenLinkedLibrary();
+
+            var trackedDownload = Subject.TrackDownload(client, item);
+            trackedDownload.State = TrackedDownloadState.Imported;
+            trackedDownload.RemoteEpisode.Series.Id.Should().Be(5);
+
+            Subject.Handle(new SeriesDeletedEvent([new Series { Id = 5 }], true, true));
+
+            trackedDownload.IsUnlinked.Should().BeTrue();
+            trackedDownload.State.Should().Be(TrackedDownloadState.Imported);
+            trackedDownload.RemoteEpisode.Should().BeNull();
+            trackedDownload.StatusMessages.Should().ContainSingle()
+                .Which.Messages.Should().Equal(TrackedDownload.UnlinkedMessage);
+
+            // The next poll re-evaluates it instead of returning the cached imported item.
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(EngineHash))
+                .Returns([]);
+
+            Subject.TrackDownload(client, item).Should().NotBeSameAs(trackedDownload);
+            Mocker.GetMock<IEngineLinkService>().Verify(s => s.TryRestore(client, EngineHash), Times.Once());
+        }
+
+        [Test]
+        public void should_not_match_unlinked_engine_download_by_name_when_a_series_is_added()
+        {
+            var client = GivenEngineClient();
+
+            var trackedDownload = Subject.TrackDownload(client, GivenEngineItem(client));
+
+            Subject.Handle(new SeriesAddedEvent(new Series { Id = 9, TvdbId = 99 }));
+
+            trackedDownload.RemoteEpisode.Should().BeNull();
+
+            Mocker.GetMock<IParsingService>()
+                .Verify(s => s.Map(It.IsAny<ParsedEpisodeInfo>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), null), Times.Never());
+        }
+
+        [Test]
+        public void should_not_try_to_restore_or_unlink_downloads_from_other_clients()
+        {
+            var client = GivenEngineClient(false);
+
+            var trackedDownload = Subject.TrackDownload(client, GivenEngineItem(client));
+
+            trackedDownload.IsUnlinked.Should().BeFalse();
+
+            Mocker.GetMock<IEngineLinkService>()
+                .Verify(s => s.TryRestore(It.IsAny<DownloadClientDefinition>(), It.IsAny<string>()), Times.Never());
         }
 
         [Test]

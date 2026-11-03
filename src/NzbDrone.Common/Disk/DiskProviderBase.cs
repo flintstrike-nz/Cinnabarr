@@ -280,6 +280,14 @@ namespace NzbDrone.Common.Disk
             MoveFileInternal(source, destination);
         }
 
+        public void ReplaceFile(string source, string destination)
+        {
+            Ensure.That(source, () => source).IsValidPath(PathValidationType.CurrentOs);
+            Ensure.That(destination, () => destination).IsValidPath(PathValidationType.CurrentOs);
+
+            File.Move(source, destination, true);
+        }
+
         public void MoveFolder(string source, string destination)
         {
             Ensure.That(source, () => source).IsValidPath(PathValidationType.CurrentOs);

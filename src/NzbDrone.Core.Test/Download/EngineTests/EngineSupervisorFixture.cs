@@ -37,6 +37,8 @@ namespace NzbDrone.Core.Test.Download.EngineTests
                 .SetupGet(s => s.StartUpFolder)
                 .Returns(@"C:\Test\App".AsOsAgnostic());
 
+            Mocker.SetConstant<IEngineClientRegistry>(Mocker.Resolve<EngineClientRegistry>());
+
             Mocker.GetMock<IDownloadClientFactory>()
                 .Setup(s => s.All())
                 .Returns(new List<DownloadClientDefinition>());
@@ -263,14 +265,14 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             Mocker.GetMock<IDiskProvider>().Setup(s => s.FileExists(clientIdFile)).Returns(true);
             Mocker.GetMock<IDiskProvider>().Setup(s => s.ReadAllText(clientIdFile)).Returns("12");
 
-            Subject.IsEngineClient(12).Should().BeTrue();
-            Subject.IsEngineClient(13).Should().BeFalse();
+            Mocker.Resolve<IEngineClientRegistry>().IsEngineClient(12).Should().BeTrue();
+            Mocker.Resolve<IEngineClientRegistry>().IsEngineClient(13).Should().BeFalse();
         }
 
         [Test]
         public void should_not_identify_any_client_before_one_is_created()
         {
-            Subject.IsEngineClient(1).Should().BeFalse();
+            Mocker.Resolve<IEngineClientRegistry>().IsEngineClient(1).Should().BeFalse();
         }
 
         [Test]
