@@ -9,6 +9,7 @@ using NzbDrone.Core.Download.Clients;
 using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Download.History;
 using NzbDrone.Core.Download.TrackedDownloads;
+using NzbDrone.Core.History;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Test.Framework;
@@ -37,8 +38,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
                 {
                     Series = new Series { Id = 5 },
                     Episodes = new List<Episode> { new Episode { Id = 4 } },
-                    ParsedEpisodeInfo = new ParsedEpisodeInfo(),
-                    Release = new ReleaseInfo { IndexerFlags = IndexerFlags.Freeleech }
+                    ParsedEpisodeInfo = new ParsedEpisodeInfo()
                 }
             };
 
@@ -50,6 +50,10 @@ namespace NzbDrone.Core.Test.Download.EngineTests
                 Release = new ReleaseInfo { Title = "Series.S01E01.1080p.WEB-DL-Group", DownloadUrl = "http://indexer/download/1", IndexerId = 2, Indexer = "Indexer", Size = 1000 }
             };
 
+            var episodeGrab = new EpisodeHistory { DownloadId = Hash, EventType = EpisodeHistoryEventType.Grabbed };
+            episodeGrab.Data.Add("IndexerFlags", IndexerFlags.Freeleech.ToString());
+
+            Mocker.GetMock<IHistoryService>().Setup(s => s.FindByDownloadId(Hash)).Returns(new List<EpisodeHistory> { episodeGrab });
             Mocker.GetMock<ITrackedDownloadService>().Setup(s => s.Find(Hash)).Returns(() => _trackedDownload);
             Mocker.GetMock<IDownloadHistoryService>().Setup(s => s.GetLatestGrab(Hash)).Returns(() => _grab);
         }

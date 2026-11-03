@@ -1,9 +1,11 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Download.History;
 using NzbDrone.Core.Download.TrackedDownloads;
+using NzbDrone.Core.History;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Parser.Model;
 
@@ -26,18 +28,21 @@ namespace NzbDrone.Core.Download.Engine
 
     public class EngineReAddService : IEngineReAddService
     {
+        private readonly IHistoryService _historyService;
         private readonly IDownloadHistoryService _downloadHistoryService;
         private readonly IDownloadService _downloadService;
         private readonly ITrackedDownloadService _trackedDownloadService;
         private readonly IIgnoredDownloadService _ignoredDownloadService;
         private readonly Logger _logger;
 
-        public EngineReAddService(IDownloadHistoryService downloadHistoryService,
+        public EngineReAddService(IHistoryService historyService,
+                                  IDownloadHistoryService downloadHistoryService,
                                   IDownloadService downloadService,
                                   ITrackedDownloadService trackedDownloadService,
                                   IIgnoredDownloadService ignoredDownloadService,
                                   Logger logger)
         {
+            _historyService = historyService;
             _downloadHistoryService = downloadHistoryService;
             _downloadService = downloadService;
             _trackedDownloadService = trackedDownloadService;
@@ -70,9 +75,7 @@ namespace NzbDrone.Core.Download.Engine
                 throw new EngineReAddException($"The release link for '{title}' wasn't stored, so it can't be re-added. Search for it again instead.");
             }
 
-            // ReleaseInfo.IndexerFlags isn't stored with the grab; the Missing row has them from the episode
-            // grab history.
-            var indexerFlags = remoteEpisode.Release?.IndexerFlags ?? release.IndexerFlags;
+            var indexerFlags = GetGrabbedIndexerFlags(downloadId);
 
             var torrent = new TorrentInfo
             {
@@ -130,6 +133,19 @@ namespace NzbDrone.Core.Download.Engine
             }
 
             _trackedDownloadService.StopTracking(downloadId);
+        }
+
+        // ReleaseInfo.IndexerFlags isn't stored with the download-level grab, so read them from the episode grab
+        // history, which every path that builds a Missing row leaves untouched.
+        private IndexerFlags GetGrabbedIndexerFlags(string downloadId)
+        {
+            var flags = _historyService.FindByDownloadId(downloadId)
+                .Where(h => h.EventType == EpisodeHistoryEventType.Grabbed)
+                .OrderByDescending(h => h.Date)
+                .Select(h => h.Data?.FirstOrDefault(d => string.Equals(d.Key, "IndexerFlags", StringComparison.OrdinalIgnoreCase)).Value)
+                .FirstOrDefault(v => v.IsNotNullOrWhiteSpace());
+
+            return Enum.TryParse(flags, true, out IndexerFlags indexerFlags) ? indexerFlags : 0;
         }
     }
 }
