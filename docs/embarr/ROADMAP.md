@@ -167,7 +167,7 @@ flowchart LR
    - A torrent in the engine with no Embarr record is adopted as **Unlinked** and shown in Downloads.
    - An Embarr record whose torrent is gone is shown as **Missing from engine**, with Re-add and Re-check actions.
 4. **Reconcile never deletes anything.** It only flags.
-5. **Embarr writes its download id into each torrent as an engine tag**, so links can be rebuilt after an Embarr database restore.
+5. **Link intent is also stored next to the engine's state.** At grab time Embarr writes a small sidecar file per torrent in the engine profile (`<AppData>/engine/embarr/<info-hash>.json`). It holds the media type, the item's **external ids** (TVDB/TMDb, not database ids), season and episode numbers, slot label and seeding rule. If Embarr's database is restored from a backup taken before a grab, reconcile rebuilds the record from the sidecar instead of leaving the torrent Unlinked. Torrents with no sidecar (added by hand, or from before the sidecar existed) are adopted as Unlinked. This recovery guarantee covers only what the sidecar holds.
 
 **Visibility is separate from processing.** Today `DownloadMonitoringService.DownloadIsTrackable` drops Imported, Failed and Ignored downloads, so a torrent that is still seeding disappears from the queue. In Embarr, every engine torrent is always listed. Only automatic import and failure handling are limited to eligible downloads.
 
@@ -201,12 +201,12 @@ flowchart LR
 There is no separate download folder and no import copy. Each file is written straight to its final library path.
 
 **Flow for every grab:**
-1. Add the torrent to the engine **stopped**.
-2. Wait for metadata (needed for magnets).
-3. Apply the file whitelist (below). Every other file gets priority 0 and is never downloaded.
+1. Add the torrent with the engine's `MetadataReceived` stop condition (`Pre3:src/base/bittorrent/torrent.h`). A magnet fetches its metadata, then stops before any file data is downloaded. A `.torrent` file already has metadata, so it is added stopped.
+2. Apply the file whitelist (below). Every other file gets priority 0 and is never downloaded.
+3. Run the pre-download checks (below).
 4. Map each kept file to its library target and version slot (§4.11).
 5. Set the torrent's save path to the lowest common library folder (the series, season or movie folder).
-6. `renameFile` each kept file to its final relative path. This also flattens any folders inside the torrent.
+6. `renameFile` each kept file to a hidden **pending name** next to its final path, e.g. `.{final name}.pending`. This also flattens any folders inside the torrent.
 7. Start the torrent.
 
 **File whitelist.**
@@ -215,14 +215,19 @@ There is no separate download folder and no import copy. Each file is written st
 - Only the real final extension counts, so `movie.mkv.exe` is excluded.
 - A torrent with no video file, or only archives (`rar`, `zip`, …), is rejected, blocklisted, and searched again.
 
-**Import is per file.** With the engine's `.!qB` option on, each file keeps the `.!qB` suffix until that file is complete. Removing the suffix *is* the import, so a season pack's episodes appear in the library one by one as they finish. Media servers ignore `.!qB` files, so they never see partial video.
+**Import is per file, after validation.** While a file downloads it has its hidden pending name plus the engine's `.!qB` suffix, so media servers never see it. When the engine reports that one file is complete, Embarr runs a **per-file import** for it straight away, without waiting for the rest of the torrent:
+1. Run the post-completion checks (below) on that file.
+2. If they pass, `renameFile` the file from its pending name to its final name. This is an instant rename in the same folder, and the engine keeps seeding.
+3. Record the file against its episode or movie and slot, and emit the normal import events (history, notifications, media-server refresh).
+
+This per-file import is idempotent. It's keyed by info-hash plus the file's index in the torrent, so a repeated completion event or a restart never imports a file twice. A season pack's episodes therefore appear in the library one by one, and each one only after it has been checked. This is new work in Phase 2. Today's completion handler (`Embarr:src/NzbDrone.Core/Download/CompletedDownloadService.cs`) waits for the whole torrent.
 
 **Checks:**
-- **Before any data downloads:** file names, file sizes, sample detection (reuse `Embarr:src/NzbDrone.Core/MediaFiles/EpisodeImport/DetectSample.cs`), and the parsed episode or movie matching the target.
-- **After each file completes:** media info (resolution, codecs, languages, runtime).
-- **On rejection:** delete that file, blocklist the release, search again.
+- **Before any data downloads** (from metadata only): file names, extensions, file sizes, a sample check by name and size only, and the parsed episode or movie matching the target.
+- **After each file completes:** media info (resolution, codecs, languages, runtime) and the full runtime-based sample check. That check reuses `Embarr:src/NzbDrone.Core/MediaFiles/EpisodeImport/DetectSample.cs`, which needs the file's runtime, so it can only run once the file is on disk.
+- **On rejection:** delete that file (it was never published under its final name), blocklist the release, search again.
 
-**Name already taken.** For an upgrade in the same slot, the new file downloads under a unique temporary name. When it completes it replaces the old file, and the old file is removed from its own torrent using the steps in §4.10.
+**Name already taken.** For an upgrade in the same slot, the new file waits under its pending name. When it passes its checks it replaces the old file, and the old file is removed from its own torrent using the steps in §4.10.
 
 **Part files.** libtorrent stores pieces that overlap unwanted files in a hidden `.parts` file in the save folder. The engine deletes it when the torrent is removed (`delete_partfile`), and orphan cleanup (§4.13) catches leftovers. The engine's "unwanted folder" option is forced off.
 
@@ -232,11 +237,11 @@ There is no separate download folder and no import copy. Each file is written st
 
 **Version slots** (data model in §4.1). Each series or movie can hold several named versions at once, e.g. "4K" + "HD", or "Original" + "Remastered". Each slot has its own quality profile, custom formats, Wanted state and upgrades. The slot label goes into the file name (§4.11), which is what Emby's version switcher reads. Search offers **Download another version** into an existing slot or a new one.
 
-**Race mode** grabs several releases for the same file and keeps whichever finishes first.
-- Up to *N* releases target the same file, in the same slot. Each writes to its own unique temporary name.
-- The **first copy of the file to complete wins** and is renamed into place.
-- For each losing torrent, that file is set to priority 0 and its partial `.!qB` is deleted. A losing torrent with no wanted files left is removed from the engine.
-- Races are decided **per file**. A series pack can race single-episode torrents, and each episode goes to whichever source finishes it first.
+**Race mode** grabs several releases for the same file and keeps the first good copy.
+- Up to *N* releases target the same file, in the same slot. Each writes to its own unique pending name.
+- The **winner is the first copy that completes, passes the post-completion checks and is imported** (§4.8). A copy that completes but fails its checks (a sample, a mislabelled release) is rejected and blocklisted, and the race continues with the others.
+- Losers are only cancelled after the winner has been imported. For each losing torrent, that file is set to priority 0 and its partial `.!qB` is deleted. A losing torrent with no wanted files left is removed from the engine.
+- Races are decided **per file**. A series pack can race single-episode torrents, and each episode goes to whichever source first delivers a valid copy.
 - Losers are not blocklisted. They were valid releases, just slower.
 - Settings: maximum concurrent sources per file, and "race allowed" per indexer. Race is off by default on private trackers (see §8).
 
@@ -306,7 +311,7 @@ Reuse `Embarr:src/NzbDrone.Core/MediaFiles/RenameEpisodeFileService.cs` and `Pre
 
 ### 4.13 Orphan cleanup
 
-A scheduled task deletes leftover partial downloads. It only touches `.!qB` and `.parts` files, and only when **all** of these are true:
+A scheduled task deletes leftover partial downloads. It only touches `.!qB`, `.parts` and hidden `.pending` files (§4.8), and only when **all** of these are true:
 - no torrent in the engine owns the file,
 - the file is older than the grace period (default 7 days),
 - the file is inside a root folder or staging folder.
@@ -340,7 +345,7 @@ The first run is a dry run that lists the files for approval. Nothing else is ev
 | Updates to Embarr | Embarr polls `sync/maindata` (already incremental) every 1–2s while the Downloads page is open and every ~30s otherwise. **Later:** add a push channel (websocket or server-sent events) to the engine so Embarr gets changes instantly. |
 | Logs | Engine log file lives under `<AppData>/engine/logs` and is shown in System → Logs alongside Embarr's log. |
 | Backups | Embarr backups include the engine profile (resume data and settings). |
-| Forced preferences | `.!qB` extension for incomplete files on (`AddExtensionToIncompleteFiles`, `Pre3:src/base/bittorrent/common.h`). Unwanted folder off (`UseUnwantedFolder`). Torrents added stopped until Embarr has set file priorities and names (§4.8). Content layout `NoSubfolder` (`Pre3:src/base/bittorrent/torrentcontentlayout.h`). |
+| Forced preferences | `.!qB` extension for incomplete files on (`AddExtensionToIncompleteFiles`, `Pre3:src/base/bittorrent/common.h`). Unwanted folder off (`UseUnwantedFolder`). Torrents are added with the `MetadataReceived` stop condition (magnets) or stopped (`.torrent` files) until Embarr has set file priorities and names (§4.8). Content layout `NoSubfolder` (`Pre3:src/base/bittorrent/torrentcontentlayout.h`). |
 | API Embarr relies on | File priority, `renameFile`, `renameFolder`, `setLocation`, per-torrent share limits (`ratioLimit`, `seedingTimeLimit`, `shareLimitAction`) and tags. All already exist in `Pre3:src/webui/api/torrentscontroller.cpp`. |
 | CI builds | Qt 6 + libtorrent 2.0.x (`Pre3:CMakeLists.txt` requires ≥ 2.0.10). Targets: linux-x64, linux-arm64, win-x64, macOS (x64 + arm64). Prefer static libtorrent/OpenSSL builds so the engine ships as one binary per platform. |
 
@@ -434,7 +439,7 @@ Each phase ends in a working, shippable build.
 - Fork qBittorrent per §5; CI produces `embarr-engine` binaries.
 - `EngineSupervisor` + `EmbeddedEngineClient`; Settings → Downloads.
 - Reconcile rules and the visibility/processing split (§4.4).
-- Direct-to-final downloads with the file whitelist and optional staging folder (§4.8).
+- Direct-to-final downloads with the file whitelist, per-file validated import (pending name → final name) and optional staging folder (§4.8).
 - Per-file seeding rules (§4.10) and orphan cleanup (§4.13).
 - Downloads page per §6.2.
 - Remove external download clients, Usenet clients, Usenet indexers and remote path mappings.
@@ -508,7 +513,7 @@ Each phase ends in a working, shippable build.
 2. **v3 API compatibility shims** for Overseerr/Jellyseerr. Proposal: yes, in Phase 7, read-mostly.
 3. **Optional external torrent client.** Some users may want to keep an existing client. Proposal: not supported for now; revisit after Phase 7.
 4. **Engine push channel** (websocket/SSE in the engine vs. polling). Proposal: polling in Phase 2, push later if needed.
-5. **How a race winner is chosen.** Proposal: first copy of the file to complete. Alternative: best projected finish time, which lets losers be cancelled earlier.
+5. **How a race winner is chosen.** Every option requires the winner to pass its post-completion checks and be imported before losers are cancelled (§4.9). Proposal: the first copy to do so. Alternative: rank by projected finish time and keep only the top two running, which saves bandwidth.
 6. **Maximum version slots per item.** Proposal: no hard limit; warn above 3.
 7. **Plex multi-version naming.** Plex uses a different convention from Emby. Proposal: Emby format by default (§4.11), Plex as an optional template in Phase 5.
 
