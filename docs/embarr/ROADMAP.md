@@ -194,8 +194,8 @@ flowchart LR
 ### 4.7 Naming in code
 
 - Keep the `NzbDrone.*` namespaces and project names during Phases 1–4. That keeps cherry-picking upstream fixes from Sonarr, Radarr and Prowlarr possible while the merge is under way.
-- Rename user-visible strings and the product name in Phase 1 (done in Phase 1c).
-- **External contracts keep their Sonarr names until Phase 7**, where one migration renames them together (see Phase 7). External contracts are the database file, AppData folder, service and binary names, default port, `SONARR__` environment variables and custom-script variables. Anything that existing installs, scripts or other tools rely on counts as an external contract.
+- Rename user-visible strings and the product name in Phase 1. Phase 1c did most of this, but the brand text in the page header and sidebar (`frontend/src/Components/Page/Header/PageHeader.tsx`, `frontend/src/Components/Page/Sidebar/PageSidebar.tsx`) still renders "Sonarr" and remains outstanding Phase 1 work.
+- **External contracts keep their Sonarr names until Phase 7**, where one migration renames them together (see Phase 7). External contracts are the database file, AppData folder, service and binary names, default port, `SONARR__` environment variables and custom-script variables. This timing rule covers branding-related contracts only. The `/api/v3` surface is governed by §4.6 instead: it is removed once the frontend no longer uses it, and compatibility shims stay optional (Phase 7).
 
 ### 4.8 Downloading to the final location
 
@@ -487,9 +487,11 @@ Each phase ends in a working, shippable build.
 - Single Docker image; Windows installer and service; macOS app; Linux packages.
 - Embarr update channel and updater (`Embarr:src/NzbDrone.Update`).
 - **External contracts migration.** One change renames the contracts listed in §4.7 together, so existing installs, scripts and tools move once. Prerequisite: the final product name is decided first (open decision 8). The migration must:
-  - **AppData folder:** on first run, find an existing Sonarr-named folder and move or copy it to the new location, keeping the old one as a backup. Never leave a user with an empty new folder next to a full old one.
+  - **Never touch an independent Sonarr install.** A Sonarr-named AppData folder or Windows service does not prove the install is Embarr's: a real Sonarr on the same machine uses the same default names. Embarr therefore writes an ownership marker into the data folder it manages (from the first release that can, ahead of Phase 7), and the migration acts only on a folder with that marker or one the user explicitly selects. Anything else is left untouched, and existing Sonarr users are pointed to the Phase 6 importer instead.
+  - **AppData folder:** for a verified Embarr folder in the default location, move or copy it to the new location, keeping the old one as a backup. Never leave a user with an empty new folder next to a full old one.
+  - **Explicit data paths:** `-data` (including the packaged systemd service) and Docker mounts can point anywhere, so a Sonarr-named folder search can miss existing data. When a custom path is set, keep it and migrate its contents in place (rename files, not the directory). If a directory must move, update the launch configuration and mounts too (service files, Docker run/compose guidance), and say so in the release notes.
   - **Database file:** rename or copy it as part of the same step, and keep backup restore working for backups made before and after the rename.
-  - **Service and binary names:** the Windows installer replaces the old service with the new one; Docker, systemd and macOS packages document the change.
+  - **Service and binary names:** the Windows installer replaces the old service only if it is verified as Embarr's (same ownership check), and otherwise installs the new one alongside it. Docker, systemd and macOS packages document the change.
   - **Environment variables:** accept both the old `SONARR__` and the new prefix for at least one release, with a log warning for the old one. If both are set, the new one wins.
   - **Custom-script variables:** export both the old (`sonarr_*`) and new variable names for at least one release.
   - **Default port:** decide whether it changes at all; if it does, keep the old port working for upgraded installs.
