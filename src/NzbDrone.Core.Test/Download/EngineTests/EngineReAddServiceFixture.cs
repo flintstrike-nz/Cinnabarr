@@ -3,14 +3,17 @@ using System.Threading.Tasks;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
+using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.Clients;
 using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Download.History;
 using NzbDrone.Core.Download.TrackedDownloads;
+using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Core.Tv;
+using NzbDrone.Test.Common;
 
 namespace NzbDrone.Core.Test.Download.EngineTests
 {
@@ -68,7 +71,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             Mocker.GetMock<IDownloadService>()
                 .Verify(s => s.DownloadReport(It.Is<RemoteEpisode>(r => r.Series.Id == 5 &&
                                                                         r.Release is TorrentInfo &&
-                                                                        ((TorrentInfo)r.Release).InfoHash == Hash &&
+                                                                        ((TorrentInfo)r.Release).InfoHash == null &&
                                                                         ((TorrentInfo)r.Release).MagnetUrl == null &&
                                                                         r.Release.DownloadUrl == "http://indexer/download/1" &&
                                                                         r.Release.IndexerId == 2),
@@ -137,7 +140,20 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             var ex = Assert.ThrowsAsync<EngineReAddException>(() => Subject.ReAdd(Hash));
 
             ex.Message.Should().Contain("engine is down");
+            ExceptionVerification.ExpectedWarns(1);
             Mocker.GetMock<ITrackedDownloadService>().Verify(s => s.StopTracking(It.IsAny<string>()), Times.Never());
+        }
+
+        [Test]
+        public void should_report_any_replay_failure_as_a_re_add_error()
+        {
+            Mocker.GetMock<IDownloadService>()
+                .Setup(s => s.DownloadReport(It.IsAny<RemoteEpisode>(), 3))
+                .ThrowsAsync(new ModelNotFoundException(typeof(IndexerDefinition), 2));
+
+            Assert.ThrowsAsync<EngineReAddException>(() => Subject.ReAdd(Hash));
+            Mocker.GetMock<ITrackedDownloadService>().Verify(s => s.StopTracking(It.IsAny<string>()), Times.Never());
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         private void VerifyNotSent()

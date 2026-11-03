@@ -2,10 +2,8 @@ using System;
 using System.Threading.Tasks;
 using NLog;
 using NzbDrone.Common.Extensions;
-using NzbDrone.Core.Download.Clients;
 using NzbDrone.Core.Download.History;
 using NzbDrone.Core.Download.TrackedDownloads;
-using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Parser.Model;
 
@@ -86,8 +84,11 @@ namespace NzbDrone.Core.Download.Engine
                 IndexerFlags = release.IndexerFlags,
                 PublishDate = release.PublishDate,
                 Languages = release.Languages,
-                DownloadProtocol = DownloadProtocol.Torrent,
-                InfoHash = downloadId
+                DownloadProtocol = DownloadProtocol.Torrent
+
+                // InfoHash is left empty on purpose: the client then takes the hash from the torrent it actually
+                // fetches, checks it against the hash blocklist and records it, even if the indexer now serves a
+                // different torrent.
             };
 
             var reAdd = new RemoteEpisode
@@ -107,8 +108,11 @@ namespace NzbDrone.Core.Download.Engine
             {
                 await _downloadService.DownloadReport(reAdd, trackedDownload.DownloadClient);
             }
-            catch (Exception ex) when (ex is ReleaseDownloadException or DownloadClientException)
+            catch (Exception ex)
             {
+                // Any failure (indexer deleted, link expired, invalid torrent, blocklisted hash, engine down)
+                // leaves the Missing row as it was, so it can be retried or dismissed.
+                _logger.Warn(ex, "Unable to re-add '{0}' to the engine", title);
                 throw new EngineReAddException($"'{title}' couldn't be re-added: {ex.Message}");
             }
 

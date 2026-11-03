@@ -14,12 +14,12 @@ namespace Sonarr.Api.V3.Queue
     {
         private readonly IPendingReleaseService _pendingReleaseService;
         private readonly IDownloadService _downloadService;
-        private readonly IQueueService _queueService;
+        private readonly IObsoleteQueueService _queueService;
         private readonly IEngineReAddService _engineReAddService;
 
         public QueueActionController(IPendingReleaseService pendingReleaseService,
                                      IDownloadService downloadService,
-                                     IQueueService queueService,
+                                     IObsoleteQueueService queueService,
                                      IEngineReAddService engineReAddService)
         {
             _pendingReleaseService = pendingReleaseService;
