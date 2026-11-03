@@ -388,6 +388,15 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                                         Languages = firstHistoryItem.Languages ?? new()
                                     };
 
+            // Embarr owns intent: the grabbed quality (including one restored from the sidecar) wins over
+            // whatever the title parses as.
+            var grabbedQuality = historyItems.FirstOrDefault(h => h.EventType == EpisodeHistoryEventType.Grabbed)?.Quality;
+
+            if (grabbedQuality?.Quality != null)
+            {
+                parsedEpisodeInfo.Quality = grabbedQuality;
+            }
+
             // Grabs record their episodes; a torrent linked by Manual Import only has import history.
             var grabbedEpisodeIds = historyItems.Where(h => h.EventType == EpisodeHistoryEventType.Grabbed).Select(h => h.EpisodeId);
             var episodeIds = (grabbedEpisodeIds.Any() ? grabbedEpisodeIds : historyItems.Select(h => h.EpisodeId).Where(id => id > 0))

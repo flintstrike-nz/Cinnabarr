@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using System.Linq;
 using NLog;
+using NzbDrone.Core.Download.History;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.Messaging.Events;
 
@@ -13,33 +15,42 @@ namespace NzbDrone.Core.Download
     public class IgnoredDownloadService : IIgnoredDownloadService
     {
         private readonly IEventAggregator _eventAggregator;
+        private readonly IDownloadHistoryService _downloadHistoryService;
         private readonly Logger _logger;
 
         public IgnoredDownloadService(IEventAggregator eventAggregator,
+                                      IDownloadHistoryService downloadHistoryService,
                                       Logger logger)
         {
             _eventAggregator = eventAggregator;
+            _downloadHistoryService = downloadHistoryService;
             _logger = logger;
         }
 
         public bool IgnoreDownload(TrackedDownload trackedDownload)
         {
-            var series = trackedDownload.RemoteEpisode.Series;
+            var remoteEpisode = trackedDownload.RemoteEpisode;
+            var seriesId = remoteEpisode?.Series?.Id;
 
-            if (series == null)
+            // A row missing from the engine can outlive its episode history (for example when the episodes
+            // were removed); its download-level grab still names the series, so it can always be dismissed.
+            if (seriesId == null && trackedDownload.IsMissingFromEngine)
+            {
+                seriesId = _downloadHistoryService.GetLatestGrab(trackedDownload.DownloadItem.DownloadId)?.SeriesId;
+            }
+
+            if (seriesId == null)
             {
                 _logger.Warn("Unable to ignore download for unknown series");
                 return false;
             }
 
-            var episodes = trackedDownload.RemoteEpisode.Episodes;
-
             var downloadIgnoredEvent = new DownloadIgnoredEvent
                                       {
-                                          SeriesId = series.Id,
-                                          EpisodeIds = episodes.Select(e => e.Id).ToList(),
-                                          Languages = trackedDownload.RemoteEpisode.Languages,
-                                          Quality = trackedDownload.RemoteEpisode.ParsedEpisodeInfo.Quality,
+                                          SeriesId = seriesId.Value,
+                                          EpisodeIds = remoteEpisode?.Episodes?.Select(e => e.Id).ToList() ?? new List<int>(),
+                                          Languages = remoteEpisode?.Languages ?? new(),
+                                          Quality = remoteEpisode?.ParsedEpisodeInfo?.Quality,
                                           SourceTitle = trackedDownload.DownloadItem.Title,
                                           DownloadClientInfo = trackedDownload.DownloadItem.DownloadClientInfo,
                                           DownloadId = trackedDownload.DownloadItem.DownloadId,

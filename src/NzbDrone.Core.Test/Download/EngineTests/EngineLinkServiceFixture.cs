@@ -7,6 +7,7 @@ using NzbDrone.Common.Disk;
 using NzbDrone.Common.Serializer;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.Engine;
+using NzbDrone.Core.Download.History;
 using NzbDrone.Core.History;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
@@ -151,6 +152,9 @@ namespace NzbDrone.Core.Test.Download.EngineTests
                                                h.Data["DownloadClientName"] == "Embarr Engine");
             inserted.Should().Contain(h => h.EpisodeId == 21).And.Contain(h => h.EpisodeId == 22);
             inserted[0].Quality.Quality.Should().Be(Quality.Bluray1080p);
+
+            Mocker.GetMock<IDownloadHistoryRepository>()
+                .Verify(r => r.Insert(It.Is<DownloadHistory>(h => h.EventType == DownloadHistoryEventType.DownloadGrabbed && h.DownloadId == Hash && h.SeriesId == 7 && h.DownloadClientId == EngineClientId)), Times.Once());
         }
 
         [Test]

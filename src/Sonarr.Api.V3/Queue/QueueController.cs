@@ -8,6 +8,7 @@ using NzbDrone.Core.Blocklisting;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Datastore.Events;
 using NzbDrone.Core.Download;
+using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Download.Pending;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.Indexers;
@@ -36,6 +37,7 @@ namespace Sonarr.Api.V3.Queue
         private readonly ITrackedDownloadService _trackedDownloadService;
         private readonly IFailedDownloadService _failedDownloadService;
         private readonly IIgnoredDownloadService _ignoredDownloadService;
+        private readonly IEngineClientRegistry _engineClientRegistry;
         private readonly IProvideDownloadClient _downloadClientProvider;
         private readonly IBlocklistService _blocklistService;
 
@@ -46,6 +48,7 @@ namespace Sonarr.Api.V3.Queue
                            ITrackedDownloadService trackedDownloadService,
                            IFailedDownloadService failedDownloadService,
                            IIgnoredDownloadService ignoredDownloadService,
+                           IEngineClientRegistry engineClientRegistry,
                            IProvideDownloadClient downloadClientProvider,
                            IBlocklistService blocklistService)
             : base(broadcastSignalRMessage)
@@ -55,6 +58,7 @@ namespace Sonarr.Api.V3.Queue
             _trackedDownloadService = trackedDownloadService;
             _failedDownloadService = failedDownloadService;
             _ignoredDownloadService = ignoredDownloadService;
+            _engineClientRegistry = engineClientRegistry;
             _downloadClientProvider = downloadClientProvider;
             _blocklistService = blocklistService;
 
@@ -338,7 +342,12 @@ namespace Sonarr.Api.V3.Queue
             {
                 removeFromClient = false;
                 changeCategory = false;
+
+                // Blocklisting needs grabbed episodes; without them the row is dismissed instead.
+                blocklist = blocklist && trackedDownload.RemoteEpisode?.Episodes?.Any() == true;
             }
+
+            var removesUnfinishedEngineGrab = removeFromClient && IsUnfinishedEngineGrab(trackedDownload);
 
             if (removeFromClient)
             {
@@ -373,7 +382,9 @@ namespace Sonarr.Api.V3.Queue
                 _failedDownloadService.MarkAsFailed(trackedDownload, null, null, skipRedownload);
             }
 
-            if (!removeFromClient && !blocklist && !changeCategory)
+            // Removing an unfinished grab from the built-in engine is a deliberate outcome: record it as ignored
+            // so reconcile doesn't later report it as missing from the engine.
+            if (!blocklist && ((!removeFromClient && !changeCategory) || removesUnfinishedEngineGrab))
             {
                 if (!_ignoredDownloadService.IgnoreDownload(trackedDownload))
                 {
@@ -382,6 +393,13 @@ namespace Sonarr.Api.V3.Queue
             }
 
             return trackedDownload;
+        }
+
+        private bool IsUnfinishedEngineGrab(TrackedDownload trackedDownload)
+        {
+            return !trackedDownload.IsUnlinked &&
+                   trackedDownload.State is not (TrackedDownloadState.Imported or TrackedDownloadState.Failed or TrackedDownloadState.Ignored) &&
+                   _engineClientRegistry.IsEngineClient(trackedDownload.DownloadClient);
         }
 
         private TrackedDownload GetTrackedDownload(int queueId)

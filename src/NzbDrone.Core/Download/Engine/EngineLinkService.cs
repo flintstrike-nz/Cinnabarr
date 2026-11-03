@@ -6,10 +6,12 @@ using System.Text.RegularExpressions;
 using NLog;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Serializer;
+using NzbDrone.Core.Download.History;
 using NzbDrone.Core.History;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Parser;
+using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
 using NzbDrone.Core.Tv;
 
@@ -36,6 +38,7 @@ namespace NzbDrone.Core.Download.Engine
         private readonly ISeriesService _seriesService;
         private readonly IEpisodeService _episodeService;
         private readonly IHistoryRepository _historyRepository;
+        private readonly IDownloadHistoryRepository _downloadHistoryRepository;
         private readonly Logger _logger;
 
         public EngineLinkService(IEngineClientRegistry engineClientRegistry,
@@ -43,6 +46,7 @@ namespace NzbDrone.Core.Download.Engine
                                  ISeriesService seriesService,
                                  IEpisodeService episodeService,
                                  IHistoryRepository historyRepository,
+                                 IDownloadHistoryRepository downloadHistoryRepository,
                                  Logger logger)
         {
             _engineClientRegistry = engineClientRegistry;
@@ -50,6 +54,7 @@ namespace NzbDrone.Core.Download.Engine
             _seriesService = seriesService;
             _episodeService = episodeService;
             _historyRepository = historyRepository;
+            _downloadHistoryRepository = downloadHistoryRepository;
             _logger = logger;
         }
 
@@ -133,6 +138,34 @@ namespace NzbDrone.Core.Download.Engine
 
             // One transaction, so a failure can't leave part of the torrent linked.
             _historyRepository.InsertMany(historyItems);
+
+            // The download-level grab makes the restored torrent count as unfinished, so reconcile can report
+            // it if it later disappears from the engine.
+            try
+            {
+                var grab = new DownloadHistory
+                {
+                    EventType = DownloadHistoryEventType.DownloadGrabbed,
+                    SeriesId = series.Id,
+                    DownloadId = downloadId,
+                    SourceTitle = sourceTitle,
+                    Date = historyItems[0].Date,
+                    Protocol = DownloadProtocol.Torrent,
+                    DownloadClientId = downloadClient.Id,
+                    Release = new ReleaseInfo { Title = sourceTitle, Indexer = link.Indexer, DownloadProtocol = DownloadProtocol.Torrent }
+                };
+
+                grab.Data.Add("Indexer", link.Indexer);
+                grab.Data.Add("DownloadClient", downloadClient.Implementation);
+                grab.Data.Add("DownloadClientName", downloadClient.Name);
+                grab.Data.Add(RestoredFromKey, "EngineSidecar");
+
+                _downloadHistoryRepository.Insert(grab);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "Unable to record the restored grab for '{0}'", sourceTitle);
+            }
 
             _logger.Info("Restored link for '{0}' to {1} ({2} episode(s)) from the engine sidecar", sourceTitle, series.Title, episodes.Count);
 
