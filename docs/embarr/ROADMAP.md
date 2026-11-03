@@ -194,7 +194,8 @@ flowchart LR
 ### 4.7 Naming in code
 
 - Keep the `NzbDrone.*` namespaces and project names during Phases 1–4. That keeps cherry-picking upstream fixes from Sonarr, Radarr and Prowlarr possible while the merge is under way.
-- Rename user-visible strings, product name, AppData folder, default port, service names and binaries in Phase 1.
+- Rename user-visible strings and the product name in Phase 1 (done in Phase 1c).
+- **External contracts keep their Sonarr names until Phase 7**, where one migration renames them together (see Phase 7). External contracts are the database file, AppData folder, service and binary names, default port, `SONARR__` environment variables and custom-script variables. Anything that existing installs, scripts or other tools rely on counts as an external contract.
 
 ### 4.8 Downloading to the final location
 
@@ -432,7 +433,7 @@ Each phase ends in a working, shippable build.
 
 ### Phase 1 — Rebrand and shell (Embarr)
 
-- Product name, logos, AppData folder, default port, service and binary names → Embarr.
+- Product name and logos → Embarr. AppData folder, default port, service and binary names, database file, environment variables and custom-script variables are **not** renamed here; they move together in Phase 7 (§4.7).
 - Replace upstream `AGENTS.md`, `CONTRIBUTING.md`, PR template and issue templates with Embarr's own.
 - Disable calls to Sonarr's own services: analytics (`Embarr:src/NzbDrone.Core/Analytics`), Sonarr update channel, Sonarr cloud endpoints except metadata (until Phase 4 replaces it, §4.14).
 - New sidebar labels and routes from §6.1. Labels point at the **existing** screens (series list → Library, queue → Downloads) until Phases 2 and 4 replace them. New pages with no existing screen (Search) are hidden until their phase.
@@ -485,6 +486,14 @@ Each phase ends in a working, shippable build.
 
 - Single Docker image; Windows installer and service; macOS app; Linux packages.
 - Embarr update channel and updater (`Embarr:src/NzbDrone.Update`).
+- **External contracts migration.** One change renames the contracts listed in §4.7 together, so existing installs, scripts and tools move once. Prerequisite: the final product name is decided first (open decision 8). The migration must:
+  - **AppData folder:** on first run, find an existing Sonarr-named folder and move or copy it to the new location, keeping the old one as a backup. Never leave a user with an empty new folder next to a full old one.
+  - **Database file:** rename or copy it as part of the same step, and keep backup restore working for backups made before and after the rename.
+  - **Service and binary names:** the Windows installer replaces the old service with the new one; Docker, systemd and macOS packages document the change.
+  - **Environment variables:** accept both the old `SONARR__` and the new prefix for at least one release, with a log warning for the old one. If both are set, the new one wins.
+  - **Custom-script variables:** export both the old (`sonarr_*`) and new variable names for at least one release.
+  - **Default port:** decide whether it changes at all; if it does, keep the old port working for upgraded installs.
+  - **Rollback:** the migration must be reversible for the first release after it ships (old data left in place, not deleted).
 - Optional Sonarr/Radarr v3 API shims for request tools.
 - User documentation.
 
@@ -523,8 +532,7 @@ Each phase ends in a working, shippable build.
 7. **Plex multi-version naming.** Plex uses a different convention from Emby. Proposal: Emby format by default (§4.11), Plex as an optional template in Phase 5.
 8. **Candidate future name: JellyBarr.** Not a commitment and not part of the current plan. Embarr stays the working name until this is decided.
    - **Trigger:** only once Jellyfin is the implemented target server (Addendum A). Until then, Emby remains the stated target in §4.9 and §4.11.
-   - **Contract migration (unreconciled):** `AGENTS.md` says external contracts (database file, AppData folder, service name, `SONARR__` variables, custom-script variables) must not be renamed without "the migration the roadmap describes for Phase 7", but Phase 7 as written describes no such migration. Meanwhile §4.7 and Phase 1 already rename the AppData folder, service names and binaries to Embarr. This needs reconciling in its own change, whatever the final name is.
-   - **Rename timing:** if the name is decided before that migration is defined, fold JellyBarr into it so the contracts are renamed once. If Embarr's names ship first, a later rename needs its own migration.
+   - **Contract migration:** the external contracts are renamed once, in Phase 7 (§4.7). The final name must be decided before that migration is built, so the contracts are renamed once and not twice. If Embarr's names ship first, a later rename needs a second migration.
    - **Addenda:** A and B use "Embarr" throughout and would need updating, as would the roadmap title.
    - **Trademark, not copyright.** Names are not protected by copyright; the risk is a confusingly similar trademark for related goods. This is a risk assessment, not legal advice, and no register has been searched yet.
    - **Known near-match:** a Mac app called "JellyBar" (one r) that customises the app bar. The spelling differs by one letter and sounds identical, which is weak differentiation on its own. The goods differ (a Mac customisation utility versus a media library manager), which counts in JellyBarr's favour. Whether JellyBar holds a registered mark is unknown.

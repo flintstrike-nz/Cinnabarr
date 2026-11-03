@@ -13,7 +13,7 @@ Embarr merges Sonarr (this repo's base), Radarr, Prowlarr and a headless qBittor
 - Every PR is reviewed by GitHub Copilot. Address each finding, or explain on the thread why not. The repository owner merges.
 - Run the checks below before pushing. GitHub Actions may not run on this repository, so local checks are the gate.
 - Keep `NzbDrone.*` namespaces and project names until the roadmap says otherwise, so upstream fixes can still be cherry-picked.
-- Don't rename external contracts (database file, AppData folder, service name, `SONARR__` environment variables, custom-script variables) without the migration the roadmap describes for Phase 7.
+- Don't rename external contracts (database file, AppData folder, service name, `SONARR__` environment variables, custom-script variables) without the migration defined in Phase 7 of the roadmap (§4.7 explains which contracts are covered).
 
 ## Checks
 
