@@ -16,6 +16,7 @@ using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Core.Tv;
 using NzbDrone.Core.Tv.Events;
+using NzbDrone.Test.Common;
 
 namespace NzbDrone.Core.Test.Download.TrackedDownloads
 {
@@ -378,6 +379,43 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
 
             Mocker.GetMock<IParsingService>()
                 .Verify(s => s.Map(It.IsAny<ParsedEpisodeInfo>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), null), Times.Never());
+        }
+
+        [Test]
+        public void should_list_grab_missing_from_engine_without_processing_it()
+        {
+            var client = GivenEngineClient();
+
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(EngineHash))
+                .Returns([new EpisodeHistory { DownloadId = EngineHash, SourceTitle = "TV.Series.S01E01.720p.HDTV-Group", SeriesId = 5, EpisodeId = 4, EventType = EpisodeHistoryEventType.Grabbed }]);
+
+            GivenLinkedLibrary();
+
+            var grab = new DownloadHistory
+            {
+                DownloadId = EngineHash,
+                SourceTitle = "TV.Series.S01E01.720p.HDTV-Group",
+                EventType = DownloadHistoryEventType.DownloadGrabbed,
+                Release = new ReleaseInfo { Size = 1000 }
+            };
+
+            var trackedDownload = Subject.TrackMissingFromEngine(client, grab);
+
+            trackedDownload.IsMissingFromEngine.Should().BeTrue();
+            trackedDownload.IsTrackable.Should().BeFalse();
+            trackedDownload.State.Should().Be(TrackedDownloadState.Downloading);
+            trackedDownload.DownloadItem.CanBeRemoved.Should().BeFalse();
+            trackedDownload.DownloadItem.TotalSize.Should().Be(1000);
+            trackedDownload.DownloadItem.DownloadClientInfo.Id.Should().Be(client.Id);
+            trackedDownload.RemoteEpisode.Series.Id.Should().Be(5);
+            trackedDownload.StatusMessages.Should().ContainSingle()
+                .Which.Messages.Should().Equal(TrackedDownload.MissingFromEngineMessage);
+
+            Subject.Find(EngineHash).Should().BeSameAs(trackedDownload);
+            Subject.TrackMissingFromEngine(client, grab).Should().BeSameAs(trackedDownload);
+
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]

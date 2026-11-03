@@ -352,6 +352,13 @@ namespace Sonarr.Api.V5.Queue
         {
             var blocklist = blocklistMethod != QueueBlocklistMethod.DoNotBlocklist;
 
+            // A grab missing from the engine has nothing to remove there; dismissing it records it as ignored
+            // (or failed, when blocklisting) so reconcile stops flagging it. Nothing is deleted.
+            if (trackedDownload.IsMissingFromEngine)
+            {
+                removalMethod = QueueRemovalMethod.Ignore;
+            }
+
             if (removalMethod == QueueRemovalMethod.RemoveFromClient)
             {
                 var downloadClient = _downloadClientProvider.Get(trackedDownload.DownloadClient);

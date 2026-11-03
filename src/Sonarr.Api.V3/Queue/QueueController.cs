@@ -332,6 +332,14 @@ namespace Sonarr.Api.V3.Queue
 
         private TrackedDownload Remove(TrackedDownload trackedDownload, bool removeFromClient, bool blocklist, bool skipRedownload, bool changeCategory)
         {
+            // A grab missing from the engine has nothing to remove there; dismissing it records it as ignored
+            // (or failed, when blocklisting) so reconcile stops flagging it. Nothing is deleted.
+            if (trackedDownload.IsMissingFromEngine)
+            {
+                removeFromClient = false;
+                changeCategory = false;
+            }
+
             if (removeFromClient)
             {
                 var downloadClient = _downloadClientProvider.Get(trackedDownload.DownloadClient);

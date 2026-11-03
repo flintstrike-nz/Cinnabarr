@@ -16,7 +16,18 @@ namespace NzbDrone.Core.Download.Engine
         public List<EngineLinkEpisode> Episodes { get; set; } = new();
         public string SourceTitle { get; set; }
         public string Indexer { get; set; }
+
+        // The grabbed quality; null in sidecars written before it was added, which fall back to parsing the title.
+        public EngineLinkQuality Quality { get; set; }
         public DateTime Grabbed { get; set; }
+    }
+
+    public class EngineLinkQuality
+    {
+        public int Id { get; set; }
+        public int Version { get; set; } = 1;
+        public int Real { get; set; }
+        public bool IsRepack { get; set; }
     }
 
     public class EngineLinkEpisode

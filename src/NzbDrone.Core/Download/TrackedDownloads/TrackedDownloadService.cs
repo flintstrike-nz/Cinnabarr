@@ -27,6 +27,9 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         List<TrackedDownload> GetTrackedDownloads();
         void UpdateTrackable(List<TrackedDownload> trackedDownloads);
         void StopTrackingMissing(int downloadClientId, List<string> downloadIds);
+
+        // Lists a built-in engine grab whose torrent is gone from the engine (roadmap §4.4 rule 3).
+        TrackedDownload TrackMissingFromEngine(DownloadClientDefinition downloadClient, DownloadHistory grab);
     }
 
     public class TrackedDownloadService : ITrackedDownloadService,
@@ -248,6 +251,70 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             LogItemChange(trackedDownload, existingItem?.DownloadItem, trackedDownload.DownloadItem);
 
             _cache.Set(trackedDownload.DownloadItem.DownloadId, trackedDownload);
+            return trackedDownload;
+        }
+
+        public TrackedDownload TrackMissingFromEngine(DownloadClientDefinition downloadClient, DownloadHistory grab)
+        {
+            var existingItem = Find(grab.DownloadId);
+
+            if (existingItem is { IsMissingFromEngine: true })
+            {
+                return existingItem;
+            }
+
+            var size = grab.Release?.Size ?? 0;
+
+            var downloadItem = new DownloadClientItem
+            {
+                DownloadId = grab.DownloadId,
+                Title = grab.SourceTitle,
+                TotalSize = size,
+                RemainingSize = size,
+                Status = DownloadItemStatus.Warning,
+                Message = "Missing from engine",
+                CanBeRemoved = false,
+                CanMoveFiles = false,
+                DownloadClientInfo = new DownloadClientItemClientInfo
+                {
+                    Protocol = downloadClient.Protocol,
+                    Type = downloadClient.Implementation,
+                    Id = downloadClient.Id,
+                    Name = downloadClient.Name
+                }
+            };
+
+            var trackedDownload = new TrackedDownload
+            {
+                DownloadClient = downloadClient.Id,
+                DownloadItem = downloadItem,
+                Protocol = downloadClient.Protocol,
+                State = TrackedDownloadState.Downloading,
+                IsTrackable = false,
+                IsMissingFromEngine = true,
+                Indexer = grab.Data?.GetValueOrDefault("Indexer"),
+                Added = grab.Date
+            };
+
+            try
+            {
+                var historyItems = FindHistory(grab.DownloadId);
+
+                if (historyItems.Any())
+                {
+                    MapFromLinkHistory(trackedDownload, historyItems);
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.Debug(e, "Failed to map missing engine download " + grab.SourceTitle);
+            }
+
+            trackedDownload.Warn(TrackedDownload.MissingFromEngineMessage);
+
+            _logger.Warn("'{0}' was grabbed but is no longer in the engine", grab.SourceTitle);
+
+            _cache.Set(grab.DownloadId, trackedDownload);
             return trackedDownload;
         }
 

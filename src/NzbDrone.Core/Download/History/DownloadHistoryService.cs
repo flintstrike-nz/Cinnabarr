@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NzbDrone.Common.Extensions;
@@ -14,6 +15,9 @@ namespace NzbDrone.Core.Download.History
         bool DownloadAlreadyImported(string downloadId);
         DownloadHistory GetLatestDownloadHistoryItem(string downloadId);
         DownloadHistory GetLatestGrab(string downloadId);
+
+        // Grabs sent to this client that haven't been imported, failed or ignored yet.
+        List<DownloadHistory> GetUnfinishedGrabs(int downloadClientId);
     }
 
     public class DownloadHistoryService : IDownloadHistoryService,
@@ -57,8 +61,21 @@ namespace NzbDrone.Core.Download.History
 
         public DownloadHistory GetLatestDownloadHistoryItem(string downloadId)
         {
-            var events = _repository.FindByDownloadId(downloadId);
+            return GetLatestExpectedEvent(_repository.FindByDownloadId(downloadId));
+        }
 
+        public List<DownloadHistory> GetUnfinishedGrabs(int downloadClientId)
+        {
+            return _repository.FindByDownloadClientId(downloadClientId)
+                .Where(h => h.DownloadId.IsNotNullOrWhiteSpace())
+                .GroupBy(h => h.DownloadId, StringComparer.OrdinalIgnoreCase)
+                .Select(g => GetLatestExpectedEvent(g.ToList()))
+                .Where(h => h is { EventType: DownloadHistoryEventType.DownloadGrabbed })
+                .ToList();
+        }
+
+        private static DownloadHistory GetLatestExpectedEvent(List<DownloadHistory> events)
+        {
             // Events are ordered by date descending. We'll return the most recent expected event.
             foreach (var e in events)
             {

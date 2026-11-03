@@ -10,6 +10,7 @@ using NzbDrone.Core.History;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Parser;
+using NzbDrone.Core.Qualities;
 using NzbDrone.Core.Tv;
 
 namespace NzbDrone.Core.Download.Engine
@@ -101,7 +102,7 @@ namespace NzbDrone.Core.Download.Engine
             }
 
             var sourceTitle = link.SourceTitle ?? string.Empty;
-            var quality = QualityParser.ParseQuality(sourceTitle);
+            var quality = ToQualityModel(link.Quality) ?? QualityParser.ParseQuality(sourceTitle);
             var languages = LanguageParser.ParseLanguages(sourceTitle);
 
             var historyItems = new List<EpisodeHistory>();
@@ -156,6 +157,7 @@ namespace NzbDrone.Core.Download.Engine
                     .ToList(),
                 SourceTitle = remoteEpisode.Release?.Title,
                 Indexer = remoteEpisode.Release?.Indexer,
+                Quality = FromQualityModel(remoteEpisode.ParsedEpisodeInfo?.Quality),
                 Grabbed = DateTime.UtcNow
             };
 
@@ -168,6 +170,40 @@ namespace NzbDrone.Core.Download.Engine
                 // The grab itself has succeeded; without a sidecar the torrent is still linked
                 // through Embarr's database, it just can't be recovered from the engine alone.
                 _logger.Warn(ex, "Unable to write the engine link for '{0}'", link.SourceTitle);
+            }
+        }
+
+        private static EngineLinkQuality FromQualityModel(QualityModel quality)
+        {
+            if (quality?.Quality == null)
+            {
+                return null;
+            }
+
+            return new EngineLinkQuality
+            {
+                Id = quality.Quality.Id,
+                Version = quality.Revision?.Version ?? 1,
+                Real = quality.Revision?.Real ?? 0,
+                IsRepack = quality.Revision?.IsRepack ?? false
+            };
+        }
+
+        private static QualityModel ToQualityModel(EngineLinkQuality quality)
+        {
+            if (quality == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                return new QualityModel(Quality.FindById(quality.Id), new Revision(quality.Version, quality.Real, quality.IsRepack));
+            }
+            catch (ArgumentException)
+            {
+                // An id this build doesn't know: fall back to parsing the title.
+                return null;
             }
         }
 
