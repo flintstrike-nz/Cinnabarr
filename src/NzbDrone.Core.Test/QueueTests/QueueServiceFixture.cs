@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using FizzWare.NBuilder;
 using FluentAssertions;
+using Moq;
 using NUnit.Framework;
 using NzbDrone.Core.Download;
+using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Queue;
@@ -61,6 +63,38 @@ namespace NzbDrone.Core.Test.QueueTests
             queue.Should().HaveCount(1);
 
             queue.All(v => v.Id > 0).Should().BeTrue();
+        }
+
+        [Test]
+        public void should_list_untrackable_download_from_built_in_engine()
+        {
+            _trackedDownloads[0].IsTrackable = false;
+            _trackedDownloads[0].State = TrackedDownloadState.Imported;
+            _trackedDownloads[0].DownloadClient = 5;
+
+            Mocker.GetMock<IEngineSupervisor>()
+                .Setup(s => s.IsEngineClient(5))
+                .Returns(true);
+
+            Subject.Handle(new TrackedDownloadRefreshedEvent(_trackedDownloads));
+
+            Subject.GetQueue().Should().HaveCount(1);
+        }
+
+        [Test]
+        public void should_not_list_untrackable_download_from_other_clients()
+        {
+            _trackedDownloads[0].IsTrackable = false;
+            _trackedDownloads[0].State = TrackedDownloadState.Imported;
+            _trackedDownloads[0].DownloadClient = 6;
+
+            Mocker.GetMock<IEngineSupervisor>()
+                .Setup(s => s.IsEngineClient(It.IsAny<int>()))
+                .Returns(false);
+
+            Subject.Handle(new TrackedDownloadRefreshedEvent(_trackedDownloads));
+
+            Subject.GetQueue().Should().BeEmpty();
         }
     }
 }

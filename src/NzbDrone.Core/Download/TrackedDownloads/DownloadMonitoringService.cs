@@ -68,17 +68,22 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             {
                 var downloadClients = _downloadClientFactory.DownloadHandlingEnabled();
 
+                var allTrackedDownloads = new List<TrackedDownload>();
                 var trackedDownloads = new List<TrackedDownload>();
 
                 foreach (var downloadClient in downloadClients)
                 {
                     var clientTrackedDownloads = ProcessClientDownloads(downloadClient);
 
+                    allTrackedDownloads.AddRange(clientTrackedDownloads);
                     trackedDownloads.AddRange(clientTrackedDownloads.Where(DownloadIsTrackable));
                 }
 
+                // IsTrackable decides what is still processed (import, failure handling).
+                // Visibility is separate: the queue gets every download and decides what to show,
+                // so torrents in the built-in engine stay listed after import (roadmap §4.4).
                 _trackedDownloadService.UpdateTrackable(trackedDownloads);
-                _eventAggregator.PublishEvent(new TrackedDownloadRefreshedEvent(trackedDownloads));
+                _eventAggregator.PublishEvent(new TrackedDownloadRefreshedEvent(allTrackedDownloads));
                 _manageCommandQueue.Push(new ProcessMonitoredDownloadsCommand(), CommandPriority.High);
             }
             finally
@@ -197,14 +202,24 @@ namespace NzbDrone.Core.Download.TrackedDownloads
 
         public void Handle(DownloadsProcessedEvent message)
         {
-            var trackedDownloads = _trackedDownloadService.GetTrackedDownloads().Where(t => t.IsTrackable && DownloadIsTrackable(t)).ToList();
-
-            _eventAggregator.PublishEvent(new TrackedDownloadRefreshedEvent(trackedDownloads));
+            PublishRefreshed();
         }
 
         public void Handle(TrackedDownloadsRemovedEvent message)
         {
-            var trackedDownloads = _trackedDownloadService.GetTrackedDownloads().Where(t => t.IsTrackable && DownloadIsTrackable(t)).ToList();
+            PublishRefreshed();
+        }
+
+        private void PublishRefreshed()
+        {
+            var trackedDownloads = _trackedDownloadService.GetTrackedDownloads();
+
+            // Downloads that are no longer eligible for processing are marked as such, but
+            // still published so the queue can keep showing built-in engine torrents.
+            foreach (var trackedDownload in trackedDownloads.Where(t => t.IsTrackable && !DownloadIsTrackable(t)))
+            {
+                trackedDownload.IsTrackable = false;
+            }
 
             _eventAggregator.PublishEvent(new TrackedDownloadRefreshedEvent(trackedDownloads));
         }

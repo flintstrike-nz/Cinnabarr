@@ -41,6 +41,9 @@ namespace NzbDrone.Core.Download.Engine
     {
         EngineStatus Status { get; }
         string EnginePath { get; }
+
+        // True for the built-in "Embarr Engine" download client.
+        bool IsEngineClient(int downloadClientId);
     }
 
     // Starts and supervises embarr-engine (the headless qBittorrent fork, roadmap §3)
@@ -76,6 +79,7 @@ namespace NzbDrone.Core.Download.Engine
         // Set while a pid from a previous session couldn't be verified (e.g. its start time
         // couldn't be read). Launches wait until it's resolved; that process is never killed.
         private volatile bool _staleCheckPending;
+        private int _clientId = -1;
         private int _port;
         private string _apiKey;
 
@@ -118,6 +122,19 @@ namespace NzbDrone.Core.Download.Engine
         }
 
         public string EnginePath { get; private set; }
+
+        public bool IsEngineClient(int downloadClientId)
+        {
+            var clientId = Volatile.Read(ref _clientId);
+
+            if (clientId < 0)
+            {
+                clientId = ReadClientId();
+                Volatile.Write(ref _clientId, clientId);
+            }
+
+            return clientId > 0 && clientId == downloadClientId;
+        }
 
         public string EngineFolder => Path.Combine(_appFolderInfo.AppDataFolder, "engine");
 
@@ -353,6 +370,8 @@ namespace NzbDrone.Core.Download.Engine
                 return;
             }
 
+            Volatile.Write(ref _clientId, id);
+
             try
             {
                 _diskProvider.WriteAllText(ClientIdFile, id.ToString());
@@ -429,21 +448,32 @@ namespace NzbDrone.Core.Download.Engine
                     _logger.Error(ex, "embarr-engine failed; restarting in {0}s", backoff.TotalSeconds);
                 }
 
-                StopEngine();
-
                 try
                 {
+                    StopEngine();
                     await BackoffDelay(backoff, token);
                 }
                 catch (OperationCanceledException)
                 {
                     break;
                 }
+                catch (Exception ex)
+                {
+                    // Never let cleanup end supervision: keep retrying.
+                    _logger.Error(ex, "Error while stopping embarr-engine; will retry");
+                }
 
                 backoff = TimeSpan.FromTicks(Math.Min(backoff.Ticks * 2, Timings.MaxBackoff.Ticks));
             }
 
-            StopEngine();
+            try
+            {
+                StopEngine();
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Error while stopping embarr-engine");
+            }
         }
 
         private bool PreviousEngineGone()

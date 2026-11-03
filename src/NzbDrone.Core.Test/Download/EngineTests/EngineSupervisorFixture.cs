@@ -251,6 +251,24 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_identify_built_in_client_by_stored_id()
+        {
+            var clientIdFile = Path.Combine(_appData, "engine", "client.id");
+
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FileExists(clientIdFile)).Returns(true);
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.ReadAllText(clientIdFile)).Returns("12");
+
+            Subject.IsEngineClient(12).Should().BeTrue();
+            Subject.IsEngineClient(13).Should().BeFalse();
+        }
+
+        [Test]
+        public void should_not_identify_any_client_before_one_is_created()
+        {
+            Subject.IsEngineClient(1).Should().BeFalse();
+        }
+
+        [Test]
         public void should_clear_download_client_failures_when_engine_recovers()
         {
             var existing = new DownloadClientDefinition
