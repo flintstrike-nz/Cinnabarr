@@ -444,7 +444,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             GivenExistingFile(7, "Show - S01E01 - Other.mkv");
 
             Mocker.GetMock<IEngineFileReplacementService>()
-                .Setup(s => s.IsReserved(Hash.ToUpperInvariant(), _final, It.IsAny<List<NzbDrone.Core.MediaFiles.EpisodeFile>>()))
+                .Setup(s => s.IsReserved(_proxy.Object, _settings, Hash.ToUpperInvariant(), _final, It.IsAny<List<NzbDrone.Core.MediaFiles.EpisodeFile>>()))
                 .Returns(true);
 
             Subject.Process(GivenClient());

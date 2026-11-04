@@ -114,7 +114,27 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             _owner.Files[2].State = EngineLinkFileState.Renamed;
             _owner.Files[2].ReplacesFileIds = new List<int> { 7 };
 
-            Subject.IsReserved(Replacing, Path.Combine(_seasonFolder, "Show - S01E01 - WEBDL.mkv"), new List<EpisodeFile> { _oldFile }).Should().BeTrue();
+            Subject.IsReserved(_proxy.Object, _settings, Replacing, Path.Combine(_seasonFolder, "Show - S01E01 - WEBDL.mkv"), new List<EpisodeFile> { _oldFile }).Should().BeTrue();
+        }
+
+        [Test]
+        public void should_not_let_a_download_removed_from_the_engine_reserve_anything()
+        {
+            _owner.Files[2].State = EngineLinkFileState.Renamed;
+            _owner.Files[2].ReplacesFileIds = new List<int> { 7 };
+            _torrents.Clear();
+
+            Subject.IsReserved(_proxy.Object, _settings, Replacing, Path.Combine(_seasonFolder, "Show - S01E02 - HDTV.mkv"), new List<EpisodeFile> { _oldFile }).Should().BeFalse();
+        }
+
+        [Test]
+        public void should_clear_rechecks_a_replaced_video_handed_over()
+        {
+            _owner.Files[0].DetachedFrom = new List<string> { "EARLIER" };
+
+            Detach(Path.Combine(_seasonFolder, "Show - S01E01 - WEBDL.mkv"));
+
+            _owner.Files[0].DetachedFrom.Should().BeNull();
         }
 
         [Test]
@@ -122,8 +142,8 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         {
             _owner.Files[2].State = EngineLinkFileState.Renamed;
 
-            Subject.IsReserved(Replacing, Path.Combine(_seasonFolder, "Show - S01E02 - HDTV.mkv"), new List<EpisodeFile> { _oldFile }).Should().BeTrue();
-            Subject.IsReserved(Replacing, Path.Combine(_seasonFolder, "Show - S01E01 - WEBDL.mkv"), new List<EpisodeFile> { _oldFile }).Should().BeFalse();
+            Subject.IsReserved(_proxy.Object, _settings, Replacing, Path.Combine(_seasonFolder, "Show - S01E02 - HDTV.mkv"), new List<EpisodeFile> { _oldFile }).Should().BeTrue();
+            Subject.IsReserved(_proxy.Object, _settings, Replacing, Path.Combine(_seasonFolder, "Show - S01E01 - WEBDL.mkv"), new List<EpisodeFile> { _oldFile }).Should().BeFalse();
         }
 
         [Test]

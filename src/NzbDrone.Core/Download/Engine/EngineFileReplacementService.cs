@@ -16,9 +16,9 @@ namespace NzbDrone.Core.Download.Engine
         // caller can save them first: a detachment cut short can then still be rechecked.
         List<string> FindHolders(string replacingDownloadId, Series series, List<EpisodeFile> existingFiles);
 
-        // True while another download's replacement of any of the same files, or of the same final path, is under way
-        // (started but not yet recorded).
-        bool IsReserved(string replacingDownloadId, string finalPath, List<EpisodeFile> existingFiles);
+        // True while another download still in the engine has a replacement of any of the same files, or of the same
+        // final path, under way (started but not yet recorded). A download removed from the engine reserves nothing.
+        bool IsReserved(IQBittorrentProxy proxy, QBittorrentSettings settings, string replacingDownloadId, string finalPath, List<EpisodeFile> existingFiles);
 
         // Gets existing episode files ready to be replaced by a newer file (roadmap §4.8 "Name already taken", §4.10
         // "Removing one file from a torrent that's still seeding"): each one an engine torrent still holds is detached
@@ -72,11 +72,13 @@ namespace NzbDrone.Core.Download.Engine
             return holders.Distinct().ToList();
         }
 
-        public bool IsReserved(string replacingDownloadId, string finalPath, List<EpisodeFile> existingFiles)
+        public bool IsReserved(IQBittorrentProxy proxy, QBittorrentSettings settings, string replacingDownloadId, string finalPath, List<EpisodeFile> existingFiles)
         {
             var fileIds = existingFiles.Select(f => f.Id).ToHashSet();
+            var inEngine = proxy.GetTorrents(settings).Select(t => t.Hash.ToUpperInvariant()).ToHashSet();
 
             return GetLinks(replacingDownloadId)
+                .Where(l => inEngine.Contains(l.Key))
                 .SelectMany(l => l.Value.Files.Where(f => !f.IsSubtitle).Select(f => (Link: l.Value, File: f)))
                 .Any(x => (x.File.State == EngineLinkFileState.Renamed || (x.File.State == EngineLinkFileState.Pending && x.File.ReplacesFileIds != null)) &&
                           ((x.File.ReplacesFileIds?.Any(fileIds.Contains) ?? false) || Path.Combine(x.Link.SavePath, x.File.FinalPath).PathEquals(finalPath)));
@@ -122,7 +124,9 @@ namespace NzbDrone.Core.Download.Engine
                         subtitle.State = EngineLinkFileState.Replaced;
                     }
 
+                    // Rechecks it still owed were handed to the new file (FindHolders), which saved them first.
                     video.State = EngineLinkFileState.Replaced;
+                    video.DetachedFrom = null;
                     _engineLinkService.Save(downloadId, link);
 
                     _logger.Info("'{0}' is being replaced; detached it from its torrent", path);

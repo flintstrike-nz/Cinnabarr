@@ -368,7 +368,7 @@ namespace NzbDrone.Core.Download.Engine
 
                     // Another download already replacing the same files, or headed for the same path, goes first: its
                     // new file may already be at the path the old record still points to.
-                    if (existingFiles.Any() && _replacementService.IsReserved(downloadId, finalPath, existingFiles))
+                    if (existingFiles.Any() && _replacementService.IsReserved(proxy, settings, downloadId, finalPath, existingFiles))
                     {
                         LogWaiting(waitingKey, "'{0}' is ready, but another download is replacing the same file; it stays under its pending name", file.FinalPath);
                         return;
