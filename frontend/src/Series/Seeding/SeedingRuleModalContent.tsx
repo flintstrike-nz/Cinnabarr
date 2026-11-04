@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
+import Alert from 'Components/Alert';
 import Form from 'Components/Form/Form';
 import FormInput from 'Components/Form/FormInput';
 import FormInputHelpText from 'Components/Form/FormInputHelpText';
@@ -7,11 +8,12 @@ import FormRow from 'Components/Form/FormRow';
 import { EnhancedSelectInputValue } from 'Components/Form/Select/EnhancedSelectInput';
 import Button from 'Components/Link/Button';
 import SpinnerErrorButton from 'Components/Link/SpinnerErrorButton';
+import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import ModalBody from 'Components/Modal/ModalBody';
 import ModalContent from 'Components/Modal/ModalContent';
 import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
-import { inputTypes } from 'Helpers/Props';
+import { inputTypes, kinds } from 'Helpers/Props';
 import { InputChanged } from 'typings/inputs';
 import translate from 'Utilities/String/translate';
 import {
@@ -21,7 +23,11 @@ import {
   usesRatio,
   usesTime,
 } from './seedingRuleOptions';
-import { SeedingRule, useSaveSeedingRule } from './useSeedingRules';
+import {
+  SeedingRule,
+  useSaveSeedingRule,
+  useSeriesSeedingRules,
+} from './useSeedingRules';
 
 // Not a backend mode: the item has no goal of its own and uses the next level's.
 const INHERIT = -1;
@@ -30,19 +36,57 @@ export interface SeedingRuleModalContentProps {
   seriesId: number;
   seasonNumber?: number;
   title: string;
-  rule: SeedingRule | null;
   inheritLabel: string;
   onModalClose: () => void;
 }
 
-function SeedingRuleModalContent({
+interface SeedingRuleEditorProps extends SeedingRuleModalContentProps {
+  rule: SeedingRule | null;
+}
+
+// The editor starts from the saved goal, so it is only mounted once the goals have loaded: starting it early would
+// show (and save) "inherit" over an existing goal.
+function SeedingRuleModalContent(props: SeedingRuleModalContentProps) {
+  const { seriesId, seasonNumber, title, onModalClose } = props;
+  const { data, error } = useSeriesSeedingRules(seriesId);
+
+  if (data) {
+    const rule =
+      seasonNumber === undefined
+        ? data.rule
+        : data.seasons.find((s) => s.seasonNumber === seasonNumber)?.rule ??
+          null;
+
+    return <SeedingRuleEditor {...props} rule={rule} />;
+  }
+
+  return (
+    <ModalContent onModalClose={onModalClose}>
+      <ModalHeader>{translate('SeedingGoalFor', { title })}</ModalHeader>
+
+      <ModalBody>
+        {error ? (
+          <Alert kind={kinds.DANGER}>{translate('SeedingGoalLoadError')}</Alert>
+        ) : (
+          <LoadingIndicator />
+        )}
+      </ModalBody>
+
+      <ModalFooter>
+        <Button onPress={onModalClose}>{translate('Close')}</Button>
+      </ModalFooter>
+    </ModalContent>
+  );
+}
+
+function SeedingRuleEditor({
   seriesId,
   seasonNumber,
   title,
   rule,
   inheritLabel,
   onModalClose,
-}: SeedingRuleModalContentProps) {
+}: SeedingRuleEditorProps) {
   const [mode, setMode] = useState(rule?.mode ?? INHERIT);
   const [minutes, setMinutes] = useState(rule?.minutes ?? 14 * 24 * 60);
   const [ratio, setRatio] = useState(rule?.ratio ?? 1);

@@ -33,7 +33,6 @@ import OrganizePreviewModal from 'Organize/OrganizePreviewModal';
 import SeriesHistoryModal from 'Series/History/SeriesHistoryModal';
 import SeasonInteractiveSearchModal from 'Series/Search/SeasonInteractiveSearchModal';
 import SeedingRuleModal from 'Series/Seeding/SeedingRuleModal';
-import { useSeriesSeedingRules } from 'Series/Seeding/useSeedingRules';
 import { Statistics } from 'Series/Series';
 import { useSingleSeries, useToggleSeasonMonitored } from 'Series/useSeries';
 import { TableOptionsChangePayload } from 'typings/Table';
@@ -141,7 +140,6 @@ function SeriesDetailsSeason({
   const [isManageEpisodesOpen, setIsManageEpisodesOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isSeedingModalOpen, setIsSeedingModalOpen] = useState(false);
-  const { data: seedingRules } = useSeriesSeedingRules(seriesId);
   const [isInteractiveSearchModalOpen, setIsInteractiveSearchModalOpen] =
     useState(false);
 
@@ -544,6 +542,15 @@ function SeriesDetailsSeason({
               isDisabled={!totalEpisodeCount}
               onPress={handleHistoryPress}
             />
+
+            <IconButton
+              className={styles.actionButton}
+              name={icons.SEEDING}
+              title={translate('SeedingGoal')}
+              aria-label={translate('SeedingGoal')}
+              size={20}
+              onPress={handleSeedingPress}
+            />
           </div>
         )}
       </div>
@@ -622,10 +629,6 @@ function SeriesDetailsSeason({
         seriesId={seriesId}
         seasonNumber={seasonNumber}
         title={seasonNumberTitle}
-        rule={
-          seedingRules?.seasons.find((s) => s.seasonNumber === seasonNumber)
-            ?.rule ?? null
-        }
         inheritLabel={translate('SeedingGoalUseSeries')}
         onModalClose={handleSeedingModalClose}
       />
