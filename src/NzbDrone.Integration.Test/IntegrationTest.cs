@@ -6,7 +6,7 @@ using NUnit.Framework;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Datastore.Migration.Framework;
-using NzbDrone.Core.Indexers.Newznab;
+using NzbDrone.Core.Indexers.Torznab;
 using NzbDrone.Test.Common;
 using NzbDrone.Test.Common.Datastore;
 
@@ -51,7 +51,7 @@ namespace NzbDrone.Integration.Test
             // Make sure tasks have been initialized so the config put below doesn't cause errors
             WaitForCompletion(() => Tasks.All().SelectList(x => x.TaskName).Contains("RssSync"));
 
-            var indexer = Indexers.Schema().FirstOrDefault(i => i.Implementation == nameof(Newznab));
+            var indexer = Indexers.Schema().FirstOrDefault(i => i.Implementation == nameof(Torznab));
 
             if (indexer == null)
             {
@@ -61,10 +61,10 @@ namespace NzbDrone.Integration.Test
             indexer.EnableRss = false;
             indexer.EnableInteractiveSearch = false;
             indexer.EnableAutomaticSearch = false;
-            indexer.ConfigContract = nameof(NewznabSettings);
-            indexer.Implementation = nameof(Newznab);
-            indexer.Name = "NewznabTest";
-            indexer.Protocol = Core.Indexers.DownloadProtocol.Usenet;
+            indexer.ConfigContract = nameof(TorznabSettings);
+            indexer.Implementation = nameof(Torznab);
+            indexer.Name = "TorznabTest";
+            indexer.Protocol = Core.Indexers.DownloadProtocol.Torrent;
 
             // Change Console Log Level to Debug so we get more details.
             var config = HostConfig.Get(1);
