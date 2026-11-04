@@ -25,6 +25,9 @@ public class EngineDownloadFileResource
 public class EngineDownloadFilesResource
 {
     public bool InEngine { get; set; }
+    public bool IsPaused { get; set; }
+    public bool IsForceStarted { get; set; }
+    public bool IsAwaitingPreparation { get; set; }
     public double? Ratio { get; set; }
     public List<EngineDownloadFileResource> Files { get; set; } = new();
 }
@@ -36,6 +39,9 @@ public static class EngineDownloadFilesResourceMapper
         return new EngineDownloadFilesResource
         {
             InEngine = model.InEngine,
+            IsPaused = model.IsPaused,
+            IsForceStarted = model.IsForceStarted,
+            IsAwaitingPreparation = model.IsAwaitingPreparation,
             Ratio = model.Ratio,
             Files = model.Files.Select(f => new EngineDownloadFileResource
             {

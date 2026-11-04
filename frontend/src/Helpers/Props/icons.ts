@@ -41,6 +41,7 @@ import {
   EllipsisVertical,
   ExternalLink,
   Eye,
+  FastForward,
   File,
   FileArchive,
   FileOutput,
@@ -91,6 +92,7 @@ import {
   Save,
   Search,
   Settings,
+  Snail,
   Square,
   SquareCheckBig,
   SquareMinus,
@@ -193,6 +195,10 @@ export const PAGE_LAST = ChevronsRight;
 export const PARENT = CornerLeftUp;
 export const PARSE = Calculator;
 export const PAUSED = Pause;
+export const ENGINE_PAUSE = Pause;
+export const ENGINE_RESUME = Play;
+export const ENGINE_FORCE_START = FastForward;
+export const ENGINE_ALT_SPEED = Snail;
 export const PENDING = Clock;
 export const PREMIERE = CalendarPremiere;
 export const PROFILE = User;

@@ -27,6 +27,9 @@ export interface EngineDownloadFile {
 
 export interface EngineDownloadFiles {
   inEngine: boolean;
+  isPaused: boolean;
+  isForceStarted: boolean;
+  isAwaitingPreparation: boolean;
   ratio?: number;
   files: EngineDownloadFile[];
 }

@@ -302,6 +302,32 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             throw new NotSupportedException("Setting share limits requires qBittorrent API v2");
         }
 
+        // The built-in engine's controls (roadmap §6.2) need API v2, which the engine always has.
+        public void StopTorrents(string hashes, QBittorrentSettings settings)
+        {
+            throw new NotSupportedException("Engine controls require qBittorrent API v2");
+        }
+
+        public void StartTorrents(string hashes, QBittorrentSettings settings)
+        {
+            throw new NotSupportedException("Engine controls require qBittorrent API v2");
+        }
+
+        public QBittorrentTransferInfo GetTransferInfo(QBittorrentSettings settings)
+        {
+            throw new NotSupportedException("Engine controls require qBittorrent API v2");
+        }
+
+        public bool GetAlternativeSpeedLimitsEnabled(QBittorrentSettings settings)
+        {
+            throw new NotSupportedException("Engine controls require qBittorrent API v2");
+        }
+
+        public void ToggleAlternativeSpeedLimits(QBittorrentSettings settings)
+        {
+            throw new NotSupportedException("Engine controls require qBittorrent API v2");
+        }
+
         public void RecheckTorrent(string hash, QBittorrentSettings settings)
         {
             // Only the built-in engine's per-file flow rechecks, and it already needs API v2 to rename files.

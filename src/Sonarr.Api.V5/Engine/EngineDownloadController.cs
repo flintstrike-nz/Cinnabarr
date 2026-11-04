@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using NzbDrone.Core.Download.Engine;
 using Sonarr.Http;
@@ -10,10 +12,12 @@ namespace Sonarr.Api.V5.Engine;
 public class EngineDownloadController : Controller
 {
     private readonly IEngineDownloadFilesService _engineDownloadFilesService;
+    private readonly IEngineControlService _engineControlService;
 
-    public EngineDownloadController(IEngineDownloadFilesService engineDownloadFilesService)
+    public EngineDownloadController(IEngineDownloadFilesService engineDownloadFilesService, IEngineControlService engineControlService)
     {
         _engineDownloadFilesService = engineDownloadFilesService;
+        _engineControlService = engineControlService;
     }
 
     // Each file of the download: its library path, state, progress and seeding goals with where they came from.
@@ -24,5 +28,43 @@ public class EngineDownloadController : Controller
         var files = _engineDownloadFilesService.Get(downloadId) ?? throw new NotFoundException();
 
         return files.ToResource();
+    }
+
+    [HttpPost("{downloadId}/pause")]
+    public NoContent Pause([FromRoute] string downloadId)
+    {
+        return Control(() => _engineControlService.Pause(downloadId));
+    }
+
+    [HttpPost("{downloadId}/resume")]
+    public NoContent Resume([FromRoute] string downloadId)
+    {
+        return Control(() => _engineControlService.Resume(downloadId));
+    }
+
+    [HttpPost("{downloadId}/forcestart")]
+    public NoContent ForceStart([FromRoute] string downloadId, [FromQuery] bool enabled = true)
+    {
+        return Control(() => _engineControlService.SetForceStart(downloadId, enabled));
+    }
+
+    [HttpPost("{downloadId}/recheck")]
+    public NoContent Recheck([FromRoute] string downloadId)
+    {
+        return Control(() => _engineControlService.Recheck(downloadId));
+    }
+
+    private static NoContent Control(Action action)
+    {
+        try
+        {
+            action();
+        }
+        catch (EngineControlException ex)
+        {
+            throw new BadRequestException($"That can't be done: {ex.Message}");
+        }
+
+        return TypedResults.NoContent();
     }
 }

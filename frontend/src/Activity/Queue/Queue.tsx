@@ -39,6 +39,7 @@ import {
   unregisterPagePopulator,
 } from 'Utilities/pagePopulator';
 import translate from 'Utilities/String/translate';
+import EngineToolbarItems from './Engine/EngineToolbarItems';
 import QueueFilterModal from './QueueFilterModal';
 import {
   setQueueOption,
@@ -359,6 +360,8 @@ function QueueContent() {
           isDisabled={disableImportSelected}
           onPress={handleImportSelectedPress}
         />
+
+        <EngineToolbarItems />
 
         <PageToolbarSpacer />
 

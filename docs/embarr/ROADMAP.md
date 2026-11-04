@@ -430,6 +430,14 @@ Built so far (2g-1):
 - **Re-add.** Downloads missing from the engine have a **Re-add** button (`POST /api/v5/queue/readd/{id}`). Removing them is the existing remove action.
 - **Queue resource.** The v5 queue resource now has `isEngineDownload` and `isMissingFromEngine`.
 
+Built so far (2g-2):
+- **Header controls on the Downloads page.** These appear only while the engine answers:
+  - live download and upload speeds (`GET /api/v5/engine/status`, every 3s);
+  - an **Alternative Speed** toggle (`PUT /api/v5/engine/altspeed?enabled=`);
+  - **Pause All** and **Resume All** (`POST /api/v5/engine/pause|resume`). Resume All leaves torrents still being prepared alone.
+- **Per-download controls in the expanded file panel:** **Pause/Resume**, **Force Start** and **Re-check** (`POST /api/v5/engine/downloads/{id}/pause|resume|forcestart?enabled=|recheck`). A torrent still being prepared (§4.8) is never resumed or force-started, because it would download files the whitelist hasn't excluded yet. Preparation starts it.
+- **Engine endpoints these rely on:** `transfer/info`, `transfer/speedLimitsMode`, `transfer/toggleSpeedLimitsMode`, `torrents/stop`, `torrents/start` and `torrents/recheck`. They were checked against the engine build (API 2.17). Phase 2i's API trim must keep them.
+
 ### 6.3 Settings tree
 
 | Section | Contents |
