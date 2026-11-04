@@ -208,6 +208,43 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_count_a_ratio_the_engine_rounds_down_as_reached()
+        {
+            GivenGlobalGoal(EngineSeedingMode.Ratio, 0, 1.4);
+            _torrent.Ratio = 1.4f;
+
+            Subject.Process(GivenClient());
+
+            VerifyRemoved(true);
+        }
+
+        [Test]
+        public void should_use_the_saved_tracker_minimum_when_the_indexer_is_gone()
+        {
+            GivenGlobalGoal(EngineSeedingMode.None, 0, 0);
+            _link.TrackerSeedMinutes = 3 * 24 * 60;
+
+            // The indexer was deleted: its id is still in the grab, but it has no settings any more.
+            Subject.Process(GivenClient());
+
+            VerifyRemoved(false);
+        }
+
+        [Test]
+        public void should_retry_starting_a_torrent_when_the_last_start_failed()
+        {
+            _torrent.State = "stoppedUP";
+            _torrent.RatioLimit = 1.0f;
+            _torrent.SeedingTimeLimit = -1;
+            _link.ResumeSeeding = true;
+
+            Subject.Process(GivenClient());
+
+            _proxy.Verify(p => p.StartTorrent(Hash, _settings), Times.Once());
+            _link.ResumeSeeding.Should().BeFalse();
+        }
+
+        [Test]
         public void should_leave_a_torrent_stopped_by_hand_stopped()
         {
             _torrent.State = "stoppedUP";

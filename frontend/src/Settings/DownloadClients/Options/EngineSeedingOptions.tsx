@@ -139,6 +139,12 @@ function EngineSeedingOptions({
               warnings={settings.engineSeedingMinutes.warnings}
               onChange={handleTimeChange}
             />
+          </FormRow>
+        ) : null}
+
+        {usesTime ? (
+          <FormRow>
+            <FormLabel>{translate('EngineSeedingTimeUnit')}</FormLabel>
 
             <FormInput
               type={inputTypes.SELECT}

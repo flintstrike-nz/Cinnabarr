@@ -26,6 +26,8 @@ namespace NzbDrone.Core.Download.Engine
         public double Ratio { get; set; }
         public string Source { get; set; }
 
+        public const double RatioTolerance = 0.001;
+
         public bool UsesTime => Mode is EngineSeedingMode.Time or EngineSeedingMode.Either or EngineSeedingMode.Both;
         public bool UsesRatio => Mode is EngineSeedingMode.Ratio or EngineSeedingMode.Either or EngineSeedingMode.Both;
 
@@ -34,7 +36,9 @@ namespace NzbDrone.Core.Download.Engine
         public bool IsMet(TimeSpan seeded, double ratio)
         {
             var timeMet = seeded.TotalMinutes >= Minutes;
-            var ratioMet = ratio >= Ratio;
+
+            // The engine reports ratios as single-precision floats (1.4 arrives as 1.3999999…).
+            var ratioMet = ratio >= Ratio - RatioTolerance;
 
             return Mode switch
             {

@@ -22,6 +22,9 @@ namespace NzbDrone.Core.Download.Engine
         public double? TrackerSeedRatio { get; set; }
         public int? TrackerSeedMinutes { get; set; }
 
+        // Set while Embarr is starting a torrent its earlier share limits stopped, so a start that fails is retried.
+        public bool ResumeSeeding { get; set; }
+
         // The grabbed quality; null in sidecars written before it was added, which fall back to parsing the title.
         public EngineLinkQuality Quality { get; set; }
         public DateTime Grabbed { get; set; }
