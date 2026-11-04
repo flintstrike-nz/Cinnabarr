@@ -6,8 +6,13 @@ import FormInputHelpText from 'Components/Form/FormInputHelpText';
 import FormLabel from 'Components/Form/FormLabel';
 import FormRow from 'Components/Form/FormRow';
 import Button from 'Components/Link/Button';
+import SpinnerButton from 'Components/Link/SpinnerButton';
 import { inputTypes } from 'Helpers/Props';
 import EngineOrphansModal from 'Settings/DownloadClients/Orphans/EngineOrphansModal';
+import {
+  useEngineOrphanStatus,
+  useStopEngineOrphanCleanup,
+} from 'Settings/DownloadClients/Orphans/useEngineOrphans';
 import { InputChanged } from 'typings/inputs';
 import { PendingSection } from 'typings/pending';
 import translate from 'Utilities/String/translate';
@@ -24,6 +29,12 @@ function EngineOrphanOptions({
   onInputChange,
 }: EngineOrphanOptionsProps) {
   const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const { data: status } = useEngineOrphanStatus();
+  const { mutate: stop, isPending: isStopping } = useStopEngineOrphanCleanup();
+
+  const handleStopPress = useCallback(() => {
+    stop();
+  }, [stop]);
 
   const handleReviewPress = useCallback(() => {
     setIsReviewOpen(true);
@@ -59,16 +70,21 @@ function EngineOrphanOptions({
         <FormRow>
           <FormLabel>{translate('EngineOrphansDeleteAutomatically')}</FormLabel>
 
-          <FormInputHelpText
-            text={translate('EngineOrphansDeleteAutomaticallyHelpText')}
-          />
+          <div>
+            <FormInputHelpText
+              text={translate(
+                status?.deleteAutomatically
+                  ? 'EngineOrphansDeleteAutomaticallyOnHelpText'
+                  : 'EngineOrphansDeleteAutomaticallyOffHelpText'
+              )}
+            />
 
-          <FormInput
-            type={inputTypes.CHECK}
-            name="engineOrphanCleanupApproved"
-            onChange={onInputChange}
-            {...settings.engineOrphanCleanupApproved}
-          />
+            {status?.deleteAutomatically ? (
+              <SpinnerButton isSpinning={isStopping} onPress={handleStopPress}>
+                {translate('EngineOrphansStopDeletingAutomatically')}
+              </SpinnerButton>
+            ) : null}
+          </div>
         </FormRow>
 
         <FormRow>

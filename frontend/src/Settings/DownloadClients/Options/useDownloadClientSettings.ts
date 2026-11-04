@@ -7,7 +7,6 @@ export interface DownloadClientSettingsModel {
   engineSeedingMode: number;
   engineSeedingMinutes: number;
   engineSeedingRatio: number;
-  engineOrphanCleanupApproved: boolean;
   engineOrphanGraceDays: number;
   autoRedownloadFailed: boolean;
   autoRedownloadFailedFromInteractiveSearch: boolean;

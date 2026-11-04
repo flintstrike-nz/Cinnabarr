@@ -14,7 +14,6 @@ namespace Sonarr.Api.V3.Config
         public int? EngineSeedingMode { get; set; }
         public int? EngineSeedingMinutes { get; set; }
         public double? EngineSeedingRatio { get; set; }
-        public bool? EngineOrphanCleanupApproved { get; set; }
         public int? EngineOrphanGraceDays { get; set; }
         public bool AutoRedownloadFailed { get; set; }
         public bool AutoRedownloadFailedFromInteractiveSearch { get; set; }
@@ -33,7 +32,6 @@ namespace Sonarr.Api.V3.Config
                 EngineSeedingMode = model.EngineSeedingMode,
                 EngineSeedingMinutes = model.EngineSeedingMinutes,
                 EngineSeedingRatio = model.EngineSeedingRatio,
-                EngineOrphanCleanupApproved = model.EngineOrphanCleanupApproved,
                 EngineOrphanGraceDays = model.EngineOrphanGraceDays,
                 AutoRedownloadFailed = model.AutoRedownloadFailed,
                 AutoRedownloadFailedFromInteractiveSearch = model.AutoRedownloadFailedFromInteractiveSearch

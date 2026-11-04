@@ -15,13 +15,38 @@ export interface EngineOrphans {
 }
 
 const PATH = '/engine/orphans';
-const SETTINGS_PATH = '/settings/downloadclient';
+const STATUS_PATH = '/engine/orphans/status';
+
+export interface EngineOrphanStatus {
+  graceDays: number;
+  deleteAutomatically: boolean;
+  awaitingReview: number;
+}
 
 // Scans for leftover partial files (roadmap §4.13); nothing is deleted by looking.
 export const useEngineOrphans = () => {
   return useApiQuery<EngineOrphans>({
     path: PATH,
     queryOptions: { gcTime: 0, refetchOnWindowFocus: false },
+  });
+};
+
+// Whether the daily cleanup deletes leftover files itself; doesn't scan.
+export const useEngineOrphanStatus = () => {
+  return useApiQuery<EngineOrphanStatus>({ path: STATUS_PATH });
+};
+
+// Turns automatic deletion off. Only an approval (useApproveEngineOrphans) turns it on.
+export const useStopEngineOrphanCleanup = () => {
+  const queryClient = useQueryClient();
+
+  return useApiMutation<EngineOrphanStatus, void>({
+    path: `${PATH}/stop`,
+    method: 'POST',
+    mutationOptions: {
+      onSuccess: () =>
+        queryClient.invalidateQueries({ queryKey: [STATUS_PATH] }),
+    },
   });
 };
 
@@ -36,11 +61,11 @@ export const useApproveEngineOrphans = () => {
     path: `${PATH}/delete`,
     method: 'POST',
     mutationOptions: {
-      // The approval changes the automatic-deletion setting too.
+      // The approval sets automatic deletion too.
       onSuccess: () =>
         Promise.all([
           queryClient.invalidateQueries({ queryKey: [PATH] }),
-          queryClient.invalidateQueries({ queryKey: [SETTINGS_PATH] }),
+          queryClient.invalidateQueries({ queryKey: [STATUS_PATH] }),
         ]),
     },
   });

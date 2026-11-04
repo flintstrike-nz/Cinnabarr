@@ -337,7 +337,8 @@ Built so far (2f-1, backend):
 - **Scheduled task.** `EngineOrphanCleanupCommand` runs daily. It only lists the files, and a health notice says how many are waiting, until a list is approved (`EngineOrphanCleanupApproved`). After that it deletes orphans itself. The grace period is `EngineOrphanGraceDays` (7).
 - **API.** `GET /api/v5/engine/orphans` scans now. `POST /api/v5/engine/orphans/delete` with `{paths, deleteAutomatically}` deletes the listed files that are still orphans on a fresh scan, then sets automatic deletion. Empty per-torrent staging folders go with their files.
 - **Review screen (2f-2).** Settings → Download Clients has a **Leftover Partial Files** section:
-  - the grace period (`engineOrphanGraceDays`, at least 1 day) and **Delete Automatically** (`engineOrphanCleanupApproved`), both also in the v3 and v5 download client settings;
+  - the grace period (`engineOrphanGraceDays`, at least 1 day), also in the v3 and v5 download client settings;
+  - whether **Delete Automatically** is on, with a button to turn it off (`GET /api/v5/engine/orphans/status`, `POST .../stop`). Only approving a list turns it on, so it isn't a download client setting;
   - **Review Leftover Files**, which scans now and lists each file's path, size and last write;
   - **Delete**, which approves the list and can turn on automatic deletion at the same time.
 

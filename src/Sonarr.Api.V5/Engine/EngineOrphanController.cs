@@ -26,6 +26,29 @@ public class EngineOrphanController : Controller
         return ToResource(Scan());
     }
 
+    [HttpGet("status")]
+    [Produces("application/json")]
+    public EngineOrphanStatusResource GetStatus()
+    {
+        return new EngineOrphanStatusResource
+        {
+            GraceDays = _configService.EngineOrphanGraceDays,
+            DeleteAutomatically = _configService.EngineOrphanCleanupApproved,
+            AwaitingReview = _engineOrphanService.AwaitingReview
+        };
+    }
+
+    // Turns automatic deletion off; the scheduled cleanup goes back to listing files for review. Turning it on takes
+    // an approval (delete).
+    [HttpPost("stop")]
+    [Produces("application/json")]
+    public EngineOrphanStatusResource Stop()
+    {
+        _configService.EngineOrphanCleanupApproved = false;
+
+        return GetStatus();
+    }
+
     [HttpPost("delete")]
     [Consumes("application/json")]
     [Produces("application/json")]
