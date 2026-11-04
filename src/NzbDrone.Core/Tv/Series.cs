@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Languages;
@@ -68,6 +69,9 @@ namespace NzbDrone.Core.Tv
         public List<SeasonType> SeasonTypes { get; set; }
         public List<SeriesTranslation> Translations { get; set; }
         public List<Season> Seasons { get; set; }
+
+        // Overrides the global seeding goal for this series' files (roadmap §4.10); null to use the global one.
+        public Download.Engine.EngineSeedingRule SeedingRule { get; set; }
         public HashSet<int> Tags { get; set; }
         public AddSeriesOptions AddOptions { get; set; }
 
@@ -79,6 +83,12 @@ namespace NzbDrone.Core.Tv
         public void ApplyChanges(Series otherSeries)
         {
             TvdbId = otherSeries.TvdbId;
+
+            // Seeding rules are set through their own endpoint, so the seasons sent here don't carry them.
+            foreach (var season in otherSeries.Seasons ?? new List<Season>())
+            {
+                season.SeedingRule ??= Seasons?.FirstOrDefault(s => s.SeasonNumber == season.SeasonNumber)?.SeedingRule;
+            }
 
             Seasons = otherSeries.Seasons;
             Path = otherSeries.Path;

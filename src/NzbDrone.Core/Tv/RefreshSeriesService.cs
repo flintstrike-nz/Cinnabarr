@@ -166,6 +166,7 @@ namespace NzbDrone.Core.Tv
                 else
                 {
                     season.Monitored = existingSeason.Monitored;
+                    season.SeedingRule = existingSeason.SeedingRule;
                 }
             }
 

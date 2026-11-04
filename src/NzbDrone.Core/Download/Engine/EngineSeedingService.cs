@@ -9,6 +9,7 @@ using NzbDrone.Core.Download.Clients.QBittorrent;
 using NzbDrone.Core.Download.History;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.Indexers;
+using NzbDrone.Core.Tv;
 
 namespace NzbDrone.Core.Download.Engine
 {
@@ -19,7 +20,8 @@ namespace NzbDrone.Core.Download.Engine
         // from the engine, keeping its files.
         void Process(IDownloadClient downloadClient);
 
-        // The goals a file of the download has to meet, most specific last.
+        // The goals the files of the download have to meet: each video's most specific goal (episode, season, series,
+        // then global) and the tracker's minimum.
         List<EngineSeedingRule> GetRules(string downloadId, EngineLink link);
     }
 
@@ -31,6 +33,8 @@ namespace NzbDrone.Core.Download.Engine
         private readonly ISeedConfigProvider _seedConfigProvider;
         private readonly IConfigService _configService;
         private readonly ITrackedDownloadService _trackedDownloadService;
+        private readonly ISeriesService _seriesService;
+        private readonly IEpisodeService _episodeService;
         private readonly Logger _logger;
 
         public EngineSeedingService(IQBittorrentProxySelector proxySelector,
@@ -39,6 +43,8 @@ namespace NzbDrone.Core.Download.Engine
                                     ISeedConfigProvider seedConfigProvider,
                                     IConfigService configService,
                                     ITrackedDownloadService trackedDownloadService,
+                                    ISeriesService seriesService,
+                                    IEpisodeService episodeService,
                                     Logger logger)
         {
             _proxySelector = proxySelector;
@@ -47,6 +53,8 @@ namespace NzbDrone.Core.Download.Engine
             _seedConfigProvider = seedConfigProvider;
             _configService = configService;
             _trackedDownloadService = trackedDownloadService;
+            _seriesService = seriesService;
+            _episodeService = episodeService;
             _logger = logger;
         }
 
@@ -76,19 +84,38 @@ namespace NzbDrone.Core.Download.Engine
 
         public List<EngineSeedingRule> GetRules(string downloadId, EngineLink link)
         {
-            var rules = new List<EngineSeedingRule>
-            {
-                new EngineSeedingRule
-                {
-                    Mode = (EngineSeedingMode)_configService.EngineSeedingMode,
-                    Minutes = _configService.EngineSeedingMinutes,
-                    Ratio = _configService.EngineSeedingRatio,
-                    Source = "global"
-                }
-            };
-
-            // A tracker's minimum (its indexer's seed ratio and time) is a floor the other goals can't go below.
+            var videos = link?.Files?.Where(f => !f.IsSubtitle && f.State == EngineLinkFileState.Imported).ToList() ?? new List<EngineLinkFile>();
+            var series = link == null ? null : _seriesService.FindByTvdbId(link.TvdbId);
+            var episodes = GetEpisodeLookup(series);
             var trackerRule = GetTrackerRule(downloadId, link);
+
+            return videos.SelectMany(v => GetRules(series, episodes, v, trackerRule))
+                .DefaultIfEmpty(GetGlobalRule())
+                .Distinct()
+                .ToList();
+        }
+
+        // A video's goals: for each of its episodes, the most specific goal set (episode, season, series, global), and
+        // the tracker's minimum, a floor the other goals can't go below.
+        private List<EngineSeedingRule> GetRules(Series series, Dictionary<(int SeasonNumber, int EpisodeNumber), Episode> episodes, EngineLinkFile video, EngineSeedingRule trackerRule)
+        {
+            var rules = new List<EngineSeedingRule>();
+
+            foreach (var linkEpisode in video.Episodes.DefaultIfEmpty())
+            {
+                var episode = linkEpisode == null ? null : episodes.GetValueOrDefault((linkEpisode.SeasonNumber, linkEpisode.EpisodeNumber));
+                var season = series?.Seasons?.FirstOrDefault(s => s.SeasonNumber == linkEpisode?.SeasonNumber);
+
+                var rule = Describe(episode?.SeedingRule, "episode") ??
+                           Describe(season?.SeedingRule, "season") ??
+                           Describe(series?.SeedingRule, "series") ??
+                           GetGlobalRule();
+
+                if (!rules.Contains(rule))
+                {
+                    rules.Add(rule);
+                }
+            }
 
             if (trackerRule != null)
             {
@@ -96,6 +123,32 @@ namespace NzbDrone.Core.Download.Engine
             }
 
             return rules;
+        }
+
+        // The series' episodes by season and episode number, read once for all of a torrent's files.
+        private Dictionary<(int SeasonNumber, int EpisodeNumber), Episode> GetEpisodeLookup(Series series)
+        {
+            return series == null
+                ? new Dictionary<(int SeasonNumber, int EpisodeNumber), Episode>()
+                : _episodeService.GetEpisodeBySeries(series.Id)
+                    .GroupBy(e => (e.SeasonNumber, e.EpisodeNumber))
+                    .ToDictionary(g => g.Key, g => g.First());
+        }
+
+        private EngineSeedingRule GetGlobalRule()
+        {
+            return new EngineSeedingRule
+            {
+                Mode = (EngineSeedingMode)_configService.EngineSeedingMode,
+                Minutes = _configService.EngineSeedingMinutes,
+                Ratio = _configService.EngineSeedingRatio,
+                Source = "global"
+            };
+        }
+
+        private static EngineSeedingRule Describe(EngineSeedingRule rule, string source)
+        {
+            return rule == null ? null : new EngineSeedingRule { Mode = rule.Mode, Minutes = rule.Minutes, Ratio = rule.Ratio, Source = source };
         }
 
         private void ProcessTorrent(IQBittorrentProxy proxy, QBittorrentSettings settings, QBittorrentTorrent torrent, string downloadId)
@@ -117,7 +170,11 @@ namespace NzbDrone.Core.Download.Engine
                 return;
             }
 
-            var rules = GetRules(downloadId, link);
+            var series = _seriesService.FindByTvdbId(link.TvdbId);
+            var episodes = GetEpisodeLookup(series);
+            var trackerRule = GetTrackerRule(downloadId, link);
+            var rulesByVideo = videos.ToDictionary(v => v, v => GetRules(series, episodes, v, trackerRule));
+            var rules = rulesByVideo.Values.SelectMany(r => r).Distinct().ToList();
             var now = DateTime.UtcNow;
             var ratio = Math.Max(0, (double)torrent.Ratio);
 
@@ -130,7 +187,7 @@ namespace NzbDrone.Core.Download.Engine
                 _engineLinkService.Save(downloadId, link);
             }
 
-            if (videos.All(v => EngineSeedingRule.AreMet(rules, now - v.ImportedAt.Value, ratio)))
+            if (videos.All(v => EngineSeedingRule.AreMet(rulesByVideo[v], now - v.ImportedAt.Value, ratio)))
             {
                 // Seeding never costs a file: the torrent goes, its files stay in the library.
                 _logger.Info("'{0}' has met its seeding goals; removing it from the engine and keeping its files", torrent.Name);
@@ -164,7 +221,10 @@ namespace NzbDrone.Core.Download.Engine
                 _engineLinkService.Save(downloadId, link);
             }
 
-            var active = rules.Where(r => r.Mode != EngineSeedingMode.None).ToList();
+            // Goals that only differ in where they came from count once.
+            var active = rules.Where(r => r.Mode != EngineSeedingMode.None)
+                .DistinctBy(r => (r.Mode, r.Minutes, Math.Round(r.Ratio, 3)))
+                .ToList();
             double ratioLimit = -1;
             const long minutesLimit = -1;
 

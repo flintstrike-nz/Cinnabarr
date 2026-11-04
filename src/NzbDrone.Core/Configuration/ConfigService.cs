@@ -65,12 +65,14 @@ namespace NzbDrone.Core.Configuration
                     continue;
                 }
 
-                var equal = configValue.Value.ToString().Equals(currentValue.ToString());
+                // Stored culture-independently, so a ratio of 1.5 is never saved as "1,5".
+                var value = Convert.ToString(configValue.Value, CultureInfo.InvariantCulture);
+                var equal = value.Equals(Convert.ToString(currentValue, CultureInfo.InvariantCulture));
 
                 if (!equal)
                 {
                     hasUpdated = true;
-                    SetValue(configValue.Key, configValue.Value.ToString());
+                    SetValue(configValue.Key, value);
                 }
             }
 
@@ -515,12 +517,14 @@ namespace NzbDrone.Core.Configuration
 
             _logger.Trace("Using default config value for '{0}' defaultValue:'{1}'", key, defaultValue);
 
+            var defaultString = Convert.ToString(defaultValue, CultureInfo.InvariantCulture);
+
             if (persist)
             {
-                SetValue(key, defaultValue.ToString());
+                SetValue(key, defaultString);
             }
 
-            return defaultValue.ToString();
+            return defaultString;
         }
 
         private void SetValue(string key, bool value)

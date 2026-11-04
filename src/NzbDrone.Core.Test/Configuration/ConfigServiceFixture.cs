@@ -67,6 +67,25 @@ namespace NzbDrone.Core.Test.Configuration
             AssertUpsert("PreferredMetadataLanguage", value);
         }
 
+        [Test]
+        public void should_save_a_ratio_the_same_way_in_every_culture()
+        {
+            var culture = System.Threading.Thread.CurrentThread.CurrentCulture;
+
+            try
+            {
+                System.Threading.Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo("de-DE");
+
+                Subject.SaveConfigDictionary(new Dictionary<string, object> { { "EngineSeedingRatio", 1.5 } });
+
+                Mocker.GetMock<IConfigRepository>().Verify(c => c.Upsert("engineseedingratio", "1.5"));
+            }
+            finally
+            {
+                System.Threading.Thread.CurrentThread.CurrentCulture = culture;
+            }
+        }
+
         private void AssertUpsert(string key, object value)
         {
             Mocker.GetMock<IConfigRepository>().Verify(c => c.Upsert(key.ToLowerInvariant(), value.ToString()));
