@@ -15,6 +15,15 @@ namespace NzbDrone.Core.Download.Engine
         // Added once the file whitelist is applied and the torrent is started.
         public const string Prepared = "embarr-prepared";
 
+        // Held for preparation and not prepared yet: starting it now would download files the whitelist hasn't
+        // excluded yet.
+        public static bool IsAwaitingPreparation(string tags)
+        {
+            var list = (tags ?? string.Empty).Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+            return Array.IndexOf(list, Held) >= 0 && Array.IndexOf(list, Prepared) < 0;
+        }
+
         public static bool IsReserved(string tag)
         {
             return tag != null && tag.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase);

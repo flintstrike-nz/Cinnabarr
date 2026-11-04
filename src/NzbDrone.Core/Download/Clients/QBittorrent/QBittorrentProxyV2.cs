@@ -447,6 +447,42 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             ProcessRequest(request, settings);
         }
 
+        public void StopTorrents(string hashes, QBittorrentSettings settings)
+        {
+            // qBittorrent 5 (API 2.11) renamed pause to stop
+            var action = GetApiVersion(settings) >= new Version(2, 11, 0) ? "stop" : "pause";
+
+            var request = BuildRequest(settings).Resource($"/api/v2/torrents/{action}")
+                .Post()
+                .AddFormParameter("hashes", hashes);
+            ProcessRequest(request, settings);
+        }
+
+        public void StartTorrents(string hashes, QBittorrentSettings settings)
+        {
+            StartTorrent(hashes, settings);
+        }
+
+        public QBittorrentTransferInfo GetTransferInfo(QBittorrentSettings settings)
+        {
+            var request = BuildRequest(settings).Resource("/api/v2/transfer/info");
+
+            return ProcessRequest<QBittorrentTransferInfo>(request, settings);
+        }
+
+        public bool GetAlternativeSpeedLimitsEnabled(QBittorrentSettings settings)
+        {
+            var request = BuildRequest(settings).Resource("/api/v2/transfer/speedLimitsMode");
+
+            return ProcessRequest(request, settings).Trim() == "1";
+        }
+
+        public void ToggleAlternativeSpeedLimits(QBittorrentSettings settings)
+        {
+            var request = BuildRequest(settings).Resource("/api/v2/transfer/toggleSpeedLimitsMode").Post();
+            ProcessRequest(request, settings);
+        }
+
         private static HttpRequestBuilder BuildRequest(QBittorrentSettings settings)
         {
             var requestBuilder = new HttpRequestBuilder(settings.UseSsl, settings.Host, settings.Port, settings.UrlBase)

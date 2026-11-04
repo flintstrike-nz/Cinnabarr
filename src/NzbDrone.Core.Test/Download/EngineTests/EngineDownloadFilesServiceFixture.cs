@@ -28,7 +28,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         {
             _settings = new QBittorrentSettings();
             _proxy = new Mock<IQBittorrentProxy>();
-            _torrents = new List<QBittorrentTorrent> { new QBittorrentTorrent { Hash = Hash, Ratio = 1.5f } };
+            _torrents = new List<QBittorrentTorrent> { new QBittorrentTorrent { Hash = Hash, Ratio = 1.5f, State = "stoppedUP" } };
 
             _link = new EngineLink
             {
@@ -75,6 +75,8 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             var result = Subject.Get(Hash.ToUpperInvariant());
 
             result.InEngine.Should().BeTrue();
+            result.IsPaused.Should().BeTrue();
+            result.IsForceStarted.Should().BeFalse();
             result.Ratio.Should().Be(1.5);
 
             // Each video is followed by its subtitles.

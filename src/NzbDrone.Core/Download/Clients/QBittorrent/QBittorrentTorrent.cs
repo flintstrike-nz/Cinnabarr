@@ -78,4 +78,14 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         public double Progress { get; set; }
         public int Priority { get; set; }
     }
+
+    // Global transfer figures from /transfer/info.
+    public class QBittorrentTransferInfo
+    {
+        [JsonProperty(PropertyName = "dl_info_speed")]
+        public long DownloadSpeed { get; set; } // bytes/s
+
+        [JsonProperty(PropertyName = "up_info_speed")]
+        public long UploadSpeed { get; set; } // bytes/s
+    }
 }

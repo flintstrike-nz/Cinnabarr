@@ -36,6 +36,12 @@ namespace NzbDrone.Core.Download.Engine
     public class EngineDownloadFiles
     {
         public bool InEngine { get; set; }
+
+        // The torrent's state in the engine, for its controls (all false when the engine doesn't have it).
+        public bool IsPaused { get; set; }
+        public bool IsForceStarted { get; set; }
+        public bool IsAwaitingPreparation { get; set; }
+
         public double? Ratio { get; set; }
         public List<EngineDownloadFile> Files { get; set; } = new();
     }
@@ -95,6 +101,9 @@ namespace NzbDrone.Core.Download.Engine
             return new EngineDownloadFiles
             {
                 InEngine = torrent != null,
+                IsPaused = torrent?.State is "pausedDL" or "pausedUP" or "stoppedDL" or "stoppedUP",
+                IsForceStarted = torrent?.State?.StartsWith("forced", StringComparison.Ordinal) == true,
+                IsAwaitingPreparation = torrent != null && EngineTorrentTags.IsAwaitingPreparation(torrent.Tags),
                 Ratio = ratio,
                 Files = link.Files
                     .OrderBy(f => f.IsSubtitle ? f.VideoIndex ?? f.Index : f.Index)

@@ -37,6 +37,16 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
 
         // Sets a torrent's ratio limit and clears both its seeding time limits (total and inactive).
         void SetShareLimitsWithoutTimeLimits(string hash, double ratioLimit, QBittorrentSettings settings);
+
+        // Stops (pauses) torrents; hashes are joined with '|', or "all".
+        void StopTorrents(string hashes, QBittorrentSettings settings);
+
+        // Starts (resumes) torrents; hashes are joined with '|', or "all".
+        void StartTorrents(string hashes, QBittorrentSettings settings);
+
+        QBittorrentTransferInfo GetTransferInfo(QBittorrentSettings settings);
+        bool GetAlternativeSpeedLimitsEnabled(QBittorrentSettings settings);
+        void ToggleAlternativeSpeedLimits(QBittorrentSettings settings);
     }
 
     public interface IQBittorrentProxySelector

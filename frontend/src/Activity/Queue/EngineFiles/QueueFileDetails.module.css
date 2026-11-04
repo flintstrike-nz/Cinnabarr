@@ -30,3 +30,15 @@
 .met {
   color: var(--successColor);
 }
+
+.actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.note {
+  color: var(--helpTextColor);
+}
