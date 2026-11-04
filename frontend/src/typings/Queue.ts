@@ -56,6 +56,7 @@ interface Queue extends ModelBase {
   isFullSeason: boolean;
   isEngineDownload: boolean;
   isMissingFromEngine: boolean;
+  isUnlinked: boolean;
   episodes?: Episode[];
 }
 

@@ -1,7 +1,9 @@
 using System;
 using System.Linq;
+using MonoTorrent;
 using NLog;
 using NzbDrone.Core.Download.Clients.QBittorrent;
+using NzbDrone.Core.MediaFiles.TorrentInfo;
 
 namespace NzbDrone.Core.Download.Engine
 {
@@ -37,6 +39,11 @@ namespace NzbDrone.Core.Download.Engine
         void Resume(string downloadId);
         void SetForceStart(string downloadId, bool enabled);
         void Recheck(string downloadId);
+
+        // Adds a torrent by hand (roadmap §6.2) and returns its download id. Like a grab it is held until only its video
+        // and subtitle files are chosen; it is listed as Unlinked until Manual Import links it to the library.
+        string AddMagnet(string magnetLink);
+        string AddTorrentFile(string fileName, byte[] fileContent);
     }
 
     // Controls for the built-in engine and its torrents (roadmap §6.2). A torrent still being prepared (§4.8) is never
@@ -46,17 +53,79 @@ namespace NzbDrone.Core.Download.Engine
         private readonly IProvideDownloadClient _downloadClientProvider;
         private readonly IEngineClientRegistry _engineClientRegistry;
         private readonly IQBittorrentProxySelector _proxySelector;
+        private readonly IEngineAddGate _engineAddGate;
+        private readonly ITorrentFileInfoReader _torrentFileInfoReader;
         private readonly Logger _logger;
 
         public EngineControlService(IProvideDownloadClient downloadClientProvider,
                                     IEngineClientRegistry engineClientRegistry,
                                     IQBittorrentProxySelector proxySelector,
+                                    IEngineAddGate engineAddGate,
+                                    ITorrentFileInfoReader torrentFileInfoReader,
                                     Logger logger)
         {
             _downloadClientProvider = downloadClientProvider;
             _engineClientRegistry = engineClientRegistry;
             _proxySelector = proxySelector;
+            _engineAddGate = engineAddGate;
+            _torrentFileInfoReader = torrentFileInfoReader;
             _logger = logger;
+        }
+
+        public string AddMagnet(string magnetLink)
+        {
+            string hash;
+
+            try
+            {
+                hash = MagnetLink.Parse(magnetLink?.Trim() ?? string.Empty).InfoHashes.V1OrV2.ToHex();
+            }
+            catch (Exception ex) when (ex is FormatException or ArgumentException or UriFormatException)
+            {
+                throw new EngineControlException("that isn't a valid magnet link", ex);
+            }
+
+            return Add(hash, (proxy, settings) => proxy.AddManualTorrentFromUrl(magnetLink.Trim(), settings));
+        }
+
+        public string AddTorrentFile(string fileName, byte[] fileContent)
+        {
+            string hash;
+
+            try
+            {
+                hash = _torrentFileInfoReader.GetHashFromTorrentFile(fileContent);
+            }
+            catch (Exception ex)
+            {
+                throw new EngineControlException("that isn't a valid .torrent file", ex);
+            }
+
+            return Add(hash, (proxy, settings) => proxy.AddManualTorrentFromFile(fileName, fileContent, settings));
+        }
+
+        private string Add(string hash, Action<IQBittorrentProxy, QBittorrentSettings> add)
+        {
+            return Run((proxy, settings) =>
+            {
+                // A v2-only torrent's id in the engine is its v2 hash cut to 40 digits.
+                hash = hash.Length == 64 ? hash.Substring(0, 40) : hash;
+
+                if (proxy.GetTorrents(settings).Any(t => string.Equals(t.Hash, hash, StringComparison.OrdinalIgnoreCase)))
+                {
+                    throw new EngineControlException("the engine already has this torrent");
+                }
+
+                // Takes turns with orphan cleanup, which mustn't delete partial files this torrent may own.
+                using (_engineAddGate.BeginAdd())
+                {
+                    add(proxy, settings);
+                }
+
+                _logger.Info("Added torrent {0} to the engine by hand", hash);
+
+                return hash.ToUpperInvariant();
+            });
         }
 
         public EngineTransferStatus GetStatus()

@@ -44,6 +44,10 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         // Starts (resumes) torrents; hashes are joined with '|', or "all".
         void StartTorrents(string hashes, QBittorrentSettings settings);
 
+        // A torrent added by hand to the built-in engine: held for preparation like a grab, and tagged as manual.
+        void AddManualTorrentFromUrl(string torrentUrl, QBittorrentSettings settings);
+        void AddManualTorrentFromFile(string fileName, byte[] fileContent, QBittorrentSettings settings);
+
         QBittorrentTransferInfo GetTransferInfo(QBittorrentSettings settings);
         bool GetAlternativeSpeedLimitsEnabled(QBittorrentSettings settings);
         void ToggleAlternativeSpeedLimits(QBittorrentSettings settings);

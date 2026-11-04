@@ -100,9 +100,15 @@ namespace NzbDrone.Core.Download.Engine
                 .Where(h => h.EventType == EpisodeHistoryEventType.Grabbed)
                 .MaxBy(h => h.Date);
 
-            // Only torrents Embarr grabbed are held for it; anything else in the engine is left alone.
+            // Only torrents Embarr grabbed, or that were added by hand on the Downloads page, are held for it; anything
+            // else in the engine is left alone.
             if (grab == null)
             {
+                if (EngineTorrentTags.HasTag(torrent.Tags, EngineTorrentTags.Manual))
+                {
+                    PrepareManualTorrent(proxy, settings, torrent, hash);
+                }
+
                 return;
             }
 
@@ -164,6 +170,37 @@ namespace NzbDrone.Core.Download.Engine
             proxy.AddTags(hash, new[] { EngineTorrentTags.Prepared }, settings);
 
             _logger.Info("Prepared '{0}': {1} of {2} file(s) will be downloaded{3}", torrent.Name, files.Count - excluded.Count, files.Count, map == null ? string.Empty : $" into '{map.SavePath}'");
+        }
+
+        // A torrent added by hand: only video and subtitle files are downloaded (roadmap §4.8), into the engine's
+        // folder; Manual Import links it to the library. With nothing wanted it isn't started.
+        private void PrepareManualTorrent(IQBittorrentProxy proxy, QBittorrentSettings settings, QBittorrentTorrent torrent, string hash)
+        {
+            var files = proxy.GetTorrentFiles(hash, settings);
+            var excluded = files.Select((file, index) => (file, index))
+                .Where(f => !EngineFileWhitelist.IsWanted(f.file.Name))
+                .Select(f => f.index)
+                .ToList();
+
+            if (excluded.Any())
+            {
+                proxy.SetFilePriority(hash, excluded, 0, settings);
+            }
+
+            var wanted = files.Count - excluded.Count;
+
+            if (wanted > 0)
+            {
+                proxy.StartTorrent(hash, settings);
+            }
+            else
+            {
+                _logger.Warn("'{0}' has no video or subtitle files, so nothing in it is downloaded", torrent.Name);
+            }
+
+            proxy.AddTags(hash, new[] { EngineTorrentTags.Prepared }, settings);
+
+            _logger.Info("Prepared '{0}' (added by hand): {1} of {2} file(s) will be downloaded", torrent.Name, wanted, files.Count);
         }
 
         private EngineFileMap MapToLibrary(string downloadId, EpisodeHistory grab, List<QBittorrentTorrentFile> files)

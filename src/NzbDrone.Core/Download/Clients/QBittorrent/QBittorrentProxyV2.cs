@@ -188,6 +188,34 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             }
         }
 
+        public void AddManualTorrentFromUrl(string torrentUrl, QBittorrentSettings settings)
+        {
+            var request = BuildRequest(settings).Resource("/api/v2/torrents/add")
+                                                .Post()
+                                                .AddFormParameter("urls", torrentUrl);
+
+            AddTorrentDownloadFormParameters(request, settings, true, isMagnet: true, $"{EngineTorrentTags.Held},{EngineTorrentTags.Manual}");
+
+            if (ProcessRequest(request, settings) == "Fails.")
+            {
+                throw new DownloadClientException("Download client failed to add torrent by url");
+            }
+        }
+
+        public void AddManualTorrentFromFile(string fileName, byte[] fileContent, QBittorrentSettings settings)
+        {
+            var request = BuildRequest(settings).Resource("/api/v2/torrents/add")
+                                                .Post()
+                                                .AddFormUpload("torrents", fileName, fileContent);
+
+            AddTorrentDownloadFormParameters(request, settings, true, isMagnet: false, $"{EngineTorrentTags.Held},{EngineTorrentTags.Manual}");
+
+            if (ProcessRequest(request, settings) == "Fails.")
+            {
+                throw new DownloadClientException("Download client failed to add torrent");
+            }
+        }
+
         public void RemoveTorrent(string hash, bool removeData, QBittorrentSettings settings)
         {
             var request = BuildRequest(settings).Resource("/api/v2/torrents/delete")
@@ -259,7 +287,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             return "seedingTimeLimit";
         }
 
-        private void AddTorrentDownloadFormParameters(HttpRequestBuilder request, QBittorrentSettings settings, bool hold, bool isMagnet)
+        private void AddTorrentDownloadFormParameters(HttpRequestBuilder request, QBittorrentSettings settings, bool hold, bool isMagnet, string holdTags = EngineTorrentTags.Held)
         {
             if (settings.TvCategory.IsNotNullOrWhiteSpace())
             {
@@ -271,7 +299,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                 // Built-in engine: nothing is downloaded until Embarr has set the file priorities (roadmap §4.8).
                 // The held tag marks the torrent for preparation. A magnet fetches its metadata, then stops; a
                 // .torrent file already has it, so it starts stopped.
-                request.AddFormParameter("tags", EngineTorrentTags.Held);
+                request.AddFormParameter("tags", holdTags);
 
                 if (isMagnet)
                 {

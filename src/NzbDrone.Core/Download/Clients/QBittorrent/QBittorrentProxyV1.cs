@@ -313,6 +313,16 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             throw new NotSupportedException("Engine controls require qBittorrent API v2");
         }
 
+        public void AddManualTorrentFromUrl(string torrentUrl, QBittorrentSettings settings)
+        {
+            throw new NotSupportedException("Engine controls require qBittorrent API v2");
+        }
+
+        public void AddManualTorrentFromFile(string fileName, byte[] fileContent, QBittorrentSettings settings)
+        {
+            throw new NotSupportedException("Engine controls require qBittorrent API v2");
+        }
+
         public QBittorrentTransferInfo GetTransferInfo(QBittorrentSettings settings)
         {
             throw new NotSupportedException("Engine controls require qBittorrent API v2");

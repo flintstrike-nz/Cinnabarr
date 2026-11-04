@@ -41,6 +41,7 @@ import {
 import translate from 'Utilities/String/translate';
 import EngineToolbarItems from './Engine/EngineToolbarItems';
 import QueueFilterModal from './QueueFilterModal';
+import QueueFilterTabs from './QueueFilterTabs';
 import {
   setQueueOption,
   setQueueOptions,
@@ -250,6 +251,11 @@ function QueueContent() {
     currentQueue.current = (
       <PageContentBody>
         <PageHeading scope={translate('Activity')} title={translate('Queue')} />
+
+        <QueueFilterTabs
+          selectedFilterKey={selectedFilterKey}
+          onFilterSelect={handleFilterSelect}
+        />
 
         {isRefreshing && !isAllPopulated ? <LoadingIndicator /> : null}
 

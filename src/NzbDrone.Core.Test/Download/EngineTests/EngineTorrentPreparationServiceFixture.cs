@@ -61,6 +61,45 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_only_download_video_and_subtitles_of_a_torrent_added_by_hand()
+        {
+            _torrent.Tags = $"{EngineTorrentTags.Held},{EngineTorrentTags.Manual}";
+            Mocker.GetMock<IHistoryService>().Setup(s => s.FindByDownloadId(Hash.ToUpperInvariant())).Returns(new List<EpisodeHistory>());
+
+            Subject.Prepare(GivenClient());
+
+            _proxy.Verify(p => p.SetFilePriority(Hash, It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { 2, 3 })), 0, _settings), Times.Once());
+            _proxy.Verify(p => p.StartTorrent(Hash, _settings), Times.Once());
+            _proxy.Verify(p => p.AddTags(Hash, It.Is<IEnumerable<string>>(t => t.Contains(EngineTorrentTags.Prepared)), _settings), Times.Once());
+            _proxy.Verify(p => p.SetLocation(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+        }
+
+        [Test]
+        public void should_not_start_a_torrent_added_by_hand_with_nothing_wanted()
+        {
+            _torrent.Tags = $"{EngineTorrentTags.Held},{EngineTorrentTags.Manual}";
+            _files.RemoveRange(0, 2);
+            Mocker.GetMock<IHistoryService>().Setup(s => s.FindByDownloadId(Hash.ToUpperInvariant())).Returns(new List<EpisodeHistory>());
+
+            Subject.Prepare(GivenClient());
+
+            _proxy.Verify(p => p.SetFilePriority(Hash, It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { 0, 1 })), 0, _settings), Times.Once());
+            _proxy.Verify(p => p.StartTorrent(It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_leave_alone_a_held_torrent_without_a_grab_that_was_not_added_by_hand()
+        {
+            Mocker.GetMock<IHistoryService>().Setup(s => s.FindByDownloadId(Hash.ToUpperInvariant())).Returns(new List<EpisodeHistory>());
+
+            Subject.Prepare(GivenClient());
+
+            _proxy.Verify(p => p.StartTorrent(It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+            _proxy.Verify(p => p.AddTags(It.IsAny<string>(), It.IsAny<IEnumerable<string>>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+        }
+
+        [Test]
         public void should_skip_unwanted_files_then_start_and_tag()
         {
             Subject.Prepare(GivenClient());

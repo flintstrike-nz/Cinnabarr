@@ -15,6 +15,15 @@ namespace NzbDrone.Core.Download.Engine
         // Added once the file whitelist is applied and the torrent is started.
         public const string Prepared = "embarr-prepared";
 
+        // Added, with Held, to a torrent added by hand on the Downloads page (roadmap §6.2). Embarr has no grab for it,
+        // so preparation only applies the file whitelist; it stays Unlinked until Manual Import links its files.
+        public const string Manual = "embarr-manual";
+
+        public static bool HasTag(string tags, string tag)
+        {
+            return Array.IndexOf((tags ?? string.Empty).Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries), tag) >= 0;
+        }
+
         // Held for preparation and not prepared yet: starting it now would download files the whitelist hasn't
         // excluded yet.
         public static bool IsAwaitingPreparation(string tags)
