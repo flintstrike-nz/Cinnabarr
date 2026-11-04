@@ -83,9 +83,10 @@ export const useSaveSeedingRule = (seriesId: number, seasonNumber?: number) => {
     path,
     method: 'PUT',
     mutationOptions: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: [getPath(seriesId)] });
-      },
+      // Returned so the save only finishes (and the dialog only closes) once the goals are refetched: closing first
+      // would cancel the refetch and leave the old goals cached for the next edit.
+      onSuccess: () =>
+        queryClient.invalidateQueries({ queryKey: [getPath(seriesId)] }),
     },
   });
 };
