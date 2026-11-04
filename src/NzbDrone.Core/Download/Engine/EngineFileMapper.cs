@@ -478,9 +478,18 @@ namespace NzbDrone.Core.Download.Engine
 
         // The root folder holding the series, when it is on the same drive as the files' final folder (a rename
         // can't cross drives); otherwise null and the files download next to their final path.
+        // The drive of a path, read from its nearest existing folder: a folder that doesn't exist yet would otherwise
+        // be given its drive letter's mount, missing a junction or mount point above it.
         private string GetMountRoot(string path)
         {
-            return _diskProvider.GetMount(path)?.RootDirectory;
+            var existing = path;
+
+            while (existing != null && !_diskProvider.FolderExists(existing))
+            {
+                existing = Path.GetDirectoryName(existing);
+            }
+
+            return _diskProvider.GetMount(existing ?? path)?.RootDirectory;
         }
 
         // A staged file moves to its final path by a rename, so a rebuilt final path must stay on the staging drive.
