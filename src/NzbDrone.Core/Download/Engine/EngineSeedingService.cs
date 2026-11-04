@@ -223,7 +223,7 @@ namespace NzbDrone.Core.Download.Engine
 
             // Goals that only differ in where they came from count once.
             var active = rules.Where(r => r.Mode != EngineSeedingMode.None)
-                .DistinctBy(r => (r.Mode, r.Minutes, Math.Round(r.Ratio, 3)))
+                .DistinctBy(r => (r.Mode, r.Minutes, r.Ratio))
                 .ToList();
             double ratioLimit = -1;
             const long minutesLimit = -1;

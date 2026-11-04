@@ -39,6 +39,8 @@ import DeleteSeriesModal from 'Series/Delete/DeleteSeriesModal';
 import EditSeriesModal from 'Series/Edit/EditSeriesModal';
 import SeriesHistoryModal from 'Series/History/SeriesHistoryModal';
 import MonitoringOptionsModal from 'Series/MonitoringOptions/MonitoringOptionsModal';
+import SeedingRuleModal from 'Series/Seeding/SeedingRuleModal';
+import { useSeriesSeedingRules } from 'Series/Seeding/useSeedingRules';
 import { Image, SeriesStatus, Statistics } from 'Series/Series';
 import SeriesGenres from 'Series/SeriesGenres';
 import SeriesPoster from 'Series/SeriesPoster';
@@ -218,6 +220,8 @@ function SeriesDetails({ seriesId }: SeriesDetailsProps) {
   const [isOrganizeModalOpen, setIsOrganizeModalOpen] = useState(false);
   const [isManageEpisodesOpen, setIsManageEpisodesOpen] = useState(false);
   const [isEditSeriesModalOpen, setIsEditSeriesModalOpen] = useState(false);
+  const [isSeedingModalOpen, setIsSeedingModalOpen] = useState(false);
+  const { data: seedingRules } = useSeriesSeedingRules(seriesId);
   const [isDeleteSeriesModalOpen, setIsDeleteSeriesModalOpen] = useState(false);
   const [isOverviewExpanded, setIsOverviewExpanded] = useState(false);
 
@@ -270,6 +274,14 @@ function SeriesDetails({ seriesId }: SeriesDetailsProps) {
 
   const handleEditSeriesModalClose = useCallback(() => {
     setIsEditSeriesModalOpen(false);
+  }, []);
+
+  const handleSeedingPress = useCallback(() => {
+    setIsSeedingModalOpen(true);
+  }, []);
+
+  const handleSeedingModalClose = useCallback(() => {
+    setIsSeedingModalOpen(false);
   }, []);
 
   const handleDeleteSeriesPress = useCallback(() => {
@@ -546,6 +558,15 @@ function SeriesDetails({ seriesId }: SeriesDetailsProps) {
             label={translate('EpisodeMonitoring')}
             iconName={icons.MONITORED}
             onPress={handleMonitorOptionsPress}
+          />
+
+          <ToolbarItem
+            id="seeding"
+            priority={1}
+            groupId="left-c"
+            label={translate('SeedingGoal')}
+            iconName={icons.SEEDING}
+            onPress={handleSeedingPress}
           />
 
           <ToolbarItem
@@ -965,6 +986,15 @@ function SeriesDetails({ seriesId }: SeriesDetailsProps) {
             isOpen={isSeriesHistoryModalOpen}
             seriesId={seriesId}
             onModalClose={handleSeriesHistoryModalClose}
+          />
+
+          <SeedingRuleModal
+            isOpen={isSeedingModalOpen}
+            seriesId={seriesId}
+            title={title}
+            rule={seedingRules?.rule ?? null}
+            inheritLabel={translate('SeedingGoalUseGlobal')}
+            onModalClose={handleSeedingModalClose}
           />
 
           <EditSeriesModal

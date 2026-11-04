@@ -296,6 +296,19 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_leave_the_engine_unlimited_for_ratio_goals_only_a_tolerance_apart()
+        {
+            // Two episodes of one file with ratio goals of 1.2341 and 1.2344: no single limit meets both.
+            GivenGlobalGoal(EngineSeedingMode.Ratio, 0, 1.2341);
+            GivenSeries(null, null, new EngineSeedingRule { Mode = EngineSeedingMode.Ratio, Ratio = 1.2344 });
+            _link.Files[0].Episodes.Add(new EngineLinkEpisode { SeasonNumber = 1, EpisodeNumber = 9 });
+
+            Subject.Process(GivenClient());
+
+            _proxy.Verify(p => p.SetShareLimitsWithoutTimeLimits(Hash, -1, _settings), Times.Once());
+        }
+
+        [Test]
         public void should_read_a_series_episodes_once_per_torrent()
         {
             GivenSeries(null, null, null);
