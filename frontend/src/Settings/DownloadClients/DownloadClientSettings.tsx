@@ -18,7 +18,6 @@ import DownloadClients from './DownloadClients/DownloadClients';
 import ManageDownloadClientsModal from './DownloadClients/Manage/ManageDownloadClientsModal';
 import { useTestAllDownloadClients } from './DownloadClients/useDownloadClients';
 import DownloadClientOptions from './Options/DownloadClientOptions';
-import RemotePathMappings from './RemotePathMappings/RemotePathMappings';
 
 function DownloadClientSettings() {
   const {
@@ -138,8 +137,6 @@ function DownloadClientSettings() {
             setChildSave={handleSetChildSave}
             onChildStateChange={handleChildStateChange}
           />
-
-          <RemotePathMappings />
 
           <ManageDownloadClientsModal
             isOpen={isManageDownloadClientsModalOpen}

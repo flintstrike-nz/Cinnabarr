@@ -8,7 +8,6 @@ using NzbDrone.Core.Datastore.Events;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.Clients;
 using NzbDrone.Core.Localization;
-using NzbDrone.Core.RemotePathMappings;
 using NzbDrone.Core.RootFolders;
 using NzbDrone.Core.ThingiProvider.Events;
 
@@ -17,7 +16,6 @@ namespace NzbDrone.Core.HealthCheck.Checks
     [CheckOn(typeof(ProviderUpdatedEvent<IDownloadClient>))]
     [CheckOn(typeof(ProviderDeletedEvent<IDownloadClient>))]
     [CheckOn(typeof(ModelEvent<RootFolder>))]
-    [CheckOn(typeof(ModelEvent<RemotePathMapping>))]
 
     public class DownloadClientRootFolderCheck : HealthCheckBase, IProvideHealthCheck
     {
