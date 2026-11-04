@@ -402,6 +402,14 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             ProcessRequest(request, settings);
         }
 
+        public void RecheckTorrent(string hash, QBittorrentSettings settings)
+        {
+            var request = BuildRequest(settings).Resource("/api/v2/torrents/recheck")
+                .Post()
+                .AddFormParameter("hashes", hash);
+            ProcessRequest(request, settings);
+        }
+
         public void SetLocation(string hash, string location, QBittorrentSettings settings)
         {
             var request = BuildRequest(settings).Resource("/api/v2/torrents/setLocation")

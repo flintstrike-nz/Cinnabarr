@@ -33,6 +33,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         void StartTorrent(string hash, QBittorrentSettings settings);
         void RenameFile(string hash, string oldPath, string newPath, QBittorrentSettings settings);
         void SetLocation(string hash, string location, QBittorrentSettings settings);
+        void RecheckTorrent(string hash, QBittorrentSettings settings);
     }
 
     public interface IQBittorrentProxySelector

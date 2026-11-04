@@ -391,22 +391,159 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             ExceptionVerification.ExpectedWarns(1);
         }
 
-        [Test]
-        public void should_wait_when_the_episodes_already_have_another_file()
+        private void GivenExistingFile(int id, string name)
         {
             Mocker.GetMock<IEpisodeService>()
                 .Setup(s => s.GetEpisodeBySeries(1))
                 .Returns(new List<Episode>
                 {
-                    new Episode { Id = 11, SeasonNumber = 1, EpisodeNumber = 1, EpisodeFileId = 7, EpisodeFile = new NzbDrone.Core.Datastore.LazyLoaded<NzbDrone.Core.MediaFiles.EpisodeFile>(new NzbDrone.Core.MediaFiles.EpisodeFile { Id = 7, RelativePath = Path.Combine("Season 01", "Show - S01E01 - Other.mkv") }) }
+                    new Episode { Id = 11, SeasonNumber = 1, EpisodeNumber = 1, EpisodeFileId = id, EpisodeFile = new NzbDrone.Core.Datastore.LazyLoaded<NzbDrone.Core.MediaFiles.EpisodeFile>(new NzbDrone.Core.MediaFiles.EpisodeFile { Id = id, RelativePath = Path.Combine("Season 01", name) }) }
                 });
+        }
+
+        [Test]
+        public void should_detach_the_files_an_upgrade_replaces_before_renaming_it()
+        {
+            GivenExistingFile(7, "Show - S01E01 - Other.mkv");
+
+            Mocker.GetMock<IEngineFileReplacementService>()
+                .Setup(s => s.FindHolders(Hash.ToUpperInvariant(), It.IsAny<Series>(), It.Is<List<NzbDrone.Core.MediaFiles.EpisodeFile>>(f => f.Single().Id == 7)))
+                .Returns(new List<string> { "OWNER" });
+
+            // The torrents to recheck are saved before anything is detached.
+            Mocker.GetMock<IEngineFileReplacementService>()
+                .Setup(s => s.Detach(_proxy.Object, _settings, Hash.ToUpperInvariant(), It.IsAny<Series>(), It.IsAny<List<NzbDrone.Core.MediaFiles.EpisodeFile>>(), _final))
+                .Callback(() => _link.Files[0].DetachedFrom.Should().Equal("OWNER"));
 
             Subject.Process(GivenClient());
 
-            Mocker.GetMock<IMakeImportDecision>().Verify(s => s.GetDecision(It.IsAny<LocalEpisode>(), It.IsAny<DownloadClientItem>()), Times.Never());
+            Mocker.GetMock<IEngineFileReplacementService>().Verify(s => s.Detach(_proxy.Object, _settings, Hash.ToUpperInvariant(), It.IsAny<Series>(), It.IsAny<List<NzbDrone.Core.MediaFiles.EpisodeFile>>(), _final), Times.Once());
+            _proxy.Verify(p => p.RenameFile(Hash, ".Show - S01E01.mkv.pending", "Show - S01E01.mkv", _settings), Times.Once());
+            _link.Files[0].ReplacesFileIds.Should().Equal(7);
+            _link.Files[0].DetachedFrom.Should().Equal("OWNER");
+            _link.Files[0].State.Should().Be(EngineLinkFileState.Renamed);
+        }
+
+        [Test]
+        public void should_not_detach_anything_while_an_unrelated_file_holds_the_final_path()
+        {
+            GivenExistingFile(7, "Show - S01E01 - Other.mkv");
+            _existing.Add(_final);
+
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<IEngineFileReplacementService>().Verify(s => s.Detach(It.IsAny<IQBittorrentProxy>(), It.IsAny<QBittorrentSettings>(), It.IsAny<string>(), It.IsAny<Series>(), It.IsAny<List<NzbDrone.Core.MediaFiles.EpisodeFile>>(), It.IsAny<string>()), Times.Never());
             _proxy.Verify(p => p.RenameFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
             _link.Files[0].State.Should().Be(EngineLinkFileState.Pending);
             ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_wait_while_another_download_is_replacing_the_same_file()
+        {
+            GivenExistingFile(7, "Show - S01E01 - Other.mkv");
+
+            Mocker.GetMock<IEngineFileReplacementService>()
+                .Setup(s => s.IsReserved(_proxy.Object, _settings, Hash.ToUpperInvariant(), _final, It.IsAny<List<NzbDrone.Core.MediaFiles.EpisodeFile>>()))
+                .Returns(true);
+
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<IEngineFileReplacementService>().Verify(s => s.Detach(It.IsAny<IQBittorrentProxy>(), It.IsAny<QBittorrentSettings>(), It.IsAny<string>(), It.IsAny<Series>(), It.IsAny<List<NzbDrone.Core.MediaFiles.EpisodeFile>>(), It.IsAny<string>()), Times.Never());
+            _proxy.Verify(p => p.RenameFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+            _link.Files[0].State.Should().Be(EngineLinkFileState.Pending);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_record_again_an_upgrade_whose_record_a_restore_lost()
+        {
+            // A restored database still has the replaced file's record at the same path.
+            GivenExistingFile(3, "Show - S01E01.mkv");
+            _link.Completed = true;
+            _link.Files.ForEach(f => f.State = EngineLinkFileState.Imported);
+            _link.Files[0].ReplacesFileIds = new List<int> { 3 };
+            _existing.Remove(_pending);
+            _existing.Add(_final);
+
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<IImportApprovedEpisodes>().Verify(s => s.Import(It.Is<List<ImportDecision>>(d => d[0].LocalEpisode.Path == _final), true, It.IsAny<DownloadClientItem>(), ImportMode.Move), Times.Once());
+        }
+
+        [Test]
+        public void should_retry_a_recheck_that_did_not_happen()
+        {
+            _link.Completed = true;
+            _link.Files.ForEach(f => f.State = EngineLinkFileState.Imported);
+            _link.Files[0].DetachedFrom = new List<string> { "OWNER" };
+
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<IEngineFileReplacementService>().Verify(s => s.Recheck(_proxy.Object, _settings, It.Is<IEnumerable<string>>(h => h.Single() == "OWNER")), Times.Once());
+            _link.Files[0].DetachedFrom.Should().BeNull();
+        }
+
+        [Test]
+        public void should_not_detach_anything_when_the_upgrade_checks_fail()
+        {
+            GivenExistingFile(7, "Show - S01E01 - Other.mkv");
+
+            Mocker.GetMock<IMakeImportDecision>()
+                .Setup(s => s.GetDecision(It.IsAny<LocalEpisode>(), It.IsAny<DownloadClientItem>()))
+                .Returns<LocalEpisode, DownloadClientItem>((l, d) => new ImportDecision(l, new ImportRejection(ImportRejectionReason.NotQualityUpgrade, "Not an upgrade")));
+
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<IEngineFileReplacementService>().Verify(s => s.Detach(It.IsAny<IQBittorrentProxy>(), It.IsAny<QBittorrentSettings>(), It.IsAny<string>(), It.IsAny<Series>(), It.IsAny<List<NzbDrone.Core.MediaFiles.EpisodeFile>>(), It.IsAny<string>()), Times.Never());
+            Mocker.GetMock<IDiskProvider>().Verify(s => s.DeleteFile(It.IsAny<string>()), Times.Never());
+            _link.Files[0].State.Should().Be(EngineLinkFileState.Pending);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_record_an_upgrade_that_took_the_name_of_the_file_it_replaces()
+        {
+            // The replaced file had the same final path: its record must not count as this file being recorded.
+            GivenExistingFile(3, "Show - S01E01.mkv");
+            _link.Files[0].State = EngineLinkFileState.Renamed;
+            _link.Files[0].ReplacesFileIds = new List<int> { 3 };
+            _link.Files[0].DetachedFrom = new List<string> { "OWNER" };
+            _existing.Remove(_pending);
+            _existing.Add(_final);
+
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<IImportApprovedEpisodes>().Verify(s => s.Import(It.Is<List<ImportDecision>>(d => d[0].LocalEpisode.Path == _final), true, It.IsAny<DownloadClientItem>(), ImportMode.Move), Times.Once());
+            Mocker.GetMock<IEngineFileReplacementService>().Verify(s => s.Recheck(_proxy.Object, _settings, It.Is<IEnumerable<string>>(h => h.Single() == "OWNER")), Times.Once());
+            _link.Files[0].State.Should().Be(EngineLinkFileState.Imported);
+            _link.Files[0].DetachedFrom.Should().BeNull();
+        }
+
+        [Test]
+        public void should_wait_when_another_file_was_recorded_after_the_rename()
+        {
+            GivenExistingFile(7, "Show - S01E01 - Other.mkv");
+            _link.Files[0].State = EngineLinkFileState.Renamed;
+            _existing.Remove(_pending);
+            _existing.Add(_final);
+
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<IImportApprovedEpisodes>().Verify(s => s.Import(It.IsAny<List<ImportDecision>>(), It.IsAny<bool>(), It.IsAny<DownloadClientItem>(), It.IsAny<ImportMode>()), Times.Never());
+            _link.Files[0].State.Should().Be(EngineLinkFileState.Renamed);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_remove_a_torrent_whose_videos_were_all_replaced()
+        {
+            _link.Completed = true;
+            _link.Files.ForEach(f => f.State = EngineLinkFileState.Replaced);
+
+            Subject.Process(GivenClient());
+
+            _proxy.Verify(p => p.RemoveTorrent(Hash, false, _settings), Times.Once());
         }
 
         [Test]

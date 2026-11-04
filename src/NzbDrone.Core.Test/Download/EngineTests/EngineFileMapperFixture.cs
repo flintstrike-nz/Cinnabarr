@@ -90,6 +90,16 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_never_map_two_files_to_the_same_episode()
+        {
+            var map = Map(("Show.S01/Show.S01E01.mkv", 2000), ("Show.S01/Show.S01E01E02.mkv", 1000));
+
+            map.Files.Should().ContainSingle();
+            map.Files[0].Index.Should().Be(1);
+            map.Files[0].Episodes.Should().HaveCount(2);
+        }
+
+        [Test]
         public void should_return_null_when_no_video_matches_the_grabbed_episodes()
         {
             Map(("Show.S01/Show.S01E07.mkv", 1000), ("Show.S01/Show.S01E08.mkv", 1000)).Should().BeNull();
