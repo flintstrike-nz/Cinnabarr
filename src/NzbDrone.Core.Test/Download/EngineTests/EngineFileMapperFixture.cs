@@ -225,6 +225,36 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_read_regional_codes_and_language_names_with_spaces()
+        {
+            var map = Map(("Show.S01E01/Show.S01E01.mkv", 1000),
+                          ("Show.S01E01/Show.S01E01.pt-BR.srt", 10),
+                          ("Show.S01E01/Show.S01E01.Spanish (Latino).forced.srt", 10));
+
+            var subtitles = map.Files.Where(f => f.IsSubtitle).ToList();
+
+            subtitles[0].LanguageId.Should().Be(NzbDrone.Core.Languages.Language.PortugueseBrazil.Id);
+            subtitles[1].LanguageId.Should().Be(NzbDrone.Core.Languages.Language.SpanishLatino.Id);
+            subtitles[1].LanguageTags.Should().Equal("forced");
+        }
+
+        [Test]
+        public void should_keep_vobsub_tracks_whose_folders_differ_only_by_case_apart()
+        {
+            var map = Map(("Show.S01E01/Show.S01E01.mkv", 1000),
+                          ("Show.S01E01/Subs/English/Show.S01E01.en.idx", 10),
+                          ("Show.S01E01/Subs/English/Show.S01E01.en.sub", 10),
+                          ("Show.S01E01/Subs/english/Show.S01E01.en.idx", 10),
+                          ("Show.S01E01/Subs/english/Show.S01E01.en.sub", 10));
+
+            map.Files.Where(f => f.IsSubtitle).Select(f => f.FinalPath).Should().Equal(
+                "Show - S01E01.1.en.idx",
+                "Show - S01E01.1.en.sub",
+                "Show - S01E01.2.en.idx",
+                "Show - S01E01.2.en.sub");
+        }
+
+        [Test]
         public void should_keep_a_vobsub_index_and_its_data_on_the_same_name()
         {
             var map = Map(("Show.S01E01/Show.S01E01.mkv", 1000),

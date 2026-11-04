@@ -46,6 +46,8 @@ namespace NzbDrone.Core.Download.Engine
 
         // Sonarr's subtitle tags (LanguageParser).
         private static readonly HashSet<string> SubtitleTags = new() { "forced", "foreign", "default", "cc", "psdh", "sdh" };
+        private static readonly Regex TrailingTagsRegex = new(@"(?:[-_. ](?:forced|foreign|default|cc|psdh|sdh))+$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        private static readonly Regex RegionalCodeRegex = new(@"(?:^|[-_. ])(?<code>[a-z]{2}-[a-z]{2})$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private static readonly HashSet<string> VobSubExtensions = new(StringComparer.OrdinalIgnoreCase) { ".idx", ".sub" };
 
         private static readonly Regex PendingRegex = new(@"\.[0-9a-f]{8}\.pending$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
@@ -178,7 +180,7 @@ namespace NzbDrone.Core.Download.Engine
 
                     // A VobSub index and its data file are one track and must keep the same name.
                     Track = VobSubExtensions.Contains(Path.GetExtension(subtitleName))
-                        ? file.Name.Replace('\\', '/').ToLowerInvariant()[..^Path.GetExtension(subtitleName).Length]
+                        ? file.Name.Replace('\\', '/')[..^Path.GetExtension(subtitleName).Length]
                         : index.ToString()
                 });
             }
@@ -296,12 +298,22 @@ namespace NzbDrone.Core.Download.Engine
         // subtitles. A name or folder that is only a code ("en.srt", "Subs/eng/") gets a stand-in prefix first.
         public static Language ParseSubtitleLanguage(string fileName, string folder = null)
         {
-            var language = LanguageParser.ParseSubtitleLanguage(StandIn + fileName);
+            var stem = StripTrailingTags(Path.GetFileNameWithoutExtension(fileName));
 
-            // A full language name followed by tags ("….English.forced.srt"): parse it without them.
+            // A regional code ("….pt-BR.srt"), which the parser would read as its country part.
+            var regional = RegionalCodeRegex.Match(stem);
+            var language = regional.Success ? IsoLanguages.Find(regional.Groups["code"].Value)?.Language ?? Language.Unknown : Language.Unknown;
+
             if (language == Language.Unknown)
             {
-                language = LanguageParser.ParseSubtitleLanguage(StandIn + StripTrailingTags(Path.GetFileNameWithoutExtension(fileName)) + Path.GetExtension(fileName));
+                language = LanguageParser.ParseSubtitleLanguage(StandIn + fileName);
+            }
+
+            // A full language name followed by tags ("….English.forced.srt", "….Portuguese (Brazil).sdh.srt"): parse
+            // it without them.
+            if (language == Language.Unknown)
+            {
+                language = LanguageParser.ParseSubtitleLanguage(StandIn + stem + Path.GetExtension(fileName));
             }
 
             if (language == Language.Unknown && folder.IsNotNullOrWhiteSpace())
@@ -319,16 +331,10 @@ namespace NzbDrone.Core.Download.Engine
             return language == null || language == Language.Unknown || IsoLanguages.Get(language) == null ? Language.Unknown : language;
         }
 
+        // Removes only the trailing tags, keeping the separators of what comes before them.
         private static string StripTrailingTags(string stem)
         {
-            var tokens = stem.Split('-', '_', '.', ' ').ToList();
-
-            while (tokens.Count > 1 && SubtitleTags.Contains(tokens[^1].ToLowerInvariant()))
-            {
-                tokens.RemoveAt(tokens.Count - 1);
-            }
-
-            return string.Join(".", tokens);
+            return TrailingTagsRegex.Replace(stem, string.Empty);
         }
 
         // The tags (forced, sdh, cc…) at the end of a subtitle's name, whether or not the name gives a language, plus
