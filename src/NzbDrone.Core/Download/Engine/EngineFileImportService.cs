@@ -471,7 +471,8 @@ namespace NzbDrone.Core.Download.Engine
                     file.State = EngineLinkFileState.Imported;
                     save();
 
-                    RecordPublishedSubtitles(series, seriesEpisodes, link, file);
+                    // The import changed the episodes' files: read them again before recording the subtitles.
+                    RecordPublishedSubtitles(series, _episodeService.GetEpisodes(episodes.Select(e => e.Id)), link, file);
                     RecheckDetached(proxy, settings, file, save);
 
                     return;
@@ -519,7 +520,7 @@ namespace NzbDrone.Core.Download.Engine
                     EpisodeFileId = episode.EpisodeFileId,
                     RelativePath = relativePath,
                     Extension = Path.GetExtension(finalPath),
-                    Language = file.LanguageTags == null ? EngineFileMapper.ParseSubtitleLanguage(EngineFileMapper.GetFileName(file.FinalPath)) : Language.FindById(file.LanguageId),
+                    Language = file.LanguageTags == null ? EngineFileMapper.ParseSubtitleLanguage(EngineFileMapper.GetFileName(file.FinalPath)) : EngineFileMapper.NormalizeSubtitleLanguage(Language.FindById(file.LanguageId)),
                     LanguageTags = file.LanguageTags ?? EngineFileMapper.ParseSubtitleTags(EngineFileMapper.GetFileName(file.FinalPath)),
                     Title = file.SubtitleTitle
                 });

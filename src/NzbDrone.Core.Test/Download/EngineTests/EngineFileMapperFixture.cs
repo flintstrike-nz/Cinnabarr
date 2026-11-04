@@ -212,6 +212,19 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_read_a_language_name_followed_by_tags_and_drop_languages_without_a_code()
+        {
+            var map = Map(("Show.S01E01/Show.S01E01.mkv", 1000),
+                          ("Show.S01E01/Show.S01E01.English.forced.srt", 10),
+                          ("Show.S01E01/Subs/Original/Show.S01E01.srt", 10));
+
+            var subtitles = map.Files.Where(f => f.IsSubtitle).ToList();
+
+            subtitles.Select(f => f.FinalPath).Should().Equal("Show - S01E01.en.forced.srt", "Show - S01E01.srt");
+            subtitles[1].LanguageId.Should().Be(NzbDrone.Core.Languages.Language.Unknown.Id);
+        }
+
+        [Test]
         public void should_keep_a_vobsub_index_and_its_data_on_the_same_name()
         {
             var map = Map(("Show.S01E01/Show.S01E01.mkv", 1000),

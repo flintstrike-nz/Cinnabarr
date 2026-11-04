@@ -83,7 +83,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             Mocker.GetMock<ISeriesService>().Setup(s => s.GetSeries(1)).Returns(new Series { Id = 1, Path = @"C:\TV\Show".AsOsAgnostic() });
             _seriesEpisodes = new List<Episode> { new Episode { Id = 11, SeasonNumber = 1, EpisodeNumber = 1 } };
             Mocker.GetMock<IEpisodeService>().Setup(s => s.GetEpisodeBySeries(1)).Returns(() => _seriesEpisodes);
-            Mocker.GetMock<IEpisodeService>().Setup(s => s.GetEpisodes(It.IsAny<IEnumerable<int>>())).Returns(new List<Episode>());
+            Mocker.GetMock<IEpisodeService>().Setup(s => s.GetEpisodes(It.IsAny<IEnumerable<int>>())).Returns(() => _seriesEpisodes);
 
             Mocker.GetMock<IDiskProvider>().Setup(s => s.FileExists(It.IsAny<string>())).Returns<string>(p => _existing.Contains(p));
             Mocker.GetMock<IAggregationService>().Setup(s => s.Augment(It.IsAny<LocalEpisode>(), It.IsAny<DownloadClientItem>())).Returns<LocalEpisode, DownloadClientItem>((l, d) => l);
@@ -279,6 +279,26 @@ namespace NzbDrone.Core.Test.Download.EngineTests
 
             Mocker.GetMock<NzbDrone.Core.Extras.Subtitles.ISubtitleFileService>()
                 .Verify(s => s.Upsert(It.Is<NzbDrone.Core.Extras.Subtitles.SubtitleFile>(f => f.RelativePath == Path.Combine("Season 01", "Show - S01E01.en.srt"))), Times.Once());
+        }
+
+        [Test]
+        public void should_record_published_subtitles_with_the_file_their_video_was_just_recorded_as()
+        {
+            // A restore left the episode pointing at the file this one replaced: the subtitle is recorded with the
+            // new file, read again after the import.
+            GivenExistingFile(7, "Show - S01E01 - Other.mkv");
+            _link.Files[0].State = EngineLinkFileState.Renamed;
+            _link.Files[0].ReplacesFileIds = new List<int> { 7 };
+            _link.Files[1].State = EngineLinkFileState.Imported;
+            _existing.Remove(_pending);
+            _existing.Remove(_subtitlePending);
+            _existing.Add(_final);
+            _existing.Add(Path.Combine(_link.SavePath, "Show - S01E01.en.srt"));
+
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<NzbDrone.Core.Extras.Subtitles.ISubtitleFileService>()
+                .Verify(s => s.Upsert(It.Is<NzbDrone.Core.Extras.Subtitles.SubtitleFile>(f => f.EpisodeFileId == 30)), Times.Once());
         }
 
         [Test]

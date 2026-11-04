@@ -298,12 +298,37 @@ namespace NzbDrone.Core.Download.Engine
         {
             var language = LanguageParser.ParseSubtitleLanguage(StandIn + fileName);
 
+            // A full language name followed by tags ("….English.forced.srt"): parse it without them.
+            if (language == Language.Unknown)
+            {
+                language = LanguageParser.ParseSubtitleLanguage(StandIn + StripTrailingTags(Path.GetFileNameWithoutExtension(fileName)) + Path.GetExtension(fileName));
+            }
+
             if (language == Language.Unknown && folder.IsNotNullOrWhiteSpace())
             {
                 language = LanguageParser.ParseSubtitleLanguage(StandIn + folder + Path.GetExtension(fileName));
             }
 
-            return language;
+            return NormalizeSubtitleLanguage(language);
+        }
+
+        // A language without a two-letter code (for example "Original") can't appear in a subtitle name, and
+        // Sonarr's library rename can't name it either: it counts as unknown.
+        public static Language NormalizeSubtitleLanguage(Language language)
+        {
+            return language == null || language == Language.Unknown || IsoLanguages.Get(language) == null ? Language.Unknown : language;
+        }
+
+        private static string StripTrailingTags(string stem)
+        {
+            var tokens = stem.Split('-', '_', '.', ' ').ToList();
+
+            while (tokens.Count > 1 && SubtitleTags.Contains(tokens[^1].ToLowerInvariant()))
+            {
+                tokens.RemoveAt(tokens.Count - 1);
+            }
+
+            return string.Join(".", tokens);
         }
 
         // The tags (forced, sdh, cc…) at the end of a subtitle's name, whether or not the name gives a language, plus
@@ -351,7 +376,7 @@ namespace NzbDrone.Core.Download.Engine
                 suffix.Append('.').Append(title);
             }
 
-            var isoLanguage = language == Language.Unknown ? null : IsoLanguages.Get(language);
+            var isoLanguage = NormalizeSubtitleLanguage(language) == Language.Unknown ? null : IsoLanguages.Get(language);
 
             if (isoLanguage != null)
             {
