@@ -42,5 +42,9 @@ namespace NzbDrone.Core.Queue
         public string Indexer { get; set; }
         public string OutputPath { get; set; }
         public string ErrorMessage { get; set; }
+
+        // A download in the built-in engine (roadmap §6.2), and whether the engine no longer has it (§4.4).
+        public bool IsEngineDownload { get; set; }
+        public bool IsMissingFromEngine { get; set; }
     }
 }

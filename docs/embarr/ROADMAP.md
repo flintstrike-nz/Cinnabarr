@@ -420,6 +420,16 @@ The sidebar replaces Sonarr's (`Embarr:frontend/src/Components/Page/Sidebar/Page
 - **Unlinked** and **Missing from engine** rows come from the reconcile rules in §4.4. Nothing is ever hidden.
 - There is no "Importing" wait for seeding to finish. A file is in the library as soon as it completes (§4.8).
 
+Built so far (2g-1):
+- **Queue rows for built-in engine downloads expand to show each file.** The details come from `GET /api/v5/engine/downloads/{downloadId}/files` and refresh every 10s while open. Each video is followed by its subtitles. Each file shows:
+  - its library path;
+  - its state: downloading, publishing, in library, rejected or replaced;
+  - its download progress;
+  - each seeding goal with where it came from, for example "14 days or ratio 1, from series", marked when it is met;
+  - how long it has seeded and the torrent's ratio.
+- **Re-add.** Downloads missing from the engine have a **Re-add** button (`POST /api/v5/queue/readd/{id}`). Removing them is the existing remove action.
+- **Queue resource.** The v5 queue resource now has `isEngineDownload` and `isMissingFromEngine`.
+
 ### 6.3 Settings tree
 
 | Section | Contents |

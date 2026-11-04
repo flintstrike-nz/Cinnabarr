@@ -40,6 +40,8 @@ namespace Sonarr.Api.V5.Queue
         public string? OutputPath { get; set; }
         public int EpisodesWithFilesCount { get; set; }
         public bool IsFullSeason { get; set; }
+        public bool IsEngineDownload { get; set; }
+        public bool IsMissingFromEngine { get; set; }
     }
 
     public static class QueueResourceMapper
@@ -88,7 +90,9 @@ namespace Sonarr.Api.V5.Queue
                 Indexer = model.Indexer,
                 OutputPath = model.OutputPath,
                 EpisodesWithFilesCount = model.Episodes?.Count(e => e.HasFile) ?? 0,
-                IsFullSeason = model.RemoteEpisode?.ParsedEpisodeInfo?.FullSeason ?? false
+                IsFullSeason = model.RemoteEpisode?.ParsedEpisodeInfo?.FullSeason ?? false,
+                IsEngineDownload = model.IsEngineDownload,
+                IsMissingFromEngine = model.IsMissingFromEngine
             };
         }
 

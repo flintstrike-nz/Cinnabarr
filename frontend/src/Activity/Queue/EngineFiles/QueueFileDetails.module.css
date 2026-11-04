@@ -1,0 +1,32 @@
+.files {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--smallFontSize);
+
+  th,
+  td {
+    padding: 4px 8px;
+    vertical-align: top;
+    text-align: left;
+  }
+
+  th {
+    font-weight: bold;
+  }
+}
+
+.path {
+  word-break: break-all;
+}
+
+.progress {
+  width: 150px;
+}
+
+.subtitle {
+  color: var(--helpTextColor);
+}
+
+.met {
+  color: var(--successColor);
+}

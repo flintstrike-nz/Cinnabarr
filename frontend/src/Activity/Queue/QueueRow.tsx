@@ -35,12 +35,17 @@ import getRelativeDate from 'Utilities/Date/getRelativeDate';
 import formatBytes from 'Utilities/Number/formatBytes';
 import formatCustomFormatScore from 'Utilities/Number/formatCustomFormatScore';
 import translate from 'Utilities/String/translate';
+import QueueFileDetails from './EngineFiles/QueueFileDetails';
 import EpisodeCellContent from './EpisodeCellContent';
 import EpisodeTitleCellContent from './EpisodeTitleCellContent';
 import QueueStatusCell from './QueueStatusCell';
 import RemoveQueueItemModal from './RemoveQueueItemModal';
 import TimeLeftCell from './TimeLeftCell';
-import { useGrabQueueItem, useRemoveQueueItem } from './useQueue';
+import {
+  useGrabQueueItem,
+  useReAddQueueItem,
+  useRemoveQueueItem,
+} from './useQueue';
 import styles from './QueueRow.module.css';
 
 interface QueueRowProps {
@@ -71,6 +76,8 @@ interface QueueRowProps {
   size: number;
   sizeLeft: number;
   isRemoving?: boolean;
+  isEngineDownload?: boolean;
+  isMissingFromEngine?: boolean;
   columns: Column[];
   onQueueRowModalOpenOrClose: (isOpen: boolean) => void;
 }
@@ -103,6 +110,8 @@ function QueueRow(props: QueueRowProps) {
     timeLeft,
     size,
     sizeLeft,
+    isEngineDownload = false,
+    isMissingFromEngine = false,
     columns,
     onQueueRowModalOpenOrClose,
   } = props;
@@ -113,6 +122,8 @@ function QueueRow(props: QueueRowProps) {
     useUiSettingsValues();
   const { removeQueueItem, isRemoving } = useRemoveQueueItem(id);
   const { grabQueueItem, isGrabbing, grabError } = useGrabQueueItem(id);
+  const { reAddQueueItem, isReAdding, reAddError } = useReAddQueueItem(id);
+  const [isExpanded, setIsExpanded] = useState(false);
   const { toggleSelected, useIsSelected } = useSelect<Queue>();
   const isSelected = useIsSelected(id);
 
@@ -125,6 +136,14 @@ function QueueRow(props: QueueRowProps) {
   const handleGrabPress = useCallback(() => {
     grabQueueItem();
   }, [grabQueueItem]);
+
+  const handleReAddPress = useCallback(() => {
+    reAddQueueItem();
+  }, [reAddQueueItem]);
+
+  const handleExpandPress = useCallback(() => {
+    setIsExpanded((expanded) => !expanded);
+  }, []);
 
   const handleInteractiveImportPress = useCallback(() => {
     onQueueRowModalOpenOrClose(true);
@@ -177,283 +196,320 @@ function QueueRow(props: QueueRowProps) {
   });
   const grabLabel = translate('GrabWithTitle', { title });
   const removeFromQueueLabel = translate('RemoveFromQueueWithTitle', { title });
+  const reAddLabel =
+    reAddError ?? translate('ReAddToEngineWithTitle', { title });
+  const filesLabel = translate(
+    isExpanded ? 'HideFilesWithTitle' : 'ShowFilesWithTitle',
+    { title }
+  );
+  const visibleColumnCount = columns.filter((c) => c.isVisible).length + 1;
 
   return (
-    <TableRow>
-      <TableSelectCell
-        id={id}
-        isSelected={isSelected}
-        onSelectedChange={handleSelectedChange}
-      />
+    <>
+      <TableRow>
+        <TableSelectCell
+          id={id}
+          isSelected={isSelected}
+          onSelectedChange={handleSelectedChange}
+        />
 
-      {columns.map((column) => {
-        const { name, isVisible } = column;
+        {columns.map((column) => {
+          const { name, isVisible } = column;
 
-        if (!isVisible) {
-          return null;
-        }
-
-        if (name === 'status') {
-          return (
-            <QueueStatusCell
-              key={name}
-              sourceTitle={title}
-              status={status}
-              trackedDownloadStatus={trackedDownloadStatus}
-              trackedDownloadState={trackedDownloadState}
-              statusMessages={statusMessages}
-              errorMessage={errorMessage}
-            />
-          );
-        }
-
-        if (name === 'series.sortTitle') {
-          return (
-            <TableRowCell key={name} className={styles.series}>
-              {series ? (
-                <SeriesTitleLink
-                  seriesId={series.id}
-                  titleSlug={series.titleSlug}
-                  title={series.title}
-                />
-              ) : (
-                <span className={styles.unmatchedTitle}>{title}</span>
-              )}
-            </TableRowCell>
-          );
-        }
-
-        if (name === 'episode') {
-          return (
-            <TableRowCell key={name}>
-              <EpisodeCellContent
-                episodes={episodes}
-                isFullSeason={isFullSeason}
-                seasonNumbers={seasons.map((s) => s.seasonNumber)}
-                series={series}
-              />
-            </TableRowCell>
-          );
-        }
-
-        if (name === 'episodes.title') {
-          return (
-            <TableRowCell key={name}>
-              <EpisodeTitleCellContent
-                episodes={episodes}
-                isMultiSeason={seasons.length > 1}
-                series={series}
-              />
-            </TableRowCell>
-          );
-        }
-
-        if (name === 'episodes.airDateUtc') {
-          if (episodes.length === 0) {
-            return <TableRowCell key={name}>-</TableRowCell>;
+          if (!isVisible) {
+            return null;
           }
 
-          if (episodes.length === 1) {
+          if (name === 'status') {
             return (
-              <RelativeDateCell key={name} date={episodes[0].airDateUtc} />
+              <QueueStatusCell
+                key={name}
+                sourceTitle={title}
+                status={status}
+                trackedDownloadStatus={trackedDownloadStatus}
+                trackedDownloadState={trackedDownloadState}
+                statusMessages={statusMessages}
+                errorMessage={errorMessage}
+              />
             );
           }
 
-          return (
-            <TableRowCell key={name}>
-              <span
-                title={`${formatDateTime(
-                  episodes[0].airDateUtc,
-                  longDateFormat,
-                  timeFormat,
-                  {
-                    includeRelativeDay: !showRelativeDates,
-                  }
-                )} - ${formatDateTime(
-                  episodes[episodes.length - 1].airDateUtc,
-                  longDateFormat,
-                  timeFormat,
-                  {
-                    includeRelativeDay: !showRelativeDates,
-                  }
-                )}`}
-              >
-                {getRelativeDate({
-                  date: episodes[0].airDateUtc,
-                  shortDateFormat,
-                  showRelativeDates,
-                  timeFormat,
-                  timeForToday: true,
-                })}
-                {' - '}
-                {getRelativeDate({
-                  date: episodes[episodes.length - 1].airDateUtc,
-                  shortDateFormat,
-                  showRelativeDates,
-                  timeFormat,
-                  timeForToday: true,
-                })}
-              </span>
-            </TableRowCell>
-          );
-        }
-
-        if (name === 'languages') {
-          return (
-            <TableRowCell key={name}>
-              <EpisodeLanguages languages={languages} />
-            </TableRowCell>
-          );
-        }
-
-        if (name === 'quality') {
-          return (
-            <TableRowCell key={name}>
-              {quality ? <EpisodeQuality quality={quality} /> : null}
-            </TableRowCell>
-          );
-        }
-
-        if (name === 'customFormats') {
-          return (
-            <TableRowCell key={name}>
-              <EpisodeFormats formats={customFormats} />
-            </TableRowCell>
-          );
-        }
-
-        if (name === 'customFormatScore') {
-          return (
-            <TableRowCell key={name} className={styles.customFormatScore}>
-              <Tooltip
-                anchor={formatCustomFormatScore(
-                  customFormatScore,
-                  customFormats.length
+          if (name === 'series.sortTitle') {
+            return (
+              <TableRowCell key={name} className={styles.series}>
+                {series ? (
+                  <SeriesTitleLink
+                    seriesId={series.id}
+                    titleSlug={series.titleSlug}
+                    title={series.title}
+                  />
+                ) : (
+                  <span className={styles.unmatchedTitle}>{title}</span>
                 )}
-                tooltip={<EpisodeFormats formats={customFormats} />}
-                position={tooltipPositions.BOTTOM}
+              </TableRowCell>
+            );
+          }
+
+          if (name === 'episode') {
+            return (
+              <TableRowCell key={name}>
+                <EpisodeCellContent
+                  episodes={episodes}
+                  isFullSeason={isFullSeason}
+                  seasonNumbers={seasons.map((s) => s.seasonNumber)}
+                  series={series}
+                />
+              </TableRowCell>
+            );
+          }
+
+          if (name === 'episodes.title') {
+            return (
+              <TableRowCell key={name}>
+                <EpisodeTitleCellContent
+                  episodes={episodes}
+                  isMultiSeason={seasons.length > 1}
+                  series={series}
+                />
+              </TableRowCell>
+            );
+          }
+
+          if (name === 'episodes.airDateUtc') {
+            if (episodes.length === 0) {
+              return <TableRowCell key={name}>-</TableRowCell>;
+            }
+
+            if (episodes.length === 1) {
+              return (
+                <RelativeDateCell key={name} date={episodes[0].airDateUtc} />
+              );
+            }
+
+            return (
+              <TableRowCell key={name}>
+                <span
+                  title={`${formatDateTime(
+                    episodes[0].airDateUtc,
+                    longDateFormat,
+                    timeFormat,
+                    {
+                      includeRelativeDay: !showRelativeDates,
+                    }
+                  )} - ${formatDateTime(
+                    episodes[episodes.length - 1].airDateUtc,
+                    longDateFormat,
+                    timeFormat,
+                    {
+                      includeRelativeDay: !showRelativeDates,
+                    }
+                  )}`}
+                >
+                  {getRelativeDate({
+                    date: episodes[0].airDateUtc,
+                    shortDateFormat,
+                    showRelativeDates,
+                    timeFormat,
+                    timeForToday: true,
+                  })}
+                  {' - '}
+                  {getRelativeDate({
+                    date: episodes[episodes.length - 1].airDateUtc,
+                    shortDateFormat,
+                    showRelativeDates,
+                    timeFormat,
+                    timeForToday: true,
+                  })}
+                </span>
+              </TableRowCell>
+            );
+          }
+
+          if (name === 'languages') {
+            return (
+              <TableRowCell key={name}>
+                <EpisodeLanguages languages={languages} />
+              </TableRowCell>
+            );
+          }
+
+          if (name === 'quality') {
+            return (
+              <TableRowCell key={name}>
+                {quality ? <EpisodeQuality quality={quality} /> : null}
+              </TableRowCell>
+            );
+          }
+
+          if (name === 'customFormats') {
+            return (
+              <TableRowCell key={name}>
+                <EpisodeFormats formats={customFormats} />
+              </TableRowCell>
+            );
+          }
+
+          if (name === 'customFormatScore') {
+            return (
+              <TableRowCell key={name} className={styles.customFormatScore}>
+                <Tooltip
+                  anchor={formatCustomFormatScore(
+                    customFormatScore,
+                    customFormats.length
+                  )}
+                  tooltip={<EpisodeFormats formats={customFormats} />}
+                  position={tooltipPositions.BOTTOM}
+                />
+              </TableRowCell>
+            );
+          }
+
+          if (name === 'protocol') {
+            return (
+              <TableRowCell key={name}>
+                <ProtocolLabel protocol={protocol} />
+              </TableRowCell>
+            );
+          }
+
+          if (name === 'indexer') {
+            return <TableRowCell key={name}>{indexer}</TableRowCell>;
+          }
+
+          if (name === 'downloadClient') {
+            return <TableRowCell key={name}>{downloadClient}</TableRowCell>;
+          }
+
+          if (name === 'title') {
+            return <TableRowCell key={name}>{title}</TableRowCell>;
+          }
+
+          if (name === 'size') {
+            return <TableRowCell key={name}>{formatBytes(size)}</TableRowCell>;
+          }
+
+          if (name === 'outputPath') {
+            return <TableRowCell key={name}>{outputPath}</TableRowCell>;
+          }
+
+          if (name === 'estimatedCompletionTime') {
+            return (
+              <TimeLeftCell
+                key={name}
+                status={status}
+                estimatedCompletionTime={estimatedCompletionTime}
+                timeLeft={timeLeft}
+                size={size}
+                sizeLeft={sizeLeft}
+                showRelativeDates={showRelativeDates}
+                shortDateFormat={shortDateFormat}
+                timeFormat={timeFormat}
               />
-            </TableRowCell>
-          );
-        }
+            );
+          }
 
-        if (name === 'protocol') {
-          return (
-            <TableRowCell key={name}>
-              <ProtocolLabel protocol={protocol} />
-            </TableRowCell>
-          );
-        }
+          if (name === 'progress') {
+            return (
+              <TableRowCell key={name} className={styles.progress}>
+                {!!progress && (
+                  <ProgressBar
+                    ariaLabel={translate('DownloadProgressForTitle', { title })}
+                    progress={progress}
+                    title={`${progress.toFixed(1)}%`}
+                  />
+                )}
+              </TableRowCell>
+            );
+          }
 
-        if (name === 'indexer') {
-          return <TableRowCell key={name}>{indexer}</TableRowCell>;
-        }
+          if (name === 'added') {
+            return <RelativeDateCell key={name} date={added} />;
+          }
 
-        if (name === 'downloadClient') {
-          return <TableRowCell key={name}>{downloadClient}</TableRowCell>;
-        }
+          if (name === 'actions') {
+            return (
+              <TableRowCell key={name} className={styles.actions}>
+                {isEngineDownload ? (
+                  <IconButton
+                    name={isExpanded ? icons.COLLAPSE : icons.EXPAND}
+                    title={filesLabel}
+                    aria-label={filesLabel}
+                    onPress={handleExpandPress}
+                  />
+                ) : null}
 
-        if (name === 'title') {
-          return <TableRowCell key={name}>{title}</TableRowCell>;
-        }
+                {isMissingFromEngine ? (
+                  <SpinnerIconButton
+                    name={icons.REFRESH}
+                    kind={reAddError ? kinds.DANGER : kinds.DEFAULT}
+                    title={reAddLabel}
+                    aria-label={reAddLabel}
+                    isSpinning={isReAdding}
+                    onPress={handleReAddPress}
+                  />
+                ) : null}
 
-        if (name === 'size') {
-          return <TableRowCell key={name}>{formatBytes(size)}</TableRowCell>;
-        }
+                {showInteractiveImport ? (
+                  <IconButton
+                    name={icons.INTERACTIVE}
+                    title={interactiveImportLabel}
+                    aria-label={interactiveImportLabel}
+                    onPress={handleInteractiveImportPress}
+                  />
+                ) : null}
 
-        if (name === 'outputPath') {
-          return <TableRowCell key={name}>{outputPath}</TableRowCell>;
-        }
+                {isPending ? (
+                  <SpinnerIconButton
+                    name={icons.DOWNLOAD}
+                    kind={grabError ? kinds.DANGER : kinds.DEFAULT}
+                    title={grabLabel}
+                    aria-label={grabLabel}
+                    isSpinning={isGrabbing}
+                    onPress={handleGrabPress}
+                  />
+                ) : null}
 
-        if (name === 'estimatedCompletionTime') {
-          return (
-            <TimeLeftCell
-              key={name}
-              status={status}
-              estimatedCompletionTime={estimatedCompletionTime}
-              timeLeft={timeLeft}
-              size={size}
-              sizeLeft={sizeLeft}
-              showRelativeDates={showRelativeDates}
-              shortDateFormat={shortDateFormat}
-              timeFormat={timeFormat}
-            />
-          );
-        }
-
-        if (name === 'progress') {
-          return (
-            <TableRowCell key={name} className={styles.progress}>
-              {!!progress && (
-                <ProgressBar
-                  ariaLabel={translate('DownloadProgressForTitle', { title })}
-                  progress={progress}
-                  title={`${progress.toFixed(1)}%`}
-                />
-              )}
-            </TableRowCell>
-          );
-        }
-
-        if (name === 'added') {
-          return <RelativeDateCell key={name} date={added} />;
-        }
-
-        if (name === 'actions') {
-          return (
-            <TableRowCell key={name} className={styles.actions}>
-              {showInteractiveImport ? (
-                <IconButton
-                  name={icons.INTERACTIVE}
-                  title={interactiveImportLabel}
-                  aria-label={interactiveImportLabel}
-                  onPress={handleInteractiveImportPress}
-                />
-              ) : null}
-
-              {isPending ? (
                 <SpinnerIconButton
-                  name={icons.DOWNLOAD}
-                  kind={grabError ? kinds.DANGER : kinds.DEFAULT}
-                  title={grabLabel}
-                  aria-label={grabLabel}
-                  isSpinning={isGrabbing}
-                  onPress={handleGrabPress}
+                  name={icons.REMOVE}
+                  title={removeFromQueueLabel}
+                  aria-label={removeFromQueueLabel}
+                  isSpinning={isRemoving}
+                  onPress={handleRemoveQueueItemPress}
                 />
-              ) : null}
+              </TableRowCell>
+            );
+          }
 
-              <SpinnerIconButton
-                name={icons.REMOVE}
-                title={removeFromQueueLabel}
-                aria-label={removeFromQueueLabel}
-                isSpinning={isRemoving}
-                onPress={handleRemoveQueueItemPress}
-              />
-            </TableRowCell>
-          );
-        }
+          return null;
+        })}
 
-        return null;
-      })}
+        <InteractiveImportModal
+          isOpen={isInteractiveImportModalOpen}
+          downloadIds={[downloadId]}
+          title={title}
+          onModalClose={handleInteractiveImportModalClose}
+        />
 
-      <InteractiveImportModal
-        isOpen={isInteractiveImportModalOpen}
-        downloadIds={[downloadId]}
-        title={title}
-        onModalClose={handleInteractiveImportModalClose}
-      />
+        <RemoveQueueItemModal
+          isOpen={isRemoveQueueItemModalOpen}
+          sourceTitle={title}
+          canChangeCategory={!!downloadClientHasPostImportCategory}
+          canIgnore={!!series}
+          isPending={isPending}
+          downloadClient={downloadClient}
+          onRemovePress={handleRemoveQueueItemModalConfirmed}
+          onModalClose={handleRemoveQueueItemModalClose}
+        />
+      </TableRow>
 
-      <RemoveQueueItemModal
-        isOpen={isRemoveQueueItemModalOpen}
-        sourceTitle={title}
-        canChangeCategory={!!downloadClientHasPostImportCategory}
-        canIgnore={!!series}
-        isPending={isPending}
-        downloadClient={downloadClient}
-        onRemovePress={handleRemoveQueueItemModalConfirmed}
-        onModalClose={handleRemoveQueueItemModalClose}
-      />
-    </TableRow>
+      {isExpanded ? (
+        <TableRow>
+          <TableRowCell colSpan={visibleColumnCount}>
+            <QueueFileDetails downloadId={downloadId} />
+          </TableRowCell>
+        </TableRow>
+      ) : null}
+    </>
   );
 }
 

@@ -276,6 +276,17 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_give_each_imported_video_its_own_goals()
+        {
+            GivenSeries(null, new EngineSeedingRule { Mode = EngineSeedingMode.Time, Minutes = 60 }, null);
+
+            var rules = Subject.GetRulesByFile(Hash.ToUpperInvariant(), _link);
+
+            rules.Keys.Should().Equal(0);
+            rules[0].Should().ContainSingle().Which.Source.Should().Be("season");
+        }
+
+        [Test]
         public void should_remove_once_a_shorter_episode_goal_is_met()
         {
             // The global goal (14 days or ratio 1) isn't met, but the episode's own goal (an hour) is.

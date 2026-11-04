@@ -54,6 +54,8 @@ interface Queue extends ModelBase {
   seasons: QueueSeason[];
   downloadClientHasPostImportCategory: boolean;
   isFullSeason: boolean;
+  isEngineDownload: boolean;
+  isMissingFromEngine: boolean;
   episodes?: Episode[];
 }
 
