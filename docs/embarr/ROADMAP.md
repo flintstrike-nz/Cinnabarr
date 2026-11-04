@@ -178,6 +178,10 @@ flowchart LR
 - Add **`EmbeddedEngineClient`**, a single non-configurable `IDownloadClient`. Start it from `Embarr:src/NzbDrone.Core/Download/Clients/QBittorrent/QBittorrentProxyV2.cs`, which already speaks the qBittorrent WebAPI.
 - **No categories for routing.** Links live in Embarr's database, backed up by the engine tag (rule 5).
 - **No remote path mappings.** The engine and Embarr share a filesystem, so `Embarr:src/NzbDrone.Core/RemotePathMappings` is removed.
+- Built so far (2h-1):
+  - **Removed clients.** Every external download client is removed (`Download/Clients/*` except qBittorrent, which the engine uses). Saved definitions for removed clients are deleted on the next start, by the existing missing-implementation cleanup.
+  - **Engine only.** Embarr only ever loads its built-in engine's client. Any other definition left in the database, such as a user's own qBittorrent, is never loaded or touched, so a user's own clients and Embarr don't interact.
+  - **No adding clients.** Adding a download client is refused (v3 and v5 `POST downloadclient`). The settings page no longer offers Add or Clone.
 
 ### 4.5 Database
 

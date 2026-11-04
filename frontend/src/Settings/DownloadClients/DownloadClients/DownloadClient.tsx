@@ -25,7 +25,7 @@ interface DownloadClientProps {
   priority: number;
   tags: number[];
   testStatus?: ProviderTestStatus;
-  onCloneDownloadClientPress: (id: number) => void;
+  onCloneDownloadClientPress?: (id: number) => void;
 }
 
 function DownloadClient({
@@ -68,7 +68,7 @@ function DownloadClient({
   }, [deleteDownloadClient]);
 
   const handleCloneDownloadClientPress = useCallback(() => {
-    onCloneDownloadClientPress(id);
+    onCloneDownloadClientPress?.(id);
   }, [id, onCloneDownloadClientPress]);
 
   const testStatusLabel = testStatus
@@ -87,12 +87,14 @@ function DownloadClient({
           : translate('EditDownloadClientName', { name })
       }
       actions={
-        <SettingsCardAction
-          title={translate('CloneDownloadClient')}
-          aria-label={translate('CloneDownloadClient')}
-          name={icons.CLONE}
-          onPress={handleCloneDownloadClientPress}
-        />
+        onCloneDownloadClientPress ? (
+          <SettingsCardAction
+            title={translate('CloneDownloadClient')}
+            aria-label={translate('CloneDownloadClient')}
+            name={icons.CLONE}
+            onPress={handleCloneDownloadClientPress}
+          />
+        ) : undefined
       }
       onPress={handleEditDownloadClientPress}
     >

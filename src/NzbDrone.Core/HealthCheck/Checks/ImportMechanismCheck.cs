@@ -4,8 +4,6 @@ using System.Linq;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Configuration.Events;
 using NzbDrone.Core.Download;
-using NzbDrone.Core.Download.Clients.Nzbget;
-using NzbDrone.Core.Download.Clients.Sabnzbd;
 using NzbDrone.Core.Localization;
 using NzbDrone.Core.ThingiProvider.Events;
 
@@ -55,24 +53,6 @@ namespace NzbDrone.Core.HealthCheck.Checks
                         HealthCheckResult.Warning,
                         HealthCheckReason.ImportMechanismEnableCompletedDownloadHandlingIfPossibleMultiComputer,
                         _localizationService.GetLocalizedString("ImportMechanismEnableCompletedDownloadHandlingIfPossibleMultiComputerHealthCheckMessage"),
-                        "#completedfailed-download-handling");
-                }
-
-                if (downloadClients.All(v => v.DownloadClient is Sabnzbd))
-                {
-                    return new HealthCheck(GetType(),
-                        HealthCheckResult.Warning,
-                        HealthCheckReason.ImportMechanismEnableCompletedDownloadHandlingIfPossible,
-                        $"{_localizationService.GetLocalizedString("ImportMechanismEnableCompletedDownloadHandlingIfPossibleHealthCheckMessage")} (Sabnzbd)",
-                        "#completedfailed-download-handling");
-                }
-
-                if (downloadClients.All(v => v.DownloadClient is Nzbget))
-                {
-                    return new HealthCheck(GetType(),
-                        HealthCheckResult.Warning,
-                        HealthCheckReason.ImportMechanismEnableCompletedDownloadHandlingIfPossible,
-                        $"{_localizationService.GetLocalizedString("ImportMechanismEnableCompletedDownloadHandlingIfPossibleHealthCheckMessage")} (Nzbget)",
                         "#completedfailed-download-handling");
                 }
 
