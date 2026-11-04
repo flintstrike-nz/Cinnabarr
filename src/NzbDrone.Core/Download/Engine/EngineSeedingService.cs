@@ -23,6 +23,9 @@ namespace NzbDrone.Core.Download.Engine
         // The goals the files of the download have to meet: each video's most specific goal (episode, season, series,
         // then global) and the tracker's minimum.
         List<EngineSeedingRule> GetRules(string downloadId, EngineLink link);
+
+        // The goals each imported video of the download has to meet, by its file index.
+        Dictionary<int, List<EngineSeedingRule>> GetRulesByFile(string downloadId, EngineLink link);
     }
 
     public class EngineSeedingService : IEngineSeedingService
@@ -93,6 +96,22 @@ namespace NzbDrone.Core.Download.Engine
                 .DefaultIfEmpty(GetGlobalRule())
                 .Distinct()
                 .ToList();
+        }
+
+        public Dictionary<int, List<EngineSeedingRule>> GetRulesByFile(string downloadId, EngineLink link)
+        {
+            var videos = link?.Files?.Where(f => !f.IsSubtitle && f.State == EngineLinkFileState.Imported).ToList() ?? new List<EngineLinkFile>();
+
+            if (videos.Empty())
+            {
+                return new Dictionary<int, List<EngineSeedingRule>>();
+            }
+
+            var series = _seriesService.FindByTvdbId(link.TvdbId);
+            var episodes = GetEpisodeLookup(series);
+            var trackerRule = GetTrackerRule(downloadId, link);
+
+            return videos.ToDictionary(v => v.Index, v => GetRules(series, episodes, v, trackerRule));
         }
 
         // A video's goals: for each of its episodes, the most specific goal set (episode, season, series, global), and

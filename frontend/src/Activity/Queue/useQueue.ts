@@ -186,6 +186,27 @@ export const useGrabQueueItem = (id: number) => {
   };
 };
 
+// Sends a download missing from the engine back to it (roadmap §4.4).
+export const useReAddQueueItem = (id: number) => {
+  const queryClient = useQueryClient();
+
+  const { mutate, isPending, error } = useApiMutation<unknown, void>({
+    path: `/queue/readd/${id}`,
+    method: 'POST',
+    mutationOptions: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['/queue'] });
+      },
+    },
+  });
+
+  return {
+    reAddQueueItem: mutate,
+    isReAdding: isPending,
+    reAddError: error?.statusBody?.message ?? error?.message,
+  };
+};
+
 export const useGrabQueueItems = () => {
   const queryClient = useQueryClient();
 
