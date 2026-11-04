@@ -133,6 +133,14 @@ namespace NzbDrone.Core.Download.Engine
 
                 try
                 {
+                    // A link prepared before hybrid torrents' v2 hashes were recorded gets it here, with the other link
+                    // writes: orphan cleanup needs it to know who owns the part file (roadmap §4.13).
+                    if (link.InfoHashV2 == null && torrent.InfoHashV2 != null)
+                    {
+                        link.InfoHashV2 = torrent.InfoHashV2.ToLowerInvariant();
+                        _engineLinkService.Save(downloadId, link);
+                    }
+
                     // Every video was rejected or replaced but the torrent is still here: remove it (this also retries a
                     // removal that failed).
                     if (link.Completed && NoVideosLeft(link))

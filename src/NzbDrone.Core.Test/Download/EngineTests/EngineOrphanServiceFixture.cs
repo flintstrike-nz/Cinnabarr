@@ -156,19 +156,6 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
-        public void should_record_the_v2_hash_of_a_torrent_prepared_before_it_was_recorded()
-        {
-            var link = new EngineLink { Files = new List<EngineLinkFile>() };
-            _torrents[0].InfoHashV2 = new string('C', 64);
-            Mocker.GetMock<IEngineLinkService>().Setup(s => s.Get(Owned.ToUpperInvariant())).Returns(link);
-
-            Subject.Scan();
-
-            link.InfoHashV2.Should().Be(new string('c', 64));
-            Mocker.GetMock<IEngineLinkService>().Verify(s => s.Save(Owned.ToUpperInvariant(), link), Times.Once());
-        }
-
-        [Test]
         public void should_ignore_queue_ids_that_are_not_info_hashes()
         {
             var pending = GivenFile("Show/.Show - S01E01.mkv.abcdef01.pending");

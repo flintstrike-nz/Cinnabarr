@@ -315,11 +315,6 @@ namespace NzbDrone.Core.Download.Engine
                 throw new EngineOrphanException("the built-in engine's torrents couldn't be listed", ex);
             }
 
-            foreach (var torrent in torrents)
-            {
-                BackfillInfoHashV2(torrent);
-            }
-
             var unfinished = _trackedDownloadService.GetTrackedDownloads()
                 .Where(t => t.DownloadClient == client.Definition.Id)
                 .Select(t => t.DownloadItem?.DownloadId)
@@ -342,28 +337,10 @@ namespace NzbDrone.Core.Download.Engine
                     .Distinct()
                     .ToList(),
 
-                // A prepared link without a v2 hash was prepared before it was recorded (BackfillInfoHashV2 fills those
-                // the engine still has).
+                // A prepared link without a v2 hash was prepared before it was recorded (the import fills it in while the
+                // engine still has the torrent).
                 UnknownV2Hash = unfinishedLinks.Any(l => l.Files != null && l.InfoHashV2 == null)
             };
-        }
-
-        // Links prepared before v2 hashes were recorded get theirs while the engine still has the torrent.
-        private void BackfillInfoHashV2(QBittorrentTorrent torrent)
-        {
-            if (torrent.InfoHashV2 == null || !EngineLinkService.IsInfoHash(torrent.Hash))
-            {
-                return;
-            }
-
-            var downloadId = torrent.Hash.ToUpperInvariant();
-            var link = _engineLinkService.Get(downloadId);
-
-            if (link?.Files != null && link.InfoHashV2 == null)
-            {
-                link.InfoHashV2 = torrent.InfoHashV2.ToLowerInvariant();
-                _engineLinkService.Save(downloadId, link);
-            }
         }
 
         private class Owners
