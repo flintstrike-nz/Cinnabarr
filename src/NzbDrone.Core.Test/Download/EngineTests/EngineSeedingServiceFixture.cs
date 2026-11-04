@@ -259,8 +259,8 @@ namespace NzbDrone.Core.Test.Download.EngineTests
 
             Mocker.GetMock<NzbDrone.Core.Tv.ISeriesService>().Setup(s => s.FindByTvdbId(77)).Returns(series);
             Mocker.GetMock<NzbDrone.Core.Tv.IEpisodeService>()
-                .Setup(s => s.FindEpisode(9, 1, 2))
-                .Returns(new NzbDrone.Core.Tv.Episode { Id = 20, SeasonNumber = 1, EpisodeNumber = 2, SeedingRule = episodeRule });
+                .Setup(s => s.GetEpisodeBySeries(9))
+                .Returns(new List<NzbDrone.Core.Tv.Episode> { new NzbDrone.Core.Tv.Episode { Id = 20, SeasonNumber = 1, EpisodeNumber = 2, SeedingRule = episodeRule } });
         }
 
         [TestCase(true, true, true, "episode")]
@@ -284,6 +284,27 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             Subject.Process(GivenClient());
 
             VerifyRemoved(true);
+        }
+
+        [Test]
+        public void should_keep_goals_a_tolerance_apart_as_two_goals()
+        {
+            var first = new EngineSeedingRule { Mode = EngineSeedingMode.Ratio, Ratio = 1.2341 };
+            var second = new EngineSeedingRule { Mode = EngineSeedingMode.Ratio, Ratio = 1.2344 };
+
+            first.Should().NotBe(second);
+        }
+
+        [Test]
+        public void should_read_a_series_episodes_once_per_torrent()
+        {
+            GivenSeries(null, null, null);
+            _link.Files.Add(new EngineLinkFile { Index = 2, State = EngineLinkFileState.Imported, ImportedAt = DateTime.UtcNow, Episodes = new List<EngineLinkEpisode> { new EngineLinkEpisode { SeasonNumber = 1, EpisodeNumber = 3 } } });
+
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<NzbDrone.Core.Tv.IEpisodeService>().Verify(s => s.GetEpisodeBySeries(9), Times.Once());
+            Mocker.GetMock<NzbDrone.Core.Tv.IEpisodeService>().Verify(s => s.FindEpisode(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never());
         }
 
         [Test]

@@ -1,4 +1,5 @@
 using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
@@ -98,14 +99,27 @@ public class SeedingController : Controller
             return;
         }
 
+        var failures = new List<ValidationFailure>();
+
         if (!Enum.IsDefined(rule.Mode))
         {
-            throw new ValidationException($"Unknown seeding mode {(int)rule.Mode}");
+            failures.Add(new ValidationFailure("rule.mode", $"Unknown seeding mode {(int)rule.Mode}"));
         }
 
-        if (rule.Minutes < 0 || rule.Ratio < 0 || double.IsNaN(rule.Ratio) || double.IsInfinity(rule.Ratio))
+        if (rule.Minutes < 0)
         {
-            throw new ValidationException("The seeding time and ratio can't be negative");
+            failures.Add(new ValidationFailure("rule.minutes", "The seeding time can't be negative"));
+        }
+
+        if (rule.Ratio < 0 || double.IsNaN(rule.Ratio) || double.IsInfinity(rule.Ratio))
+        {
+            failures.Add(new ValidationFailure("rule.ratio", "The seeding ratio must be a number from 0 up"));
+        }
+
+        // Sent back as the fields and reasons, so the caller can tell what to fix.
+        if (failures.Any())
+        {
+            throw new ValidationException(failures);
         }
     }
 }

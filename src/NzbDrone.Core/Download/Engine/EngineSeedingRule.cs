@@ -64,13 +64,15 @@ namespace NzbDrone.Core.Download.Engine
             return obj is EngineSeedingRule other &&
                    other.Mode == Mode &&
                    other.Minutes == Minutes &&
-                   Math.Abs(other.Ratio - Ratio) < RatioTolerance &&
+
+                   // Exact: goals a tolerance apart are still two goals (the tolerance only applies to meeting one).
+                   other.Ratio.Equals(Ratio) &&
                    other.Source == Source;
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Mode, Minutes, Source);
+            return HashCode.Combine(Mode, Minutes, Ratio, Source);
         }
 
         // Every rule must be met (the global default and the tracker's minimum are both goals).

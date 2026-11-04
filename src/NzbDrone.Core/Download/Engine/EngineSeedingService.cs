@@ -86,9 +86,10 @@ namespace NzbDrone.Core.Download.Engine
         {
             var videos = link?.Files?.Where(f => !f.IsSubtitle && f.State == EngineLinkFileState.Imported).ToList() ?? new List<EngineLinkFile>();
             var series = link == null ? null : _seriesService.FindByTvdbId(link.TvdbId);
+            var episodes = GetEpisodeLookup(series);
             var trackerRule = GetTrackerRule(downloadId, link);
 
-            return videos.SelectMany(v => GetRules(series, v, trackerRule))
+            return videos.SelectMany(v => GetRules(series, episodes, v, trackerRule))
                 .DefaultIfEmpty(GetGlobalRule())
                 .Distinct()
                 .ToList();
@@ -96,13 +97,13 @@ namespace NzbDrone.Core.Download.Engine
 
         // A video's goals: for each of its episodes, the most specific goal set (episode, season, series, global), and
         // the tracker's minimum, a floor the other goals can't go below.
-        private List<EngineSeedingRule> GetRules(Series series, EngineLinkFile video, EngineSeedingRule trackerRule)
+        private List<EngineSeedingRule> GetRules(Series series, Dictionary<(int SeasonNumber, int EpisodeNumber), Episode> episodes, EngineLinkFile video, EngineSeedingRule trackerRule)
         {
             var rules = new List<EngineSeedingRule>();
 
             foreach (var linkEpisode in video.Episodes.DefaultIfEmpty())
             {
-                var episode = series == null || linkEpisode == null ? null : _episodeService.FindEpisode(series.Id, linkEpisode.SeasonNumber, linkEpisode.EpisodeNumber);
+                var episode = linkEpisode == null ? null : episodes.GetValueOrDefault((linkEpisode.SeasonNumber, linkEpisode.EpisodeNumber));
                 var season = series?.Seasons?.FirstOrDefault(s => s.SeasonNumber == linkEpisode?.SeasonNumber);
 
                 var rule = Describe(episode?.SeedingRule, "episode") ??
@@ -122,6 +123,16 @@ namespace NzbDrone.Core.Download.Engine
             }
 
             return rules;
+        }
+
+        // The series' episodes by season and episode number, read once for all of a torrent's files.
+        private Dictionary<(int SeasonNumber, int EpisodeNumber), Episode> GetEpisodeLookup(Series series)
+        {
+            return series == null
+                ? new Dictionary<(int SeasonNumber, int EpisodeNumber), Episode>()
+                : _episodeService.GetEpisodeBySeries(series.Id)
+                    .GroupBy(e => (e.SeasonNumber, e.EpisodeNumber))
+                    .ToDictionary(g => g.Key, g => g.First());
         }
 
         private EngineSeedingRule GetGlobalRule()
@@ -160,8 +171,9 @@ namespace NzbDrone.Core.Download.Engine
             }
 
             var series = _seriesService.FindByTvdbId(link.TvdbId);
+            var episodes = GetEpisodeLookup(series);
             var trackerRule = GetTrackerRule(downloadId, link);
-            var rulesByVideo = videos.ToDictionary(v => v, v => GetRules(series, v, trackerRule));
+            var rulesByVideo = videos.ToDictionary(v => v, v => GetRules(series, episodes, v, trackerRule));
             var rules = rulesByVideo.Values.SelectMany(r => r).Distinct().ToList();
             var now = DateTime.UtcNow;
             var ratio = Math.Max(0, (double)torrent.Ratio);
