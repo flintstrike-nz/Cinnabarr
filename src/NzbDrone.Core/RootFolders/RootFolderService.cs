@@ -43,7 +43,8 @@ namespace NzbDrone.Core.RootFolders
                                                                      ".appledesktop",
                                                                      ".appledouble",
                                                                      "@eadir",
-                                                                     ".grab"
+                                                                     ".grab",
+                                                                     ".embarr-staging"
                                                                  };
 
         public RootFolderService(IRootFolderRepository rootFolderRepository,

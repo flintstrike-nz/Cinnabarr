@@ -739,6 +739,8 @@
   "EndedSeriesDescription": "No additional episodes or seasons are expected",
   "EngineNotFoundHealthCheckMessage": "The built-in download engine (embarr-engine) was not found. Place it next to {appName} or set EMBARR_ENGINE_PATH. Downloads are unavailable until then.",
   "EngineNotRunningHealthCheckMessage": "The built-in download engine is not running. {appName} is restarting it; check the logs if this persists.",
+  "EngineUseStagingFolder": "Staging Folder",
+  "EngineUseStagingFolderHelpText": "Download into a hidden .embarr-staging folder in each root folder, then move each finished file into place with an instant rename on the same drive. Useful when the library is on slow or spinning disks.",
   "Episode": "Episode",
   "EpisodeAirDate": "Episode Air Date",
   "EpisodeCount": "Episode Count",

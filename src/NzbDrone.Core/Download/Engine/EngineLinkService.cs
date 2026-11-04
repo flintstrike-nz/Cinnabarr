@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using NLog;
 using NzbDrone.Common.Disk;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Serializer;
 using NzbDrone.Core.Download.History;
 using NzbDrone.Core.History;
@@ -34,6 +35,9 @@ namespace NzbDrone.Core.Download.Engine
 
         // Deletes the hidden pending files of a mapped torrent (complete or still incomplete); never a final file.
         void DeletePendingFiles(EngineLink link);
+
+        // Removes the torrent's folder in the staging area once nothing is left in it.
+        void RemoveEmptyStagingFolder(EngineLink link);
     }
 
     // Writes the link-intent sidecar for every grab sent to the built-in engine, and uses it
@@ -320,6 +324,32 @@ namespace NzbDrone.Core.Download.Engine
                     {
                         _logger.Warn(ex, "Unable to delete '{0}'", path);
                     }
+                }
+            }
+
+            RemoveEmptyStagingFolder(link);
+        }
+
+        public void RemoveEmptyStagingFolder(EngineLink link)
+        {
+            var folders = link?.Files?
+                .Where(f => f.PendingPath != null && f.PendingPath.StartsWith(EngineFileMapper.StagingFolderName + "/"))
+                .Select(f => Path.GetDirectoryName(Path.Combine(link.SavePath, f.PendingPath)))
+                .Distinct()
+                .ToList() ?? new List<string>();
+
+            foreach (var folder in folders)
+            {
+                try
+                {
+                    if (_diskProvider.FolderExists(folder) && _diskProvider.GetFiles(folder, true).Empty())
+                    {
+                        _diskProvider.DeleteFolder(folder, true);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.Debug(ex, "Unable to remove staging folder '{0}'", folder);
                 }
             }
         }

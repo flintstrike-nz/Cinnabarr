@@ -3,6 +3,7 @@ import { useManageSettings, useSettings } from 'Settings/useSettings';
 export interface DownloadClientSettingsModel {
   downloadClientWorkingFolders: string;
   enableCompletedDownloadHandling: boolean;
+  engineUseStagingFolder: boolean;
   autoRedownloadFailed: boolean;
   autoRedownloadFailedFromInteractiveSearch: boolean;
 }

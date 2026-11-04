@@ -346,6 +346,45 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             link.Files[0].FinalPath.Should().Be("Show - S01E01.mkv");
         }
 
+        private void GivenStaging(string seriesMount, string rootMount)
+        {
+            var root = Path.GetDirectoryName(_series.Path);
+            var seriesMountMock = new Mock<NzbDrone.Common.Disk.IMount>();
+            var rootMountMock = new Mock<NzbDrone.Common.Disk.IMount>();
+            seriesMountMock.SetupGet(m => m.RootDirectory).Returns(seriesMount);
+            rootMountMock.SetupGet(m => m.RootDirectory).Returns(rootMount);
+
+            Mocker.GetMock<NzbDrone.Core.Configuration.IConfigService>().SetupGet(c => c.EngineUseStagingFolder).Returns(true);
+            Mocker.GetMock<NzbDrone.Core.RootFolders.IRootFolderService>().Setup(r => r.GetBestRootFolderPath(_series.Path)).Returns(root);
+            Mocker.GetMock<NzbDrone.Common.Disk.IDiskProvider>().Setup(d => d.GetMount(root)).Returns(rootMountMock.Object);
+            Mocker.GetMock<NzbDrone.Common.Disk.IDiskProvider>().Setup(d => d.GetMount(_seasonFolder)).Returns(seriesMountMock.Object);
+        }
+
+        [Test]
+        public void should_download_into_the_staging_folder_of_the_root_folder_when_enabled()
+        {
+            var root = Path.GetDirectoryName(_series.Path);
+            GivenStaging(root, root);
+
+            var map = Map(("Show.S01E01.mkv", 1000), ("Show.S01E01.en.srt", 10));
+
+            map.SavePath.Should().Be(root);
+            map.Files[0].FinalPath.Should().Be("Show/Season 01/Show - S01E01.mkv");
+            map.Files[0].PendingPath.Should().Be(".embarr-staging/abcdef01/.Show - S01E01.mkv.abcdef01.pending");
+            map.Files[1].PendingPath.Should().Be(".embarr-staging/abcdef01/.Show - S01E01.en.srt.abcdef01.pending");
+        }
+
+        [Test]
+        public void should_not_stage_files_whose_final_folder_is_on_another_drive()
+        {
+            GivenStaging("/mnt/other".AsOsAgnostic(), Path.GetDirectoryName(_series.Path));
+
+            var map = Map(("Show.S01E01.mkv", 1000));
+
+            map.SavePath.Should().Be(_seasonFolder);
+            map.Files[0].PendingPath.Should().Be(".Show - S01E01.mkv.abcdef01.pending");
+        }
+
         [TestCase(".Show - S01E01.mkv.abcdef01.pending", ".Show - S01E01.mkv")]
         [TestCase("Show - S01E01.mkv", "Show - S01E01.mkv")]
         [TestCase("Show.pending.mkv", "Show.pending.mkv")]

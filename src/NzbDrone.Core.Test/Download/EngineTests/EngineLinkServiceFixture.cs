@@ -256,5 +256,25 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             ExceptionVerification.ExpectedWarns(1);
             Mocker.GetMock<IHistoryRepository>().Verify(r => r.InsertMany(It.IsAny<IList<EpisodeHistory>>()), Times.Never());
         }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void should_remove_a_staging_folder_only_once_it_is_empty(bool empty)
+        {
+            var root = @"C:\TV".AsOsAgnostic();
+            var folder = Path.Combine(root, ".embarr-staging", "abcdef01");
+            var link = new EngineLink
+            {
+                SavePath = root,
+                Files = new List<EngineLinkFile> { new EngineLinkFile { PendingPath = ".embarr-staging/abcdef01/.Show - S01E01.mkv.abcdef01.pending" } }
+            };
+
+            Mocker.GetMock<IDiskProvider>().Setup(d => d.FolderExists(folder)).Returns(true);
+            Mocker.GetMock<IDiskProvider>().Setup(d => d.GetFiles(folder, true)).Returns(empty ? new string[0] : new[] { Path.Combine(folder, "x") });
+
+            Subject.RemoveEmptyStagingFolder(link);
+
+            Mocker.GetMock<IDiskProvider>().Verify(d => d.DeleteFolder(folder, true), empty ? Times.Once() : Times.Never());
+        }
     }
 }
