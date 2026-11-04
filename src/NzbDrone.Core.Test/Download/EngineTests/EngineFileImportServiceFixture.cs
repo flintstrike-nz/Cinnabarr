@@ -407,15 +407,48 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             GivenExistingFile(7, "Show - S01E01 - Other.mkv");
 
             Mocker.GetMock<IEngineFileReplacementService>()
-                .Setup(s => s.Detach(_proxy.Object, _settings, Hash.ToUpperInvariant(), It.IsAny<Series>(), It.Is<List<NzbDrone.Core.MediaFiles.EpisodeFile>>(f => f.Single().Id == 7), _final))
+                .Setup(s => s.FindHolders(Hash.ToUpperInvariant(), It.IsAny<Series>(), It.Is<List<NzbDrone.Core.MediaFiles.EpisodeFile>>(f => f.Single().Id == 7)))
                 .Returns(new List<string> { "OWNER" });
+
+            // The torrents to recheck are saved before anything is detached.
+            Mocker.GetMock<IEngineFileReplacementService>()
+                .Setup(s => s.Detach(_proxy.Object, _settings, Hash.ToUpperInvariant(), It.IsAny<Series>(), It.IsAny<List<NzbDrone.Core.MediaFiles.EpisodeFile>>(), _final))
+                .Callback(() => _link.Files[0].DetachedFrom.Should().Equal("OWNER"));
 
             Subject.Process(GivenClient());
 
+            Mocker.GetMock<IEngineFileReplacementService>().Verify(s => s.Detach(_proxy.Object, _settings, Hash.ToUpperInvariant(), It.IsAny<Series>(), It.IsAny<List<NzbDrone.Core.MediaFiles.EpisodeFile>>(), _final), Times.Once());
             _proxy.Verify(p => p.RenameFile(Hash, ".Show - S01E01.mkv.pending", "Show - S01E01.mkv", _settings), Times.Once());
             _link.Files[0].ReplacesFileIds.Should().Equal(7);
             _link.Files[0].DetachedFrom.Should().Equal("OWNER");
             _link.Files[0].State.Should().Be(EngineLinkFileState.Renamed);
+        }
+
+        [Test]
+        public void should_not_detach_anything_while_an_unrelated_file_holds_the_final_path()
+        {
+            GivenExistingFile(7, "Show - S01E01 - Other.mkv");
+            _existing.Add(_final);
+
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<IEngineFileReplacementService>().Verify(s => s.Detach(It.IsAny<IQBittorrentProxy>(), It.IsAny<QBittorrentSettings>(), It.IsAny<string>(), It.IsAny<Series>(), It.IsAny<List<NzbDrone.Core.MediaFiles.EpisodeFile>>(), It.IsAny<string>()), Times.Never());
+            _proxy.Verify(p => p.RenameFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+            _link.Files[0].State.Should().Be(EngineLinkFileState.Pending);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_retry_a_recheck_that_did_not_happen()
+        {
+            _link.Completed = true;
+            _link.Files.ForEach(f => f.State = EngineLinkFileState.Imported);
+            _link.Files[0].DetachedFrom = new List<string> { "OWNER" };
+
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<IEngineFileReplacementService>().Verify(s => s.Recheck(_proxy.Object, _settings, It.Is<IEnumerable<string>>(h => h.Single() == "OWNER")), Times.Once());
+            _link.Files[0].DetachedFrom.Should().BeNull();
         }
 
         [Test]

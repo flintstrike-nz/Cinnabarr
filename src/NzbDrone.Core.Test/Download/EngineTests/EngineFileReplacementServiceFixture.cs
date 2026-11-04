@@ -42,9 +42,9 @@ namespace NzbDrone.Core.Test.Download.EngineTests
                 Completed = true,
                 Files = new List<EngineLinkFile>
                 {
-                    new EngineLinkFile { Index = 0, FinalPath = "Show - S01E01 - HDTV.mkv", State = EngineLinkFileState.Imported },
-                    new EngineLinkFile { Index = 1, IsSubtitle = true, VideoIndex = 0, FinalPath = "Show - S01E01 - HDTV.en.srt", State = EngineLinkFileState.Imported },
-                    new EngineLinkFile { Index = 2, FinalPath = "Show - S01E02 - HDTV.mkv", State = EngineLinkFileState.Imported }
+                    new EngineLinkFile { Index = 0, FinalPath = "Show - S01E01 - HDTV.mkv", PendingPath = ".Show - S01E01 - HDTV.mkv.12345678.pending", State = EngineLinkFileState.Imported },
+                    new EngineLinkFile { Index = 1, IsSubtitle = true, VideoIndex = 0, FinalPath = "Show - S01E01 - HDTV.en.srt", PendingPath = ".Show - S01E01 - HDTV.en.srt.12345678.pending", State = EngineLinkFileState.Imported },
+                    new EngineLinkFile { Index = 2, FinalPath = "Show - S01E02 - HDTV.mkv", PendingPath = ".Show - S01E02 - HDTV.mkv.12345678.pending", State = EngineLinkFileState.Imported }
                 }
             };
 
@@ -56,17 +56,16 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             Mocker.GetMock<IDiskProvider>().Setup(s => s.FileExists(It.IsAny<string>())).Returns(true);
         }
 
-        private List<string> Detach(string finalPath)
+        private void Detach(string finalPath)
         {
-            return Subject.Detach(_proxy.Object, _settings, Replacing, _series, new List<EpisodeFile> { _oldFile }, finalPath);
+            Subject.Detach(_proxy.Object, _settings, Replacing, _series, new List<EpisodeFile> { _oldFile }, finalPath);
         }
 
         [Test]
         public void should_detach_the_old_file_and_its_subtitles_from_the_torrent_seeding_them()
         {
-            var detachedFrom = Detach(Path.Combine(_seasonFolder, "Show - S01E01 - WEBDL.mkv"));
+            Detach(Path.Combine(_seasonFolder, "Show - S01E01 - WEBDL.mkv"));
 
-            detachedFrom.Should().Equal(Owner);
             _proxy.Verify(p => p.SetFilePriority(Owner.ToLowerInvariant(), new[] { 0, 1 }, 0, _settings), Times.Once());
             _owner.Files[0].State.Should().Be(EngineLinkFileState.Replaced);
             _owner.Files[1].State.Should().Be(EngineLinkFileState.Replaced);
@@ -76,6 +75,26 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             // The old subtitle goes to the recycle bin; the old video is left to the import, which replaces it.
             Mocker.GetMock<IRecycleBinProvider>().Verify(s => s.DeleteFile(Path.Combine(_seasonFolder, "Show - S01E01 - HDTV.en.srt"), It.IsAny<string>()), Times.Once());
             Mocker.GetMock<IRecycleBinProvider>().Verify(s => s.DeleteFile(Path.Combine(_seasonFolder, "Show - S01E01 - HDTV.mkv"), It.IsAny<string>()), Times.Never());
+        }
+
+        [Test]
+        public void should_find_the_torrents_holding_the_old_files()
+        {
+            Subject.FindHolders(Replacing, _series, new List<EpisodeFile> { _oldFile }).Should().Equal(Owner);
+        }
+
+        [Test]
+        public void should_detach_and_clean_up_subtitles_that_were_not_published_yet()
+        {
+            _owner.Files[1].State = EngineLinkFileState.Pending;
+            _owner.Files[1].PendingPath = ".Show - S01E01 - HDTV.en.srt.12345678.pending";
+
+            Detach(Path.Combine(_seasonFolder, "Show - S01E01 - WEBDL.mkv"));
+
+            _proxy.Verify(p => p.SetFilePriority(Owner.ToLowerInvariant(), new[] { 0, 1 }, 0, _settings), Times.Once());
+            Mocker.GetMock<IDiskProvider>().Verify(s => s.DeleteFile(Path.Combine(_seasonFolder, ".Show - S01E01 - HDTV.en.srt.12345678.pending")), Times.Once());
+            Mocker.GetMock<IDiskProvider>().Verify(s => s.DeleteFile(Path.Combine(_seasonFolder, ".Show - S01E01 - HDTV.en.srt.12345678.pending.!qB")), Times.Once());
+            _owner.Files[1].State.Should().Be(EngineLinkFileState.Replaced);
         }
 
         [Test]
@@ -91,9 +110,8 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         {
             _torrents.Clear();
 
-            var detachedFrom = Detach(Path.Combine(_seasonFolder, "Show - S01E01 - WEBDL.mkv"));
+            Detach(Path.Combine(_seasonFolder, "Show - S01E01 - WEBDL.mkv"));
 
-            detachedFrom.Should().BeEmpty();
             _proxy.Verify(p => p.SetFilePriority(It.IsAny<string>(), It.IsAny<IEnumerable<int>>(), It.IsAny<int>(), It.IsAny<QBittorrentSettings>()), Times.Never());
             _owner.Files[0].State.Should().Be(EngineLinkFileState.Replaced);
         }
@@ -103,7 +121,8 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         {
             _oldFile.RelativePath = Path.Combine("Season 01", "Imported Elsewhere.mkv");
 
-            Detach(Path.Combine(_seasonFolder, "Show - S01E01 - WEBDL.mkv")).Should().BeEmpty();
+            Subject.FindHolders(Replacing, _series, new List<EpisodeFile> { _oldFile }).Should().BeEmpty();
+            Detach(Path.Combine(_seasonFolder, "Show - S01E01 - WEBDL.mkv"));
 
             Mocker.GetMock<IEngineLinkService>().Verify(s => s.Save(It.IsAny<string>(), It.IsAny<EngineLink>()), Times.Never());
             Mocker.GetMock<IRecycleBinProvider>().Verify(s => s.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());

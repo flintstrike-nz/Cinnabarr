@@ -104,6 +104,22 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void should_only_remove_the_record_of_a_file_replaced_in_place_at_its_own_path()
+        {
+            // The built-in engine moved the old file away and put the new one at the same path: recycling that path
+            // would recycle the new file.
+            GivenSingleEpisodeWithSingleEpisodeFile();
+            _localEpisode.InPlace = true;
+            _localEpisode.Path = Path.Combine(_localEpisode.Series.Path, @"Season 01\30.rock.s01e01.avi");
+
+            var result = Subject.UpgradeEpisodeFile(_episodeFile, _localEpisode);
+
+            Mocker.GetMock<IRecycleBinProvider>().Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+            Mocker.GetMock<IMediaFileService>().Verify(v => v.Delete(It.Is<EpisodeFile>(f => f.Id == 1), DeleteMediaFileReason.Upgrade), Times.Once());
+            result.OldFiles.Should().ContainSingle();
+        }
+
+        [Test]
         public void should_delete_the_same_episode_file_only_once()
         {
             GivenMultipleEpisodesWithSingleEpisodeFile();

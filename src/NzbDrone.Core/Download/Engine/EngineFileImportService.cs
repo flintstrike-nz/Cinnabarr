@@ -135,7 +135,9 @@ namespace NzbDrone.Core.Download.Engine
 
                     // Done once the download is recorded, no subtitle is still waiting to be published, and the
                     // link has been checked against the library since startup.
-                    if (link.Completed && link.Files.All(f => f.State is not (EngineLinkFileState.Pending or EngineLinkFileState.Renamed)) && _reconciled.ContainsKey(downloadId))
+                    if (link.Completed &&
+                        link.Files.All(f => f.State is not (EngineLinkFileState.Pending or EngineLinkFileState.Renamed) && (f.DetachedFrom == null || f.DetachedFrom.Empty())) &&
+                        _reconciled.ContainsKey(downloadId))
                     {
                         continue;
                     }
@@ -312,6 +314,13 @@ namespace NzbDrone.Core.Download.Engine
 
             switch (file.State)
             {
+                case EngineLinkFileState.Imported:
+                {
+                    // A recheck that failed or was cut short by a restart.
+                    RecheckDetached(proxy, settings, file, save);
+                    return;
+                }
+
                 case EngineLinkFileState.Pending:
                 {
                     if (!IsComplete(engineFiles, file) || !_diskProvider.FileExists(pendingPath))
@@ -350,18 +359,24 @@ namespace NzbDrone.Core.Download.Engine
                     // final path if one of them holds it. Saved first, so a restart carries on with the replacement.
                     var existingFiles = GetEpisodeFiles(episodes);
 
-                    if (existingFiles.Any())
+                    // Never rename over a file that isn't one being replaced (checked before anything is detached).
+                    if (_diskProvider.FileExists(finalPath) && !existingFiles.Any(f => Path.Combine(series.Path, f.RelativePath).PathEquals(finalPath)))
                     {
-                        file.ReplacesFileIds = existingFiles.Select(f => f.Id).ToList();
-                        save();
-
-                        var detachedFrom = _replacementService.Detach(proxy, settings, downloadId, series, existingFiles, finalPath);
-
-                        file.DetachedFrom = (file.DetachedFrom ?? new List<string>()).Union(detachedFrom).ToList();
-                        save();
+                        LogWaiting(waitingKey, "'{0}' is ready, but a file already exists at its final path; it stays under its pending name", file.FinalPath);
+                        return;
                     }
 
-                    // Never rename over a file that isn't one being replaced.
+                    if (existingFiles.Any())
+                    {
+                        // The torrents to recheck are saved before any is changed, so a detachment cut short is still
+                        // rechecked once the replacement is in.
+                        file.ReplacesFileIds = existingFiles.Select(f => f.Id).ToList();
+                        file.DetachedFrom = (file.DetachedFrom ?? new List<string>()).Union(_replacementService.FindHolders(downloadId, series, existingFiles)).ToList();
+                        save();
+
+                        _replacementService.Detach(proxy, settings, downloadId, series, existingFiles, finalPath);
+                    }
+
                     if (_diskProvider.FileExists(finalPath))
                     {
                         LogWaiting(waitingKey, "'{0}' is ready, but a file already exists at its final path; it stays under its pending name", file.FinalPath);
@@ -391,6 +406,8 @@ namespace NzbDrone.Core.Download.Engine
                     {
                         file.State = EngineLinkFileState.Imported;
                         save();
+
+                        RecheckDetached(proxy, settings, file, save);
 
                         return;
                     }
@@ -423,17 +440,25 @@ namespace NzbDrone.Core.Download.Engine
                     file.State = EngineLinkFileState.Imported;
                     save();
 
-                    // The replaced files are gone: their torrents stop offering them.
-                    if (file.DetachedFrom?.Any() == true)
-                    {
-                        _replacementService.Recheck(proxy, settings, file.DetachedFrom);
-                        file.DetachedFrom = null;
-                        save();
-                    }
+                    RecheckDetached(proxy, settings, file, save);
 
                     return;
                 }
             }
+        }
+
+        // The files this one replaced are gone: their torrents stop offering them. Cleared only once done, so a
+        // failure is retried on the next poll.
+        private void RecheckDetached(IQBittorrentProxy proxy, QBittorrentSettings settings, EngineLinkFile file, Action save)
+        {
+            if (file.DetachedFrom == null || file.DetachedFrom.Empty())
+            {
+                return;
+            }
+
+            _replacementService.Recheck(proxy, settings, file.DetachedFrom);
+            file.DetachedFrom = null;
+            save();
         }
 
         private void LogWaiting(string key, string message, params object[] args)
