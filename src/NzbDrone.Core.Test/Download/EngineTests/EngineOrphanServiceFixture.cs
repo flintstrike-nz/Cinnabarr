@@ -11,6 +11,7 @@ using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.Clients;
 using NzbDrone.Core.Download.Clients.QBittorrent;
 using NzbDrone.Core.Download.Engine;
+using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.RootFolders;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Test.Common;
@@ -52,9 +53,13 @@ namespace NzbDrone.Core.Test.Download.EngineTests
 
             var disk = Mocker.GetMock<IDiskProvider>();
             disk.Setup(s => s.FolderExists(_root)).Returns(true);
-            disk.Setup(s => s.GetFiles(_root, true)).Returns(() => _files.Keys.ToList());
+            disk.Setup(s => s.GetFilesWithinFolder(_root)).Returns(() => _files.Keys.ToList());
+            disk.Setup(s => s.FileExists(It.IsAny<string>())).Returns<string>(p => _files.ContainsKey(p));
             disk.Setup(s => s.FileGetLastWrite(It.IsAny<string>())).Returns<string>(p => _files[p]);
             disk.Setup(s => s.GetFileSize(It.IsAny<string>())).Returns(100);
+
+            Mocker.GetMock<ITrackedDownloadService>().Setup(s => s.GetTrackedDownloads()).Returns(new List<TrackedDownload>());
+            Mocker.GetMock<IEngineAddGate>().Setup(s => s.TryBeginDelete()).Returns(() => new Mock<IDisposable>().Object);
         }
 
         private string GivenFile(string relativePath, int daysOld = 30)
@@ -97,6 +102,16 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             _torrents.Add(new QBittorrentTorrent { Hash = v2Only.Substring(0, 40) });
             GivenFile($"Show/.{v2}.parts");
             GivenFile($"Show/.{v2Only}.parts");
+
+            Subject.Scan().Should().BeEmpty();
+        }
+
+        [Test]
+        public void should_not_list_files_of_downloads_still_in_the_queue()
+        {
+            GivenFile("Show/.Show - S01E01.mkv.abcdef01.pending");
+            Mocker.GetMock<ITrackedDownloadService>().Setup(s => s.GetTrackedDownloads())
+                  .Returns(new List<TrackedDownload> { new TrackedDownload { DownloadItem = new DownloadClientItem { DownloadId = Gone.ToUpperInvariant() } } });
 
             Subject.Scan().Should().BeEmpty();
         }
@@ -190,6 +205,44 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             Mocker.GetMock<IDiskProvider>().Verify(s => s.TryDeleteEmptyFolder(Path.Combine(staging, "abcdef01")), Times.Once());
             Mocker.GetMock<IDiskProvider>().Verify(s => s.TryDeleteEmptyFolder(staging), Times.Never());
             Mocker.GetMock<IDiskProvider>().Verify(s => s.TryDeleteEmptyFolder(_root), Times.Never());
+        }
+
+        [Test]
+        public void should_not_delete_a_file_whose_torrent_was_added_since_the_scan()
+        {
+            var pending = GivenFile("Show/.Show - S01E01.mkv.abcdef01.pending");
+            var scans = 0;
+            _proxy.Setup(p => p.GetTorrents(_settings)).Returns(() => scans++ == 0 ? _torrents : _torrents.Append(new QBittorrentTorrent { Hash = Gone }).ToList());
+
+            Subject.Approve(new[] { pending }, false).Should().BeEmpty();
+
+            Mocker.GetMock<IDiskProvider>().Verify(s => s.DeleteFile(It.IsAny<string>()), Times.Never());
+        }
+
+        [Test]
+        public void should_not_delete_a_file_written_to_since_the_scan()
+        {
+            var pending = GivenFile("Show/.Show - S01E01.mkv.abcdef01.pending");
+            var reads = 0;
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FileGetLastWrite(pending)).Returns(() => reads++ == 0 ? DateTime.UtcNow.AddDays(-30) : DateTime.UtcNow);
+
+            Subject.Approve(new[] { pending }, false).Should().BeEmpty();
+
+            Mocker.GetMock<IDiskProvider>().Verify(s => s.DeleteFile(It.IsAny<string>()), Times.Never());
+        }
+
+        [Test]
+        public void should_not_delete_while_a_torrent_was_just_added()
+        {
+            var pending = GivenFile("Show/.Show - S01E01.mkv.abcdef01.pending");
+            Mocker.GetMock<IEngineAddGate>().Setup(s => s.TryBeginDelete()).Returns((IDisposable)null);
+            Mocker.GetMock<IConfigService>().SetupGet(c => c.EngineOrphanCleanupApproved).Returns(true);
+
+            Subject.Execute(new EngineOrphanCleanupCommand());
+            Assert.Throws<EngineOrphanException>(() => Subject.Approve(new[] { pending }, true));
+
+            Mocker.GetMock<IDiskProvider>().Verify(s => s.DeleteFile(It.IsAny<string>()), Times.Never());
+            Mocker.GetMock<IConfigService>().VerifySet(c => c.EngineOrphanCleanupApproved = It.IsAny<bool>(), Times.Never());
         }
 
         [Test]

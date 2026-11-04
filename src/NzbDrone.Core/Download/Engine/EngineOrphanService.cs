@@ -9,6 +9,7 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Messaging;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Download.Clients.QBittorrent;
+using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.RootFolders;
@@ -50,8 +51,10 @@ namespace NzbDrone.Core.Download.Engine
 
     // Only Embarr's own partial files are ever considered: the hidden pending files of a mapped torrent (with or
     // without the engine's ".!qB" suffix, §4.8) and libtorrent's ".parts" files. Each carries its torrent's id in its
-    // name, so its owner is known. A file counts as an orphan only when no torrent in the engine has that id, it
-    // hasn't been written to for the grace period, and it is inside a root folder (staging folders are inside one).
+    // name, so its owner is known. A file counts as an orphan only when no torrent in the engine (or download still in
+    // the queue, such as one missing from the engine that can be re-added) has that id, it hasn't been written to for
+    // the grace period, and it is physically inside a root folder (staging folders are inside one; links aren't
+    // followed). All of that is checked again just before a file is deleted.
     public class EngineOrphanService : IEngineOrphanService, IExecute<EngineOrphanCleanupCommand>
     {
         private static readonly Regex PendingRegex = new(@"^\..+\.(?<id>[0-9a-f]{8})" + Regex.Escape(EngineFileMapper.PendingSuffix) + "(?:" + Regex.Escape(EngineLinkService.IncompleteSuffix) + ")?$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
@@ -60,6 +63,8 @@ namespace NzbDrone.Core.Download.Engine
         private readonly IProvideDownloadClient _downloadClientProvider;
         private readonly IEngineClientRegistry _engineClientRegistry;
         private readonly IEngineSupervisor _engineSupervisor;
+        private readonly IEngineAddGate _engineAddGate;
+        private readonly ITrackedDownloadService _trackedDownloadService;
         private readonly IQBittorrentProxySelector _proxySelector;
         private readonly IRootFolderService _rootFolderService;
         private readonly IDiskProvider _diskProvider;
@@ -72,6 +77,8 @@ namespace NzbDrone.Core.Download.Engine
         public EngineOrphanService(IProvideDownloadClient downloadClientProvider,
                                    IEngineClientRegistry engineClientRegistry,
                                    IEngineSupervisor engineSupervisor,
+                                   IEngineAddGate engineAddGate,
+                                   ITrackedDownloadService trackedDownloadService,
                                    IQBittorrentProxySelector proxySelector,
                                    IRootFolderService rootFolderService,
                                    IDiskProvider diskProvider,
@@ -82,6 +89,8 @@ namespace NzbDrone.Core.Download.Engine
             _downloadClientProvider = downloadClientProvider;
             _engineClientRegistry = engineClientRegistry;
             _engineSupervisor = engineSupervisor;
+            _engineAddGate = engineAddGate;
+            _trackedDownloadService = trackedDownloadService;
             _proxySelector = proxySelector;
             _rootFolderService = rootFolderService;
             _diskProvider = diskProvider;
@@ -109,8 +118,7 @@ namespace NzbDrone.Core.Download.Engine
         public List<EngineOrphanFile> Scan()
         {
             var owners = GetOwners();
-            var graceDays = Math.Max(1, _configService.EngineOrphanGraceDays);
-            var cutoff = DateTime.UtcNow.AddDays(-graceDays);
+            var cutoff = GetCutoff();
             var orphans = new List<EngineOrphanFile>();
 
             foreach (var rootFolder in _rootFolderService.All().Select(r => r.Path).Distinct())
@@ -122,13 +130,9 @@ namespace NzbDrone.Core.Download.Engine
 
                 try
                 {
-                    foreach (var path in _diskProvider.GetFiles(rootFolder, true))
+                    foreach (var path in _diskProvider.GetFilesWithinFolder(rootFolder))
                     {
-                        var id = GetTorrentId(Path.GetFileName(path));
-
-                        // A pending file's id is a prefix of its torrent's hash; a part file's name has the hash libtorrent
-                        // prefers, which for a v2-only torrent is longer than the engine's (truncated) id.
-                        if (id == null || owners.Any(h => h.StartsWith(id, StringComparison.Ordinal) || id.StartsWith(h, StringComparison.Ordinal)))
+                        if (!IsOrphanName(path, owners))
                         {
                             continue;
                         }
@@ -158,7 +162,8 @@ namespace NzbDrone.Core.Download.Engine
 
             // Ownership is checked again just before deleting: a torrent may have been added since the list was made.
             var orphans = Scan();
-            var deleted = Delete(orphans.Where(o => approved.Any(p => p.PathEquals(o.Path))));
+            var deleted = Delete(orphans.Where(o => approved.Any(p => p.PathEquals(o.Path)))) ??
+                          throw new EngineOrphanException("a torrent was just added to the engine; try again in a few minutes");
 
             _configService.EngineOrphanCleanupApproved = deleteAutomatically;
             _awaitingReview = deleteAutomatically ? 0 : orphans.Count - deleted.Count;
@@ -167,14 +172,31 @@ namespace NzbDrone.Core.Download.Engine
             return deleted;
         }
 
+        // Null when nothing could be deleted yet, because a torrent was just added to the engine.
         private List<EngineOrphanFile> Delete(IEnumerable<EngineOrphanFile> orphans)
         {
             var deleted = new List<EngineOrphanFile>();
+
+            using var gate = _engineAddGate.TryBeginDelete();
+
+            if (gate == null)
+            {
+                return null;
+            }
+
+            // Ownership and age are checked again, with torrent adds held off: the list may be days old.
+            var owners = GetOwners();
+            var cutoff = GetCutoff();
 
             foreach (var orphan in orphans)
             {
                 try
                 {
+                    if (!_diskProvider.FileExists(orphan.Path) || !IsOrphanName(orphan.Path, owners) || _diskProvider.FileGetLastWrite(orphan.Path) > cutoff)
+                    {
+                        continue;
+                    }
+
                     _logger.Info("Deleting orphaned partial file '{0}'", orphan.Path);
                     _diskProvider.DeleteFile(orphan.Path);
                     deleted.Add(orphan);
@@ -201,7 +223,15 @@ namespace NzbDrone.Core.Download.Engine
                     var deleted = Delete(orphans);
 
                     _awaitingReview = 0;
-                    _logger.Info("Deleted {0} orphaned partial file(s)", deleted.Count);
+
+                    if (deleted == null)
+                    {
+                        _logger.Debug("A torrent was just added to the engine; orphaned partial files are left until the next run");
+                    }
+                    else
+                    {
+                        _logger.Info("Deleted {0} orphaned partial file(s)", deleted.Count);
+                    }
                 }
                 else
                 {
@@ -221,7 +251,22 @@ namespace NzbDrone.Core.Download.Engine
             _eventAggregator.PublishEvent(new EngineOrphanScanCompletedEvent());
         }
 
-        // Every id the engine's torrents are known by (lower-case). Throws when the engine can't be asked: without
+        private DateTime GetCutoff()
+        {
+            return DateTime.UtcNow.AddDays(-Math.Max(1, _configService.EngineOrphanGraceDays));
+        }
+
+        // True for an Embarr partial file whose torrent id none of the owners has. A pending file's id is a prefix of
+        // its torrent's hash; a part file's name has the hash libtorrent prefers, which for a v2-only torrent is longer
+        // than the engine's (truncated) id.
+        private static bool IsOrphanName(string path, List<string> owners)
+        {
+            var id = GetTorrentId(Path.GetFileName(path));
+
+            return id != null && !owners.Any(h => h.StartsWith(id, StringComparison.Ordinal) || id.StartsWith(h, StringComparison.Ordinal));
+        }
+
+        // Every id the engine's torrents, and the downloads still in the queue, are known by (lower-case). Throws when the engine can't be asked: without
         // the full list, any file could belong to a torrent that wasn't seen.
         private List<string> GetOwners()
         {
@@ -250,6 +295,7 @@ namespace NzbDrone.Core.Download.Engine
 
             return torrents
                 .SelectMany(t => new[] { t.Hash, t.InfoHashV1, t.InfoHashV2 })
+                .Concat(_trackedDownloadService.GetTrackedDownloads().Select(t => t.DownloadItem?.DownloadId))
                 .Where(h => h.IsNotNullOrWhiteSpace())
                 .Select(h => h.ToLowerInvariant())
                 .Distinct()

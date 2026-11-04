@@ -28,6 +28,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         private readonly ITagRepository _tagRepository;
         private readonly IEngineClientRegistry _engineClientRegistry;
         private readonly IEngineLinkService _engineLinkService;
+        private readonly IEngineAddGate _engineAddGate;
 
         private class SeedingTimeCacheEntry
         {
@@ -47,6 +48,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                            ITagRepository tagRepository,
                            IEngineClientRegistry engineClientRegistry,
                            IEngineLinkService engineLinkService,
+                           IEngineAddGate engineAddGate,
                            Logger logger)
             : base(torrentFileInfoReader, httpClient, configService, diskProvider, remotePathMappingService, localizationService, blocklistService, logger)
         {
@@ -56,6 +58,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             _tagRepository = tagRepository;
             _engineClientRegistry = engineClientRegistry;
             _engineLinkService = engineLinkService;
+            _engineAddGate = engineAddGate;
         }
 
         private IQBittorrentProxy Proxy => _proxySelector.GetProxy(Settings);
@@ -100,8 +103,11 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             // A held torrent is force-started by preparation, once its file whitelist is applied (roadmap §4.8).
             var forceStart = !HoldNewTorrents && (QBittorrentState)Settings.InitialState == QBittorrentState.ForceStart;
 
+            // An engine add waits for any orphan deletion in progress (EngineAddGate).
             try
             {
+                using var gate = HoldNewTorrents ? _engineAddGate.BeginAdd() : null;
+
                 Proxy.AddTorrentFromUrl(magnetLink, addHasSetShareLimits && setShareLimits ? remoteEpisode.SeedConfiguration : null, Settings, HoldNewTorrents);
             }
             catch (DownloadClientException ex) when (ex.InnerException is HttpException httpException && httpException.Response.StatusCode is HttpStatusCode.Conflict)
@@ -180,8 +186,11 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             // A held torrent is force-started by preparation, once its file whitelist is applied (roadmap §4.8).
             var forceStart = !HoldNewTorrents && (QBittorrentState)Settings.InitialState == QBittorrentState.ForceStart;
 
+            // An engine add waits for any orphan deletion in progress (EngineAddGate).
             try
             {
+                using var gate = HoldNewTorrents ? _engineAddGate.BeginAdd() : null;
+
                 Proxy.AddTorrentFromFile(filename, fileContent, addHasSetShareLimits ? remoteEpisode.SeedConfiguration : null, Settings, HoldNewTorrents);
             }
             catch (DownloadClientException ex) when (ex.InnerException is HttpException httpException && httpException.Response.StatusCode is HttpStatusCode.Conflict)
