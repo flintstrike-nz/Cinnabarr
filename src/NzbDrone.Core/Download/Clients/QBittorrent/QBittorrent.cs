@@ -15,7 +15,6 @@ using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.Localization;
 using NzbDrone.Core.MediaFiles.TorrentInfo;
 using NzbDrone.Core.Parser.Model;
-using NzbDrone.Core.RemotePathMappings;
 using NzbDrone.Core.Tags;
 using NzbDrone.Core.Validation;
 
@@ -41,7 +40,6 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                            IHttpClient httpClient,
                            IConfigService configService,
                            IDiskProvider diskProvider,
-                           IRemotePathMappingService remotePathMappingService,
                            ICacheManager cacheManager,
                            ILocalizationService localizationService,
                            IBlocklistService blocklistService,
@@ -50,7 +48,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                            IEngineLinkService engineLinkService,
                            IEngineAddGate engineAddGate,
                            Logger logger)
-            : base(torrentFileInfoReader, httpClient, configService, diskProvider, remotePathMappingService, localizationService, blocklistService, logger)
+            : base(torrentFileInfoReader, httpClient, configService, diskProvider, localizationService, blocklistService, logger)
         {
             _proxySelector = proxySelector;
 
@@ -405,11 +403,11 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
 
                     if (useRootPath)
                     {
-                        item.OutputPath = _remotePathMappingService.RemapRemoteToLocal(Settings.Host, new OsPath(torrent.RootPath));
+                        item.OutputPath = new OsPath(torrent.RootPath);
                     }
                     else if (torrent.ContentPath != torrent.SavePath)
                     {
-                        item.OutputPath = _remotePathMappingService.RemapRemoteToLocal(Settings.Host, new OsPath(torrent.ContentPath));
+                        item.OutputPath = new OsPath(torrent.ContentPath);
                     }
                     else
                     {
@@ -496,7 +494,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
 
             var outputPath = savePath + relativePath.FileName;
 
-            result.OutputPath = _remotePathMappingService.RemapRemoteToLocal(Settings.Host, outputPath);
+            result.OutputPath = outputPath;
 
             return result;
         }
@@ -536,7 +534,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             return new DownloadClientInfo
             {
                 IsLocalhost = Settings.Host.IsLocalhostAddress(),
-                OutputRootFolders = new List<OsPath> { _remotePathMappingService.RemapRemoteToLocal(Settings.Host, destDir) },
+                OutputRootFolders = new List<OsPath> { destDir },
                 RemovesCompletedDownloads = RemovesCompletedDownloads(config)
             };
         }

@@ -18,7 +18,6 @@ using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.TorrentInfo;
 using NzbDrone.Core.Organizer;
 using NzbDrone.Core.Parser.Model;
-using NzbDrone.Core.RemotePathMappings;
 using NzbDrone.Core.ThingiProvider;
 
 namespace NzbDrone.Core.Download
@@ -34,11 +33,10 @@ namespace NzbDrone.Core.Download
             IHttpClient httpClient,
             IConfigService configService,
             IDiskProvider diskProvider,
-            IRemotePathMappingService remotePathMappingService,
             ILocalizationService localizationService,
             IBlocklistService blocklistService,
             Logger logger)
-            : base(configService, diskProvider, remotePathMappingService, logger, localizationService)
+            : base(configService, diskProvider, logger, localizationService)
         {
             _httpClient = httpClient;
             _blocklistService = blocklistService;

@@ -186,6 +186,9 @@ flowchart LR
   - **Removed Usenet code.** The Usenet indexers (Newznab, Fanzub) and the Usenet client code (`UsenetClientBase`, `NzbValidationService`) are removed. Saved Usenet indexer definitions are deleted on the next start, as with the removed clients.
   - **Kept for Torznab.** Newznab's shared capabilities, request and parsing code stays, because Torznab uses it.
   - **Leftovers.** The `Usenet` protocol value and Usenet settings, such as delay profile delays, remain until the indexer engine replaces indexers (Phase 3). With no Usenet indexer or client they never apply.
+- Built so far (2h-3):
+  - **What's removed.** Remote path mappings are removed: the service, the v3 and v5 APIs, the health check and the settings section. The engine's paths are used as they are.
+  - **What stays.** The `RemotePathMappings` table stays in the database, because migrations don't change, but nothing reads it.
 
 ### 4.5 Database
 

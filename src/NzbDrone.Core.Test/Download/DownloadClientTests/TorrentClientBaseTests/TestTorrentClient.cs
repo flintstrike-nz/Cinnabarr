@@ -10,7 +10,6 @@ using NzbDrone.Core.Download;
 using NzbDrone.Core.Localization;
 using NzbDrone.Core.MediaFiles.TorrentInfo;
 using NzbDrone.Core.Parser.Model;
-using NzbDrone.Core.RemotePathMappings;
 
 namespace NzbDrone.Core.Test.Download.DownloadClientTests.TorrentClientBaseTests
 {
@@ -20,11 +19,10 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.TorrentClientBaseTests
             IHttpClient httpClient,
             IConfigService configService,
             IDiskProvider diskProvider,
-            IRemotePathMappingService remotePathMappingService,
             ILocalizationService localizationService,
             IBlocklistService blocklistService,
             Logger logger)
-            : base(torrentFileInfoReader, httpClient, configService, diskProvider, remotePathMappingService, localizationService, blocklistService, logger)
+            : base(torrentFileInfoReader, httpClient, configService, diskProvider, localizationService, blocklistService, logger)
         {
         }
 

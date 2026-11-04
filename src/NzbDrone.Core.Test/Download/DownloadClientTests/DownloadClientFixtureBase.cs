@@ -5,7 +5,6 @@ using FluentAssertions;
 using Moq;
 using NLog;
 using NUnit.Framework;
-using NzbDrone.Common.Disk;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Download;
@@ -13,7 +12,6 @@ using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Localization;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
-using NzbDrone.Core.RemotePathMappings;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Core.Test.IndexerTests;
 using NzbDrone.Core.Tv;
@@ -40,10 +38,6 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests
             Mocker.GetMock<IHttpClient>()
                   .Setup(s => s.GetAsync(It.IsAny<HttpRequest>()))
                   .ReturnsAsync((HttpRequest r, CancellationToken _) => new HttpResponse(r, new HttpHeader(), Array.Empty<byte>()));
-
-            Mocker.GetMock<IRemotePathMappingService>()
-                .Setup(v => v.RemapRemoteToLocal(It.IsAny<string>(), It.IsAny<OsPath>()))
-                .Returns<string, OsPath>((h, r) => r);
         }
 
         protected virtual RemoteEpisode CreateRemoteEpisode()
