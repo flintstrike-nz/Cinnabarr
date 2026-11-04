@@ -168,6 +168,22 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("EngineSeedingRatio", value); }
         }
 
+        // Off until the first list of orphaned partial files is approved (roadmap §4.13): until then the cleanup only
+        // lists what it would delete.
+        public bool EngineOrphanCleanupApproved
+        {
+            get { return GetValueBoolean("EngineOrphanCleanupApproved", false); }
+
+            set { SetValue("EngineOrphanCleanupApproved", value); }
+        }
+
+        public int EngineOrphanGraceDays
+        {
+            get { return GetValueInt("EngineOrphanGraceDays", 7); }
+
+            set { SetValue("EngineOrphanGraceDays", value); }
+        }
+
         public bool EnableCompletedDownloadHandling
         {
             get { return GetValueBoolean("EnableCompletedDownloadHandling", true); }

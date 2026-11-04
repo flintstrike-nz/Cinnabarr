@@ -739,6 +739,7 @@
   "EndedSeriesDescription": "No additional episodes or seasons are expected",
   "EngineNotFoundHealthCheckMessage": "The built-in download engine (embarr-engine) was not found. Place it next to {appName} or set EMBARR_ENGINE_PATH. Downloads are unavailable until then.",
   "EngineNotRunningHealthCheckMessage": "The built-in download engine is not running. {appName} is restarting it; check the logs if this persists.",
+  "EngineOrphansHealthCheckMessage": "{count} leftover partial download file(s) that no torrent owns are waiting for review. Nothing is deleted until the list is approved.",
   "EngineSeeding": "Seeding",
   "EngineSeedingCaption": "How long the built-in engine seeds each file after it is in the library. Files are always kept when seeding ends; a private tracker's minimum (its indexer's seed ratio and time) always applies as well.",
   "EngineSeedingGoal": "Seeding Goal",
