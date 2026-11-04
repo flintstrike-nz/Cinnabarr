@@ -440,6 +440,7 @@ namespace NzbDrone.Core.Download.Engine
                     if (IsRecorded(series, episodes, finalPath, file))
                     {
                         file.State = EngineLinkFileState.Imported;
+                        file.ImportedAt ??= DateTime.UtcNow;
                         save();
 
                         RecordPublishedSubtitles(series, seriesEpisodes, link, file);
@@ -475,6 +476,7 @@ namespace NzbDrone.Core.Download.Engine
 
                     _waiting.TryRemove(waitingKey, out _);
                     file.State = EngineLinkFileState.Imported;
+                    file.ImportedAt ??= DateTime.UtcNow;
                     save();
 
                     // The import changed the episodes' files: read them again before recording the subtitles.

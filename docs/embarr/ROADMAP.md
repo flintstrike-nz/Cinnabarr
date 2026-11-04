@@ -278,6 +278,8 @@ This per-file import is idempotent. It's keyed by info-hash plus the file's inde
 
 **When the goal is met.** Remove the torrent from the engine and **keep the files**. A video is never deleted because of seeding.
 
+**Built so far (2e-1).** The global goal (Settings → Download Clients → Seeding; default: ratio 1 or 14 days, whichever comes first) and the tracker minimum, both of which must be met. The engine's share limits are written when the goals amount to a single "time or ratio" goal; otherwise the torrent is left unlimited and Embarr removes it, since the engine stops at whichever limit comes first. Series, season and episode rules follow in 2e-2.
+
 **Visibility.** The Downloads page and each item page show every file's goal, where the goal came from (e.g. "14 days, from series") and progress toward it. A health check flags any torrent still active past its goal.
 
 ### 4.11 Library layout and naming

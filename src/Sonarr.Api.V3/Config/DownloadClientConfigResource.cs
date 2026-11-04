@@ -9,6 +9,9 @@ namespace Sonarr.Api.V3.Config
 
         public bool EnableCompletedDownloadHandling { get; set; }
         public bool EngineUseStagingFolder { get; set; }
+        public int EngineSeedingMode { get; set; }
+        public int EngineSeedingMinutes { get; set; }
+        public double EngineSeedingRatio { get; set; }
         public bool AutoRedownloadFailed { get; set; }
         public bool AutoRedownloadFailedFromInteractiveSearch { get; set; }
     }
@@ -23,6 +26,9 @@ namespace Sonarr.Api.V3.Config
 
                 EnableCompletedDownloadHandling = model.EnableCompletedDownloadHandling,
                 EngineUseStagingFolder = model.EngineUseStagingFolder,
+                EngineSeedingMode = model.EngineSeedingMode,
+                EngineSeedingMinutes = model.EngineSeedingMinutes,
+                EngineSeedingRatio = model.EngineSeedingRatio,
                 AutoRedownloadFailed = model.AutoRedownloadFailed,
                 AutoRedownloadFailedFromInteractiveSearch = model.AutoRedownloadFailedFromInteractiveSearch
             };

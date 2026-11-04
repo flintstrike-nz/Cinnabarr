@@ -69,6 +69,9 @@ namespace NzbDrone.Core.Download.Engine
         public int LanguageId { get; set; }
         public List<string> LanguageTags { get; set; }
         public string SubtitleTitle { get; set; }
+
+        // For a video: when it was imported, which is when its seeding time starts.
+        public DateTime? ImportedAt { get; set; }
     }
 
     public class EngineLinkQuality

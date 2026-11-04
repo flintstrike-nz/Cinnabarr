@@ -4,6 +4,9 @@ export interface DownloadClientSettingsModel {
   downloadClientWorkingFolders: string;
   enableCompletedDownloadHandling: boolean;
   engineUseStagingFolder: boolean;
+  engineSeedingMode: number;
+  engineSeedingMinutes: number;
+  engineSeedingRatio: number;
   autoRedownloadFailed: boolean;
   autoRedownloadFailedFromInteractiveSearch: boolean;
 }

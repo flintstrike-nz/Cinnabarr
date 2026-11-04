@@ -35,6 +35,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         private readonly IEngineReconcileService _engineReconcileService;
         private readonly IEngineTorrentPreparationService _engineTorrentPreparationService;
         private readonly IEngineFileImportService _engineFileImportService;
+        private readonly IEngineSeedingService _engineSeedingService;
         private readonly Logger _logger;
         private readonly Debouncer _refreshDebounce;
 
@@ -50,6 +51,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                                          IEngineReconcileService engineReconcileService,
                                          IEngineTorrentPreparationService engineTorrentPreparationService,
                                          IEngineFileImportService engineFileImportService,
+                                         IEngineSeedingService engineSeedingService,
                                          Logger logger)
         {
             _downloadClientStatusService = downloadClientStatusService;
@@ -64,6 +66,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             _engineReconcileService = engineReconcileService;
             _engineTorrentPreparationService = engineTorrentPreparationService;
             _engineFileImportService = engineFileImportService;
+            _engineSeedingService = engineSeedingService;
             _logger = logger;
 
             _refreshDebounce = new Debouncer(QueueRefresh, TimeSpan.FromSeconds(5));
@@ -156,6 +159,11 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                 ImportEngineFiles(downloadClient);
             }
 
+            if (_engineClientRegistry.IsEngineClient(downloadClient.Definition.Id))
+            {
+                ApplySeedingGoals(downloadClient);
+            }
+
             return trackedDownloads;
         }
 
@@ -168,6 +176,18 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             catch (Exception ex)
             {
                 _logger.Warn(ex, "Unable to prepare new torrents in the engine");
+            }
+        }
+
+        private void ApplySeedingGoals(IDownloadClient downloadClient)
+        {
+            try
+            {
+                _engineSeedingService.Process(downloadClient);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "Unable to apply seeding goals in the engine");
             }
         }
 
