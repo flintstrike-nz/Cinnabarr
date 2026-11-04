@@ -4,6 +4,7 @@ using System.Linq;
 using FluentValidation.Results;
 using NLog;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.ThingiProvider;
 
@@ -18,9 +19,11 @@ namespace NzbDrone.Core.Download
     public class DownloadClientFactory : ProviderFactory<IDownloadClient, DownloadClientDefinition>, IDownloadClientFactory
     {
         private readonly IDownloadClientStatusService _downloadClientStatusService;
+        private readonly IEngineClientRegistry _engineClientRegistry;
         private readonly Logger _logger;
 
         public DownloadClientFactory(IDownloadClientStatusService downloadClientStatusService,
+                                     IEngineClientRegistry engineClientRegistry,
                                      IDownloadClientRepository providerRepository,
                                      IEnumerable<IDownloadClient> providers,
                                      IServiceProvider container,
@@ -29,12 +32,15 @@ namespace NzbDrone.Core.Download
             : base(providerRepository, providers, container, eventAggregator, logger)
         {
             _downloadClientStatusService = downloadClientStatusService;
+            _engineClientRegistry = engineClientRegistry;
             _logger = logger;
         }
 
+        // Embarr downloads only with its built-in engine (roadmap §4.4). Any other client definition left in the
+        // database (such as the user's own qBittorrent) is never loaded, so Embarr never touches that client.
         protected override List<DownloadClientDefinition> Active()
         {
-            return base.Active().Where(c => c.Enable).ToList();
+            return base.Active().Where(c => c.Enable && _engineClientRegistry.IsEngineClient(c.Id)).ToList();
         }
 
         public override void SetProviderCharacteristics(IDownloadClient provider, DownloadClientDefinition definition)

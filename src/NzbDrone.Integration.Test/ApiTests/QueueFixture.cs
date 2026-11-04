@@ -1,5 +1,3 @@
-using System.IO;
-using System.Linq;
 using System.Threading;
 using FluentAssertions;
 using NUnit.Framework;
@@ -40,34 +38,14 @@ namespace NzbDrone.Integration.Test.ApiTests
         }
 
         [Test]
-        [Order(0)]
-        public void ensure_queue_is_empty_when_download_client_is_configured()
+        public void ensure_queue_is_empty_without_downloads()
         {
-            EnsureNoDownloadClient();
-            EnsureDownloadClient();
+            RefreshQueue();
 
             var queue = GetFirstPage();
 
             queue.TotalRecords.Should().Be(0);
             queue.Records.Should().BeEmpty();
-        }
-
-        [Test]
-        [Order(1)]
-        public void ensure_queue_is_not_empty()
-        {
-            EnsureNoDownloadClient();
-
-            var client = EnsureDownloadClient();
-            var directory = client.Fields.First(v => v.Name == "watchFolder").Value as string;
-
-            File.WriteAllText(Path.Combine(directory, "Series.Title.S01E01.mkv"), "Test Download");
-            RefreshQueue();
-
-            var queue = GetFirstPage();
-
-            queue.TotalRecords.Should().Be(1);
-            queue.Records.Should().NotBeEmpty();
         }
     }
 }

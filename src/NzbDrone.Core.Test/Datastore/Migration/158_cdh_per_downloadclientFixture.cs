@@ -4,7 +4,6 @@ using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using NzbDrone.Common.Serializer;
 using NzbDrone.Core.Datastore.Migration;
-using NzbDrone.Core.Download.Clients.RTorrent;
 using NzbDrone.Core.Test.Framework;
 
 namespace NzbDrone.Core.Test.Datastore.Migration
@@ -85,7 +84,7 @@ namespace NzbDrone.Core.Test.Datastore.Migration
                     Name = "RTorrent",
                     Implementation = "RTorrent",
                     Priority = 1,
-                    Settings = new RTorrentSettings
+                    Settings = new RTorrentSettings158
                     {
                         Host = "127.0.0.1",
                         TvCategory = "abc",
@@ -114,5 +113,13 @@ namespace NzbDrone.Core.Test.Datastore.Migration
         public string ConfigContract { get; set; }
         public bool RemoveCompletedDownloads { get; set; }
         public bool RemoveFailedDownloads { get; set; }
+    }
+
+    // The rTorrent client was removed (roadmap §4.4); this migration still runs on its old settings.
+    public class RTorrentSettings158
+    {
+        public string Host { get; set; }
+        public string TvCategory { get; set; }
+        public string UrlBase { get; set; }
     }
 }

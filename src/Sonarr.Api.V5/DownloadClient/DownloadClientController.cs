@@ -16,5 +16,8 @@ public class DownloadClientController : ProviderControllerBase<DownloadClientRes
         : base(signalRBroadcaster, downloadClientFactory, "downloadclient", ResourceMapper, BulkResourceMapper)
     {
         SharedValidator.RuleFor(c => c.Priority).InclusiveBetween(1, 50);
+
+        // Embarr downloads only with its built-in engine (roadmap §4.4), which it sets up itself.
+        PostValidator.RuleFor(c => c.Implementation).Must(_ => false).WithMessage("Embarr downloads only with its built-in engine; other download clients can't be added");
     }
 }
