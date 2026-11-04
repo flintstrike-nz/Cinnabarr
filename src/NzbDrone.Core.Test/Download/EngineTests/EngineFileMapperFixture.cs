@@ -356,7 +356,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
 
             Mocker.GetMock<NzbDrone.Core.Configuration.IConfigService>().SetupGet(c => c.EngineUseStagingFolder).Returns(true);
             Mocker.GetMock<NzbDrone.Core.RootFolders.IRootFolderService>().Setup(r => r.GetBestRootFolderPath(_series.Path)).Returns(root);
-            Mocker.GetMock<NzbDrone.Common.Disk.IDiskProvider>().Setup(d => d.GetMount(root)).Returns(rootMountMock.Object);
+            Mocker.GetMock<NzbDrone.Common.Disk.IDiskProvider>().Setup(d => d.GetMount(Path.Combine(root, ".embarr-staging"))).Returns(rootMountMock.Object);
             Mocker.GetMock<NzbDrone.Common.Disk.IDiskProvider>().Setup(d => d.GetMount(_seasonFolder)).Returns(seriesMountMock.Object);
         }
 
@@ -375,9 +375,41 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
-        public void should_not_stage_files_whose_final_folder_is_on_another_drive()
+        public void should_keep_the_mapped_name_of_a_staged_file_when_the_rebuilt_one_is_on_another_drive()
         {
-            GivenStaging("/mnt/other".AsOsAgnostic(), Path.GetDirectoryName(_series.Path));
+            var root = Path.GetDirectoryName(_series.Path);
+            GivenStaging(root, root);
+
+            var map = Map(("Show.S01E01.mkv", 1000));
+            var link = new EngineLink { SavePath = map.SavePath, Files = map.Files };
+            var otherMount = new Mock<NzbDrone.Common.Disk.IMount>();
+            otherMount.SetupGet(m => m.RootDirectory).Returns("/mnt/other".AsOsAgnostic());
+
+            Mocker.GetMock<NzbDrone.Common.Disk.IDiskProvider>().Setup(d => d.GetMount(Path.Combine(root, ".embarr-staging", "abcdef01", "0"))).Returns(Mocker.GetMock<NzbDrone.Common.Disk.IDiskProvider>().Object.GetMount(Path.Combine(root, ".embarr-staging")));
+            Mocker.GetMock<NzbDrone.Common.Disk.IDiskProvider>().Setup(d => d.GetMount(Path.Combine(_series.Path, "Specials"))).Returns(otherMount.Object);
+            Mocker.GetMock<IBuildFileNames>()
+                .Setup(s => s.BuildFilePath(It.IsAny<List<Episode>>(), _series, It.IsAny<EpisodeFile>(), ".mkv", null, It.IsAny<List<CustomFormat>>()))
+                .Returns(Path.Combine(_series.Path, "Specials", "Show - S01E01.mkv"));
+
+            Subject.UpdateFinalPaths(link, link.Files[0], _series, new LocalEpisode { Episodes = _episodes }).Should().BeFalse();
+
+            link.Files[0].FinalPath.Should().Be("Show/Season 01/Show - S01E01.mkv");
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void should_not_stage_files_when_the_staging_folder_and_a_final_folder_are_on_different_drives(bool stagingElsewhere)
+        {
+            var root = Path.GetDirectoryName(_series.Path);
+
+            if (stagingElsewhere)
+            {
+                GivenStaging(root, "/mnt/other".AsOsAgnostic());
+            }
+            else
+            {
+                GivenStaging("/mnt/other".AsOsAgnostic(), root);
+            }
 
             var map = Map(("Show.S01E01.mkv", 1000));
 

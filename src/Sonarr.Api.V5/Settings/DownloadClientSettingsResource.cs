@@ -7,6 +7,7 @@ public class DownloadClientSettingsResource : RestResource
 {
     public string? DownloadClientWorkingFolders { get; set; }
     public bool EnableCompletedDownloadHandling { get; set; }
+    public bool EngineUseStagingFolder { get; set; }
     public bool AutoRedownloadFailed { get; set; }
     public bool AutoRedownloadFailedFromInteractiveSearch { get; set; }
 }
@@ -19,6 +20,7 @@ public static class DownloadClientSettingsResourceMapper
         {
             DownloadClientWorkingFolders = model.DownloadClientWorkingFolders,
             EnableCompletedDownloadHandling = model.EnableCompletedDownloadHandling,
+            EngineUseStagingFolder = model.EngineUseStagingFolder,
             AutoRedownloadFailed = model.AutoRedownloadFailed,
             AutoRedownloadFailedFromInteractiveSearch = model.AutoRedownloadFailedFromInteractiveSearch
         };
