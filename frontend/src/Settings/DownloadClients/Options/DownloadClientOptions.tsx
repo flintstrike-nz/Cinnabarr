@@ -15,6 +15,7 @@ import {
   SetChildSave,
 } from 'typings/Settings/SettingsState';
 import translate from 'Utilities/String/translate';
+import EngineSeedingOptions from './EngineSeedingOptions';
 import { useManageDownloadClientSettings } from './useDownloadClientSettings';
 
 interface DownloadClientOptionsProps {
@@ -142,6 +143,13 @@ function DownloadClientOptions({
             ) : null}
           </Form>
         </FieldSet>
+      ) : null}
+
+      {hasSettings && isFetched && !error ? (
+        <EngineSeedingOptions
+          settings={settings}
+          onInputChange={handleInputChange}
+        />
       ) : null}
     </div>
   );

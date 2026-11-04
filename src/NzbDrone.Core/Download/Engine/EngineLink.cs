@@ -17,6 +17,14 @@ namespace NzbDrone.Core.Download.Engine
         public string SourceTitle { get; set; }
         public string Indexer { get; set; }
 
+        // The tracker's seeding minimum at grab time (its indexer's seed ratio and time), kept so a restored link still
+        // honours it; the indexer's current settings are used while it is known.
+        public double? TrackerSeedRatio { get; set; }
+        public int? TrackerSeedMinutes { get; set; }
+
+        // Set while Embarr is starting a torrent its earlier share limits stopped, so a start that fails is retried.
+        public bool ResumeSeeding { get; set; }
+
         // The grabbed quality; null in sidecars written before it was added, which fall back to parsing the title.
         public EngineLinkQuality Quality { get; set; }
         public DateTime Grabbed { get; set; }
@@ -69,6 +77,9 @@ namespace NzbDrone.Core.Download.Engine
         public int LanguageId { get; set; }
         public List<string> LanguageTags { get; set; }
         public string SubtitleTitle { get; set; }
+
+        // For a video: when it was imported, which is when its seeding time starts.
+        public DateTime? ImportedAt { get; set; }
     }
 
     public class EngineLinkQuality

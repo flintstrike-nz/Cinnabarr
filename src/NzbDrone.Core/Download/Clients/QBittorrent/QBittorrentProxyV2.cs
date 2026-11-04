@@ -402,6 +402,23 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             ProcessRequest(request, settings);
         }
 
+        public void SetShareLimitsWithoutTimeLimits(string hash, double ratioLimit, QBittorrentSettings settings)
+        {
+            var request = BuildRequest(settings).Resource("/api/v2/torrents/setShareLimits")
+                .Post()
+                .AddFormParameter("hashes", hash)
+                .AddFormParameter("ratioLimit", ratioLimit)
+                .AddFormParameter("seedingTimeLimit", -1);
+
+            // inactiveSeedingTimeLimit was added in api v2.9.2 (qBittorrent 4.6.0)
+            if (GetApiVersion(settings) >= new Version(2, 9, 2))
+            {
+                request.AddFormParameter("inactiveSeedingTimeLimit", -1);
+            }
+
+            ProcessRequest(request, settings);
+        }
+
         public void RecheckTorrent(string hash, QBittorrentSettings settings)
         {
             var request = BuildRequest(settings).Resource("/api/v2/torrents/recheck")

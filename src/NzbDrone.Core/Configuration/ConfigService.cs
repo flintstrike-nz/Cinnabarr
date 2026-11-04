@@ -144,6 +144,28 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("EngineUseStagingFolder", value); }
         }
 
+        // Built-in engine: the global seeding goal (roadmap §4.10). Default: ratio 1 or 14 days, whichever comes first.
+        public int EngineSeedingMode
+        {
+            get { return GetValueInt("EngineSeedingMode", 3); }
+
+            set { SetValue("EngineSeedingMode", value); }
+        }
+
+        public int EngineSeedingMinutes
+        {
+            get { return GetValueInt("EngineSeedingMinutes", 14 * 24 * 60); }
+
+            set { SetValue("EngineSeedingMinutes", value); }
+        }
+
+        public double EngineSeedingRatio
+        {
+            get { return GetValueDouble("EngineSeedingRatio", 1.0); }
+
+            set { SetValue("EngineSeedingRatio", value); }
+        }
+
         public bool EnableCompletedDownloadHandling
         {
             get { return GetValueBoolean("EnableCompletedDownloadHandling", true); }

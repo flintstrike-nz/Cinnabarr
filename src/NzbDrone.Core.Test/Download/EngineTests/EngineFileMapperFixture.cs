@@ -355,6 +355,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             rootMountMock.SetupGet(m => m.RootDirectory).Returns(rootMount);
 
             Mocker.GetMock<NzbDrone.Core.Configuration.IConfigService>().SetupGet(c => c.EngineUseStagingFolder).Returns(true);
+            Mocker.GetMock<NzbDrone.Common.Disk.IDiskProvider>().Setup(d => d.FolderExists(It.IsAny<string>())).Returns(true);
             Mocker.GetMock<NzbDrone.Core.RootFolders.IRootFolderService>().Setup(r => r.GetBestRootFolderPath(_series.Path)).Returns(root);
             Mocker.GetMock<NzbDrone.Common.Disk.IDiskProvider>().Setup(d => d.GetMount(Path.Combine(root, ".embarr-staging"))).Returns(rootMountMock.Object);
             Mocker.GetMock<NzbDrone.Common.Disk.IDiskProvider>().Setup(d => d.GetMount(_seasonFolder)).Returns(seriesMountMock.Object);
@@ -415,6 +416,24 @@ namespace NzbDrone.Core.Test.Download.EngineTests
 
             map.SavePath.Should().Be(_seasonFolder);
             map.Files[0].PendingPath.Should().Be(".Show - S01E01.mkv.abcdef01.pending");
+        }
+
+        [Test]
+        public void should_read_the_drive_of_a_missing_folder_from_its_nearest_existing_folder()
+        {
+            // The season folder doesn't exist yet, and the series folder is a junction to another drive.
+            var root = Path.GetDirectoryName(_series.Path);
+            GivenStaging(root, root);
+
+            var otherMount = new Mock<NzbDrone.Common.Disk.IMount>();
+            otherMount.SetupGet(m => m.RootDirectory).Returns("/mnt/other".AsOsAgnostic());
+
+            Mocker.GetMock<NzbDrone.Common.Disk.IDiskProvider>().Setup(d => d.FolderExists(_seasonFolder)).Returns(false);
+            Mocker.GetMock<NzbDrone.Common.Disk.IDiskProvider>().Setup(d => d.GetMount(_series.Path)).Returns(otherMount.Object);
+
+            var map = Map(("Show.S01E01.mkv", 1000));
+
+            map.SavePath.Should().Be(_seasonFolder);
         }
 
         [TestCase(".Show - S01E01.mkv.abcdef01.pending", ".Show - S01E01.mkv")]

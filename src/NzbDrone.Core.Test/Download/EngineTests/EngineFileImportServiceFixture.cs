@@ -321,6 +321,24 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_discard_a_subtitle_whose_name_is_taken_so_it_does_not_hold_the_download_back()
+        {
+            GivenVideoRecorded();
+            _link.Completed = true;
+            _link.Files[0].State = EngineLinkFileState.Imported;
+            _existing.Add(Path.Combine(_link.SavePath, "Show - S01E01.en.srt"));
+
+            Subject.Process(GivenClient());
+
+            _proxy.Verify(p => p.RenameFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+            _proxy.Verify(p => p.SetFilePriority(Hash, new[] { 1 }, 0, _settings), Times.Once());
+            Mocker.GetMock<IDiskProvider>().Verify(s => s.DeleteFile(_subtitlePending), Times.Once());
+            Mocker.GetMock<IDiskProvider>().Verify(s => s.DeleteFile(Path.Combine(_link.SavePath, "Show - S01E01.en.srt")), Times.Never());
+            _link.Files[1].State.Should().Be(EngineLinkFileState.Rejected);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
         public void should_discard_only_a_subtitle_that_fails_its_checks()
         {
             GivenVideoRecorded();
