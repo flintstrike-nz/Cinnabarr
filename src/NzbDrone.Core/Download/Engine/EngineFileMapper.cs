@@ -170,12 +170,14 @@ namespace NzbDrone.Core.Download.Engine
             // With staging (roadmap §4.8), files download into <root>/.embarr-staging/<torrent>/ and the torrent saves
             // into the root folder, so moving a finished file to its final path is a rename on the same drive.
             string stagingFolder = null;
-            var root = _configService.EngineUseStagingFolder ? GetStagingRoot(series, savePath) : null;
+            var root = _configService.EngineUseStagingFolder ? GetStagingRoot(series, savePath, mappedVideos.Select(v => Path.GetDirectoryName(v.FinalPath)).Distinct().ToList()) : null;
 
             if (root != null)
             {
                 savePath = root;
                 stagingFolder = StagingFolderName + "/" + downloadId.Substring(0, 8).ToLowerInvariant() + "/";
+
+                // Each file stages in its own folder, so files whose final names only differ by folder stay apart.
             }
 
             var map = new EngineFileMap { SavePath = savePath };
@@ -476,7 +478,7 @@ namespace NzbDrone.Core.Download.Engine
 
         // The root folder holding the series, when it is on the same drive as the files' final folder (a rename
         // can't cross drives); otherwise null and the files download next to their final path.
-        private string GetStagingRoot(Series series, string savePath)
+        private string GetStagingRoot(Series series, string savePath, List<string> finalFolders)
         {
             try
             {
@@ -488,12 +490,17 @@ namespace NzbDrone.Core.Download.Engine
                 }
 
                 var rootMount = _diskProvider.GetMount(root)?.RootDirectory;
-                var finalMount = _diskProvider.GetMount(savePath)?.RootDirectory;
 
-                if (rootMount == null || !rootMount.PathEquals(finalMount ?? string.Empty))
+                // Every final folder (a multi-season torrent has several) must be on the root folder's drive.
+                foreach (var finalFolder in finalFolders)
                 {
-                    _logger.Debug("'{0}' isn't on the same drive as its root folder; not staging it", savePath);
-                    return null;
+                    var finalMount = _diskProvider.GetMount(finalFolder)?.RootDirectory;
+
+                    if (rootMount == null || !rootMount.PathEquals(finalMount ?? string.Empty))
+                    {
+                        _logger.Debug("'{0}' isn't on the same drive as its root folder; not staging the torrent", finalFolder);
+                        return null;
+                    }
                 }
 
                 return root;
@@ -510,7 +517,7 @@ namespace NzbDrone.Core.Download.Engine
             var finalRelative = Path.GetRelativePath(savePath, finalPath).Replace('\\', '/');
             var finalFolder = finalRelative.Contains('/') ? finalRelative.Substring(0, finalRelative.LastIndexOf('/') + 1) : string.Empty;
             var name = finalRelative.Substring(finalFolder.Length);
-            var folder = stagingFolder ?? finalFolder;
+            var folder = stagingFolder == null ? finalFolder : stagingFolder + index + "/";
 
             return new EngineLinkFile
             {

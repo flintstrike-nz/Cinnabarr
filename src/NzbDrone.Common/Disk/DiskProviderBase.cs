@@ -313,6 +313,22 @@ namespace NzbDrone.Common.Disk
 
         public abstract bool TryCreateHardLink(string source, string destination);
 
+        public bool TryDeleteEmptyFolder(string path)
+        {
+            Ensure.That(path, () => path).IsValidPath(PathValidationType.CurrentOs);
+
+            try
+            {
+                // Non-recursive: the system refuses to remove a folder that isn't empty.
+                Directory.Delete(path, false);
+                return true;
+            }
+            catch (IOException)
+            {
+                return false;
+            }
+        }
+
         public void DeleteFolder(string path, bool recursive)
         {
             Ensure.That(path, () => path).IsValidPath(PathValidationType.CurrentOs);

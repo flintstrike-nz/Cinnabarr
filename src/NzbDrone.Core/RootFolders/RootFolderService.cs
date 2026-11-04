@@ -135,6 +135,11 @@ namespace NzbDrone.Core.RootFolders
             _cache.Clear();
         }
 
+        private static bool IsSpecialFolder(string path)
+        {
+            return SpecialFolders.Contains(new DirectoryInfo(path.ToLowerInvariant()).Name);
+        }
+
         private List<UnmappedFolder> GetUnmappedFolders(string path, Dictionary<int, string> seriesPaths)
         {
             _logger.Debug("Generating list of unmapped folders");
@@ -153,13 +158,16 @@ namespace NzbDrone.Core.RootFolders
             }
 
             var subFolderDepth = _namingConfigService.GetConfig().SeriesFolderFormat.Count(f => f == Path.DirectorySeparatorChar);
-            var possibleSeriesFolders = _diskProvider.GetDirectories(path).ToList();
+
+            // Special folders are left out before descending, so nothing inside them (for example the engine's
+            // staging folder) shows up with a nested series folder format.
+            var possibleSeriesFolders = _diskProvider.GetDirectories(path).Where(f => !IsSpecialFolder(f)).ToList();
 
             if (subFolderDepth > 0)
             {
                 for (var i = 0; i < subFolderDepth; i++)
                 {
-                    possibleSeriesFolders = possibleSeriesFolders.SelectMany(_diskProvider.GetDirectories).ToList();
+                    possibleSeriesFolders = possibleSeriesFolders.SelectMany(_diskProvider.GetDirectories).Where(f => !IsSpecialFolder(f)).ToList();
                 }
             }
 

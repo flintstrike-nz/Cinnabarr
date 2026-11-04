@@ -41,6 +41,9 @@ namespace NzbDrone.Common.Disk
         bool TryRenameFile(string source, string destination);
         bool TryCreateHardLink(string source, string destination);
         void DeleteFolder(string path, bool recursive);
+
+        // Removes a folder only if it is empty; returns false (and changes nothing) if it isn't.
+        bool TryDeleteEmptyFolder(string path);
         string ReadAllText(string filePath);
         void WriteAllText(string filename, string contents);
         void FolderSetLastWriteTime(string path, DateTime dateTime);

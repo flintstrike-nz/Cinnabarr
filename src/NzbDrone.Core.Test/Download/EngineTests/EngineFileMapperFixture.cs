@@ -370,8 +370,8 @@ namespace NzbDrone.Core.Test.Download.EngineTests
 
             map.SavePath.Should().Be(root);
             map.Files[0].FinalPath.Should().Be("Show/Season 01/Show - S01E01.mkv");
-            map.Files[0].PendingPath.Should().Be(".embarr-staging/abcdef01/.Show - S01E01.mkv.abcdef01.pending");
-            map.Files[1].PendingPath.Should().Be(".embarr-staging/abcdef01/.Show - S01E01.en.srt.abcdef01.pending");
+            map.Files[0].PendingPath.Should().Be(".embarr-staging/abcdef01/0/.Show - S01E01.mkv.abcdef01.pending");
+            map.Files[1].PendingPath.Should().Be(".embarr-staging/abcdef01/1/.Show - S01E01.en.srt.abcdef01.pending");
         }
 
         [Test]

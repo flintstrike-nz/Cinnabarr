@@ -5,7 +5,6 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using NLog;
 using NzbDrone.Common.Disk;
-using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Serializer;
 using NzbDrone.Core.Download.History;
 using NzbDrone.Core.History;
@@ -332,19 +331,23 @@ namespace NzbDrone.Core.Download.Engine
 
         public void RemoveEmptyStagingFolder(EngineLink link)
         {
-            var folders = link?.Files?
+            // Each file stages in its own folder (<staging>/<torrent>/<file index>/) inside the torrent's folder.
+            var fileFolders = link?.Files?
                 .Where(f => f.PendingPath != null && f.PendingPath.StartsWith(EngineFileMapper.StagingFolderName + "/"))
                 .Select(f => Path.GetDirectoryName(Path.Combine(link.SavePath, f.PendingPath)))
                 .Distinct()
                 .ToList() ?? new List<string>();
 
-            foreach (var folder in folders)
+            var torrentFolders = fileFolders.Select(f => Path.GetDirectoryName(f)).Distinct().ToList();
+
+            foreach (var folder in fileFolders.Concat(torrentFolders))
             {
                 try
                 {
-                    if (_diskProvider.FolderExists(folder) && _diskProvider.GetFiles(folder, true).Empty())
+                    // Only ever an empty folder: a file the engine creates meanwhile keeps it.
+                    if (_diskProvider.FolderExists(folder))
                     {
-                        _diskProvider.DeleteFolder(folder, true);
+                        _diskProvider.TryDeleteEmptyFolder(folder);
                     }
                 }
                 catch (Exception ex)
