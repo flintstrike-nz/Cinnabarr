@@ -144,7 +144,7 @@ namespace Sonarr.Api.V5.Queue
 
         [HttpGet]
         [Produces("application/json")]
-        public Ok<PagingResource<QueueResource>> GetQueue([FromQuery] PagingRequestResource paging, bool includeUnknownSeriesItems = true, [FromQuery] int[]? seriesIds = null, DownloadProtocol? protocol = null, [FromQuery] int[]? languages = null, [FromQuery] int[]? quality = null, [FromQuery] QueueStatus[]? status = null, [FromQuery] QueueSubresource[]? includeSubresources = null)
+        public Ok<PagingResource<QueueResource>> GetQueue([FromQuery] PagingRequestResource paging, bool includeUnknownSeriesItems = true, [FromQuery] int[]? seriesIds = null, DownloadProtocol? protocol = null, [FromQuery] int[]? languages = null, [FromQuery] int[]? quality = null, [FromQuery] QueueStatus[]? status = null, [FromQuery] QueueSubresource[]? includeSubresources = null, bool? unlinked = null, bool? missingFromEngine = null)
         {
             var pagingResource = new PagingResource<QueueResource>(paging);
             var pagingSpec = pagingResource.MapToPagingSpec<QueueResource, NzbDrone.Core.Queue.Queue>(
@@ -176,10 +176,10 @@ namespace Sonarr.Api.V5.Queue
             var includeSeries = includeSubresources.Contains(QueueSubresource.Series);
             var includeEpisodes = includeSubresources.Contains(QueueSubresource.Episodes);
 
-            return TypedResults.Ok(pagingSpec.ApplyToPage((spec) => GetQueue(spec, seriesIds?.ToHashSet() ?? [], protocol, languages?.ToHashSet() ?? [], quality?.ToHashSet() ?? [], status?.ToHashSet() ?? [], includeUnknownSeriesItems), (q) => MapToResource(q, includeSeries, includeEpisodes)));
+            return TypedResults.Ok(pagingSpec.ApplyToPage((spec) => GetQueue(spec, seriesIds?.ToHashSet() ?? [], protocol, languages?.ToHashSet() ?? [], quality?.ToHashSet() ?? [], status?.ToHashSet() ?? [], includeUnknownSeriesItems, unlinked, missingFromEngine), (q) => MapToResource(q, includeSeries, includeEpisodes)));
         }
 
-        private PagingSpec<NzbDrone.Core.Queue.Queue> GetQueue(PagingSpec<NzbDrone.Core.Queue.Queue> pagingSpec, HashSet<int> seriesIds, DownloadProtocol? protocol, HashSet<int> languages, HashSet<int> quality, HashSet<QueueStatus> status, bool includeUnknownSeriesItems)
+        private PagingSpec<NzbDrone.Core.Queue.Queue> GetQueue(PagingSpec<NzbDrone.Core.Queue.Queue> pagingSpec, HashSet<int> seriesIds, DownloadProtocol? protocol, HashSet<int> languages, HashSet<int> quality, HashSet<QueueStatus> status, bool includeUnknownSeriesItems, bool? unlinked = null, bool? missingFromEngine = null)
         {
             var ascending = pagingSpec.SortDirection == SortDirection.Ascending;
             var orderByFunc = GetOrderByFunc(pagingSpec);
@@ -198,6 +198,17 @@ namespace Sonarr.Api.V5.Queue
                 if (hasSeriesIdFilter)
                 {
                     include &= q.Series != null && seriesIds.Contains(q.Series.Id);
+                }
+
+                // Built-in engine downloads with no Embarr record, or that the engine no longer has (roadmap §4.4).
+                if (unlinked.HasValue)
+                {
+                    include &= q.IsUnlinked == unlinked.Value;
+                }
+
+                if (include && missingFromEngine.HasValue)
+                {
+                    include &= q.IsMissingFromEngine == missingFromEngine.Value;
                 }
 
                 if (include && protocol.HasValue)

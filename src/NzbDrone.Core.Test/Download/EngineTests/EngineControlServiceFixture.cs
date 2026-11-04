@@ -6,6 +6,7 @@ using NUnit.Framework;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.Clients.QBittorrent;
 using NzbDrone.Core.Download.Engine;
+using NzbDrone.Core.MediaFiles.TorrentInfo;
 using NzbDrone.Core.Test.Framework;
 
 namespace NzbDrone.Core.Test.Download.EngineTests
@@ -109,6 +110,47 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             _proxy.Setup(p => p.GetTransferInfo(_settings)).Throws(new InvalidOperationException("down"));
 
             Assert.Throws<EngineControlException>(() => Subject.GetStatus());
+        }
+
+        [Test]
+        public void should_add_a_magnet_by_hand_while_holding_the_add_gate()
+        {
+            var magnet = "magnet:?xt=urn:btih:" + new string('c', 40) + "&dn=Show";
+            var gate = new Mock<IDisposable>();
+            Mocker.GetMock<IEngineAddGate>().Setup(s => s.BeginAdd()).Returns(gate.Object);
+
+            Subject.AddMagnet(magnet).Should().Be(new string('C', 40));
+
+            _proxy.Verify(p => p.AddManualTorrentFromUrl(magnet, _settings), Times.Once());
+            gate.Verify(g => g.Dispose(), Times.Once());
+        }
+
+        [Test]
+        public void should_refuse_an_invalid_magnet_or_one_the_engine_already_has()
+        {
+            Assert.Throws<EngineControlException>(() => Subject.AddMagnet("not a magnet"));
+            Assert.Throws<EngineControlException>(() => Subject.AddMagnet("magnet:?xt=urn:btih:" + Ready));
+
+            _proxy.Verify(p => p.AddManualTorrentFromUrl(It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+        }
+
+        [Test]
+        public void should_add_a_torrent_file_by_hand()
+        {
+            var content = new byte[] { 1, 2, 3 };
+            Mocker.GetMock<ITorrentFileInfoReader>().Setup(s => s.GetHashFromTorrentFile(content)).Returns(new string('d', 40));
+
+            Subject.AddTorrentFile("show.torrent", content).Should().Be(new string('D', 40));
+
+            _proxy.Verify(p => p.AddManualTorrentFromFile("show.torrent", content, _settings), Times.Once());
+        }
+
+        [Test]
+        public void should_refuse_an_invalid_torrent_file()
+        {
+            Mocker.GetMock<ITorrentFileInfoReader>().Setup(s => s.GetHashFromTorrentFile(It.IsAny<byte[]>())).Throws(new FormatException("bad"));
+
+            Assert.Throws<EngineControlException>(() => Subject.AddTorrentFile("x.torrent", new byte[] { 1 }));
         }
     }
 }

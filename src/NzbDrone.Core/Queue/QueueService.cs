@@ -85,7 +85,8 @@ namespace NzbDrone.Core.Queue
                 Added = trackedDownload.Added,
                 DownloadClientHasPostImportCategory = trackedDownload.DownloadItem.DownloadClientInfo.HasPostImportCategory,
                 IsEngineDownload = _engineClientRegistry.IsEngineClient(trackedDownload.DownloadClient),
-                IsMissingFromEngine = trackedDownload.IsMissingFromEngine
+                IsMissingFromEngine = trackedDownload.IsMissingFromEngine,
+                IsUnlinked = trackedDownload.IsUnlinked
             };
 
             queue.Id = HashConverter.GetHashInt31($"trackedDownload-{trackedDownload.DownloadClient}-{trackedDownload.DownloadItem.DownloadId}");

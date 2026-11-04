@@ -42,6 +42,7 @@ namespace Sonarr.Api.V5.Queue
         public bool IsFullSeason { get; set; }
         public bool IsEngineDownload { get; set; }
         public bool IsMissingFromEngine { get; set; }
+        public bool IsUnlinked { get; set; }
     }
 
     public static class QueueResourceMapper
@@ -92,7 +93,8 @@ namespace Sonarr.Api.V5.Queue
                 EpisodesWithFilesCount = model.Episodes?.Count(e => e.HasFile) ?? 0,
                 IsFullSeason = model.RemoteEpisode?.ParsedEpisodeInfo?.FullSeason ?? false,
                 IsEngineDownload = model.IsEngineDownload,
-                IsMissingFromEngine = model.IsMissingFromEngine
+                IsMissingFromEngine = model.IsMissingFromEngine,
+                IsUnlinked = model.IsUnlinked
             };
         }
 

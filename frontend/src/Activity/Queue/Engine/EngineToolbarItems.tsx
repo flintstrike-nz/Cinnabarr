@@ -1,10 +1,11 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { OverflowDivider } from 'Components/Page/Toolbar/Overflow';
 import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
 import ToolbarItem from 'Components/Page/Toolbar/ToolbarItem';
 import { icons } from 'Helpers/Props';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
+import AddTorrentModal from './AddTorrentModal';
 import {
   useEngineAll,
   useEngineStatus,
@@ -20,6 +21,15 @@ function EngineToolbarItems() {
     useSetAlternativeSpeedLimits();
   const { mutate: pauseAll, isPending: isPausing } = useEngineAll('pause');
   const { mutate: resumeAll, isPending: isResuming } = useEngineAll('resume');
+  const [isAddTorrentOpen, setIsAddTorrentOpen] = useState(false);
+
+  const handleAddTorrentPress = useCallback(() => {
+    setIsAddTorrentOpen(true);
+  }, []);
+
+  const handleAddTorrentClose = useCallback(() => {
+    setIsAddTorrentOpen(false);
+  }, []);
 
   const handleAltSpeedPress = useCallback(() => {
     if (status) {
@@ -53,6 +63,15 @@ function EngineToolbarItems() {
       </ToolbarItem>
 
       <ToolbarItem
+        id="engine-add-torrent"
+        priority={1}
+        groupId="engine"
+        label={translate('AddTorrent')}
+        iconName={icons.ADD}
+        onPress={handleAddTorrentPress}
+      />
+
+      <ToolbarItem
         id="engine-alt-speed"
         priority={2}
         groupId="engine"
@@ -84,6 +103,11 @@ function EngineToolbarItems() {
         iconName={icons.ENGINE_RESUME}
         isSpinning={isResuming}
         onPress={handleResumeAllPress}
+      />
+
+      <AddTorrentModal
+        isOpen={isAddTorrentOpen}
+        onModalClose={handleAddTorrentClose}
       />
     </>
   );

@@ -23,6 +23,31 @@ export const FILTERS: Filter[] = [
     filters: [],
   },
   {
+    key: 'downloading',
+    label: () => translate('QueueFilterDownloading'),
+    filters: [{ key: 'status', value: ['downloading'], type: 'equal' }],
+  },
+  {
+    key: 'completed',
+    label: () => translate('QueueFilterSeeding'),
+    filters: [{ key: 'status', value: ['completed'], type: 'equal' }],
+  },
+  {
+    key: 'paused',
+    label: () => translate('QueueFilterPaused'),
+    filters: [{ key: 'status', value: ['paused'], type: 'equal' }],
+  },
+  {
+    key: 'unlinked',
+    label: () => translate('QueueFilterUnlinked'),
+    filters: [{ key: 'unlinked', value: [true], type: 'equal' }],
+  },
+  {
+    key: 'missingFromEngine',
+    label: () => translate('QueueFilterMissingFromEngine'),
+    filters: [{ key: 'missingFromEngine', value: [true], type: 'equal' }],
+  },
+  {
     key: 'excludeUnknownSeriesItems',
     label: () => translate('ExcludeUnknownSeriesItems'),
     filters: [

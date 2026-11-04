@@ -438,6 +438,17 @@ Built so far (2g-2):
 - **Per-download controls in the expanded file panel:** **Pause/Resume**, **Force Start** and **Re-check** (`POST /api/v5/engine/downloads/{id}/pause|resume|forcestart?enabled=|recheck`). A torrent still being prepared (§4.8) is never resumed or force-started, because it would download files the whitelist hasn't excluded yet. Preparation starts it.
 - **Engine endpoints these rely on:** `transfer/info`, `transfer/speedLimitsMode`, `transfer/toggleSpeedLimitsMode`, `torrents/stop`, `torrents/start` and `torrents/recheck`. They were checked against the engine build (API 2.17). Phase 2i's API trim must keep them.
 
+Built so far (2g-3):
+- **Status tabs** above the queue: All, Downloading, Seeding, Paused, Unlinked and Missing from Engine. They are also predefined filters.
+  - The status tabs use the queue's `status` filter.
+  - Unlinked and Missing from Engine use two new queue filters, `unlinked` and `missingFromEngine`.
+  - The v5 queue resource now has `isUnlinked`.
+- **Add Torrent** in the header takes a magnet link (`POST /api/v5/engine/torrents`) or a `.torrent` file (`POST /api/v5/engine/torrents/file`, up to 10 MB).
+  - The torrent is added held and tagged `embarr-manual`, taking turns with orphan cleanup (`EngineAddGate`).
+  - Preparation then downloads only its video and subtitle files, into the engine's folder. If it has none, it isn't started.
+  - It is listed as **Unlinked** until Manual Import links it.
+  - A "link to library item" step at add time is left for later; Manual Import covers it now.
+
 ### 6.3 Settings tree
 
 | Section | Contents |

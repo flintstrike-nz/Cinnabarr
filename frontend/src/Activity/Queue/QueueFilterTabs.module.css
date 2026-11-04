@@ -1,0 +1,18 @@
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+
+  margin-bottom: 10px;
+}
+
+.tab {
+  padding: 4px 12px;
+  border-bottom: 2px solid transparent;
+  color: var(--textColor);
+}
+
+.selectedTab {
+  border-bottom-color: var(--themeBlue);
+  font-weight: bold;
+}

@@ -46,5 +46,8 @@ namespace NzbDrone.Core.Queue
         // A download in the built-in engine (roadmap §6.2), and whether the engine no longer has it (§4.4).
         public bool IsEngineDownload { get; set; }
         public bool IsMissingFromEngine { get; set; }
+
+        // In the engine with no Embarr record (roadmap §4.4): not imported until Manual Import links it.
+        public bool IsUnlinked { get; set; }
     }
 }
