@@ -17,6 +17,11 @@ namespace NzbDrone.Core.Download.Engine
         public string SourceTitle { get; set; }
         public string Indexer { get; set; }
 
+        // The tracker's seeding minimum at grab time (its indexer's seed ratio and time), kept so a restored link still
+        // honours it; the indexer's current settings are used while it is known.
+        public double? TrackerSeedRatio { get; set; }
+        public int? TrackerSeedMinutes { get; set; }
+
         // The grabbed quality; null in sidecars written before it was added, which fall back to parsing the title.
         public EngineLinkQuality Quality { get; set; }
         public DateTime Grabbed { get; set; }

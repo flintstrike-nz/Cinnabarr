@@ -126,7 +126,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             Subject.Process(GivenClient());
 
             VerifyRemoved(false);
-            Subject.GetRules(Hash.ToUpperInvariant()).Should().Contain(r => r.Source == "tracker" && r.Mode == EngineSeedingMode.Time && r.Minutes == 3 * 24 * 60);
+            Subject.GetRules(Hash.ToUpperInvariant(), _link).Should().Contain(r => r.Source == "tracker" && r.Mode == EngineSeedingMode.Time && r.Minutes == 3 * 24 * 60);
         }
 
         [Test]
@@ -152,17 +152,71 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
-        public void should_write_a_single_time_or_ratio_goal_to_the_engines_share_limits_once()
+        public void should_write_only_the_ratio_of_a_single_time_or_ratio_goal_to_the_engine_once()
         {
+            // The engine's seeding time starts when the torrent finished, which can be before its files were imported,
+            // so a time limit there could stop it early.
             Subject.Process(GivenClient());
 
-            _proxy.Verify(p => p.SetTorrentSeedingConfiguration(Hash, It.Is<TorrentSeedConfiguration>(c => c.Ratio == 1.0 && c.SeedTime == TimeSpan.FromDays(14)), _settings), Times.Once());
+            _proxy.Verify(p => p.SetTorrentSeedingConfiguration(Hash, It.Is<TorrentSeedConfiguration>(c => c.Ratio == 1.0 && c.SeedTime == TimeSpan.FromMinutes(-1)), _settings), Times.Once());
 
             _torrent.RatioLimit = 1.0f;
-            _torrent.SeedingTimeLimit = 14 * 24 * 60;
+            _torrent.SeedingTimeLimit = -1;
             Subject.Process(GivenClient());
 
             _proxy.Verify(p => p.SetTorrentSeedingConfiguration(It.IsAny<string>(), It.IsAny<TorrentSeedConfiguration>(), It.IsAny<QBittorrentSettings>()), Times.Once());
+        }
+
+        [Test]
+        public void should_hold_to_the_tracker_minimum_saved_with_a_restored_link()
+        {
+            Mocker.GetMock<IDownloadHistoryService>()
+                .Setup(s => s.GetLatestGrab(Hash.ToUpperInvariant()))
+                .Returns(new DownloadHistory { SourceTitle = "Show.S01E01.720p.HDTV-Grp" });
+
+            GivenGlobalGoal(EngineSeedingMode.None, 0, 0);
+            _link.TrackerSeedMinutes = 3 * 24 * 60;
+
+            Subject.Process(GivenClient());
+
+            VerifyRemoved(false);
+        }
+
+        [Test]
+        public void should_start_the_seeding_time_of_videos_imported_before_goals_existed()
+        {
+            GivenGlobalGoal(EngineSeedingMode.Time, 60, 0);
+            _link.Files[0].ImportedAt = null;
+
+            Subject.Process(GivenClient());
+
+            _link.Files[0].ImportedAt.Should().NotBeNull();
+            Mocker.GetMock<IEngineLinkService>().Verify(s => s.Save(Hash.ToUpperInvariant(), _link), Times.Once());
+            VerifyRemoved(false);
+        }
+
+        [Test]
+        public void should_seed_again_a_torrent_an_earlier_limit_stopped()
+        {
+            _torrent.State = "stoppedUP";
+            _torrent.RatioLimit = 0.2f;
+            _torrent.Ratio = 0.3f;
+
+            Subject.Process(GivenClient());
+
+            _proxy.Verify(p => p.StartTorrent(Hash, _settings), Times.Once());
+        }
+
+        [Test]
+        public void should_leave_a_torrent_stopped_by_hand_stopped()
+        {
+            _torrent.State = "stoppedUP";
+            _torrent.RatioLimit = 2.0f;
+            _torrent.Ratio = 0.3f;
+
+            Subject.Process(GivenClient());
+
+            _proxy.Verify(p => p.StartTorrent(It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
         }
 
         [Test]

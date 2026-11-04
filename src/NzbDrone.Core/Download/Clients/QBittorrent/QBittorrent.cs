@@ -90,7 +90,9 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                 throw new NotSupportedException("Magnet Links without trackers not supported if DHT is disabled");
             }
 
-            var setShareLimits = remoteEpisode.SeedConfiguration != null && (remoteEpisode.SeedConfiguration.Ratio.HasValue || remoteEpisode.SeedConfiguration.SeedTime.HasValue);
+            // The built-in engine's seeding goals are applied once the files are in the library (EngineSeedingService):
+            // a limit set now could stop the torrent before they are met.
+            var setShareLimits = !HoldNewTorrents && remoteEpisode.SeedConfiguration != null && (remoteEpisode.SeedConfiguration.Ratio.HasValue || remoteEpisode.SeedConfiguration.SeedTime.HasValue);
             var addHasSetShareLimits = setShareLimits && ProxyApiVersion >= new Version(2, 8, 1);
             var isRecentEpisode = remoteEpisode.IsRecentEpisode();
             var moveToTop = (isRecentEpisode && Settings.RecentTvPriority == (int)QBittorrentPriority.First) || (!isRecentEpisode && Settings.OlderTvPriority == (int)QBittorrentPriority.First);
@@ -168,7 +170,9 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
 
         protected override string AddFromTorrentFile(RemoteEpisode remoteEpisode, string hash, string filename, byte[] fileContent)
         {
-            var setShareLimits = remoteEpisode.SeedConfiguration != null && (remoteEpisode.SeedConfiguration.Ratio.HasValue || remoteEpisode.SeedConfiguration.SeedTime.HasValue);
+            // The built-in engine's seeding goals are applied once the files are in the library (EngineSeedingService):
+            // a limit set now could stop the torrent before they are met.
+            var setShareLimits = !HoldNewTorrents && remoteEpisode.SeedConfiguration != null && (remoteEpisode.SeedConfiguration.Ratio.HasValue || remoteEpisode.SeedConfiguration.SeedTime.HasValue);
             var addHasSetShareLimits = setShareLimits && ProxyApiVersion >= new Version(2, 8, 1);
             var isRecentEpisode = remoteEpisode.IsRecentEpisode();
             var moveToTop = (isRecentEpisode && Settings.RecentTvPriority == (int)QBittorrentPriority.First) || (!isRecentEpisode && Settings.OlderTvPriority == (int)QBittorrentPriority.First);
@@ -304,10 +308,13 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
 
                 // Avoid removing torrents that haven't reached the global max ratio.
                 // Removal also requires the torrent to be paused, in case a higher max ratio was set on the torrent itself (which is not exposed by the api).
+                // A built-in engine torrent mapped into the library is removed by Embarr once its seeding goals are met,
+                // never by the generic completed-download cleanup.
                 item.CanMoveFiles = item.CanBeRemoved =
                     item.DownloadClientInfo.RemoveCompletedDownloads &&
                     torrent.State is "pausedUP" or "stoppedUP" &&
-                    HasReachedSeedLimit(torrent, config);
+                    HasReachedSeedLimit(torrent, config) &&
+                    !IsMappedEngineTorrent(torrent.Hash);
 
                 switch (torrent.State)
                 {
@@ -406,6 +413,11 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             }
 
             return queueItems;
+        }
+
+        private bool IsMappedEngineTorrent(string hash)
+        {
+            return HoldNewTorrents && _engineLinkService.Get(hash.ToUpperInvariant())?.Files != null;
         }
 
         public override void RemoveItem(DownloadClientItem item, bool deleteData)

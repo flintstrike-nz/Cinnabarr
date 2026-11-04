@@ -206,6 +206,8 @@ namespace NzbDrone.Core.Download.Engine
                     .ToList(),
                 SourceTitle = remoteEpisode.Release?.Title,
                 Indexer = remoteEpisode.Release?.Indexer,
+                TrackerSeedRatio = remoteEpisode.SeedConfiguration?.Ratio,
+                TrackerSeedMinutes = remoteEpisode.SeedConfiguration?.SeedTime is { } seedTime ? (int)seedTime.TotalMinutes : null,
                 Quality = FromQualityModel(remoteEpisode.ParsedEpisodeInfo?.Quality),
                 Grabbed = DateTime.UtcNow
             };

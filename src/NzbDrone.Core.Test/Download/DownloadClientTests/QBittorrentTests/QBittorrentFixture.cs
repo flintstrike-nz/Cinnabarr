@@ -1001,6 +1001,43 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.QBittorrentTests
             item.CanMoveFiles.Should().BeTrue();
         }
 
+        [Test]
+        public void should_leave_a_mapped_engine_torrent_to_its_seeding_goals()
+        {
+            Mocker.GetMock<IEngineClientRegistry>()
+                  .Setup(s => s.IsEngineClient(Subject.Definition.Id))
+                  .Returns(true);
+
+            Mocker.GetMock<IEngineLinkService>()
+                  .Setup(s => s.Get("HASH"))
+                  .Returns(new EngineLink { Files = new List<EngineLinkFile>() });
+
+            GivenGlobalSeedLimits(1.0f);
+            GivenCompletedTorrent("stoppedUP", ratio: 1.0f);
+
+            var item = Subject.GetItems().Single();
+            item.CanBeRemoved.Should().BeFalse();
+            item.CanMoveFiles.Should().BeFalse();
+        }
+
+        [Test]
+        public async Task Download_should_not_set_share_limits_for_the_built_in_engine()
+        {
+            Mocker.GetMock<IEngineClientRegistry>()
+                  .Setup(s => s.IsEngineClient(Subject.Definition.Id))
+                  .Returns(true);
+
+            var remoteEpisode = CreateRemoteEpisode();
+            remoteEpisode.SeedConfiguration = new TorrentSeedConfiguration { Ratio = 1.5 };
+
+            await Subject.Download(remoteEpisode, CreateIndexer());
+
+            Mocker.GetMock<IQBittorrentProxy>()
+                  .Verify(s => s.AddTorrentFromFile(It.IsAny<string>(), It.IsAny<byte[]>(), null, It.IsAny<QBittorrentSettings>(), true), Times.Once());
+            Mocker.GetMock<IQBittorrentProxy>()
+                  .Verify(s => s.SetTorrentSeedingConfiguration(It.IsAny<string>(), It.IsAny<TorrentSeedConfiguration>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+        }
+
         [TestCase("pausedUP")]
         [TestCase("stoppedUP")]
         public void should_be_removable_and_should_allow_move_files_if_max_ratio_reached_after_rounding_and_paused(string state)

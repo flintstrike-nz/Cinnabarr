@@ -19,7 +19,7 @@ namespace NzbDrone.Core.Download.Engine
         void Process(IDownloadClient downloadClient);
 
         // The goals a file of the download has to meet, most specific last.
-        List<EngineSeedingRule> GetRules(string downloadId);
+        List<EngineSeedingRule> GetRules(string downloadId, EngineLink link);
     }
 
     public class EngineSeedingService : IEngineSeedingService
@@ -70,7 +70,7 @@ namespace NzbDrone.Core.Download.Engine
             }
         }
 
-        public List<EngineSeedingRule> GetRules(string downloadId)
+        public List<EngineSeedingRule> GetRules(string downloadId, EngineLink link)
         {
             var rules = new List<EngineSeedingRule>
             {
@@ -84,7 +84,7 @@ namespace NzbDrone.Core.Download.Engine
             };
 
             // A tracker's minimum (its indexer's seed ratio and time) is a floor the other goals can't go below.
-            var trackerRule = GetTrackerRule(downloadId);
+            var trackerRule = GetTrackerRule(downloadId, link);
 
             if (trackerRule != null)
             {
@@ -112,11 +112,20 @@ namespace NzbDrone.Core.Download.Engine
                 return;
             }
 
-            var rules = GetRules(downloadId);
+            var rules = GetRules(downloadId, link);
             var now = DateTime.UtcNow;
             var ratio = Math.Max(0, (double)torrent.Ratio);
 
-            if (videos.All(v => EngineSeedingRule.AreMet(rules, now - (v.ImportedAt ?? now), ratio)))
+            // A video imported before seeding goals existed starts its seeding time now (saved, so it accrues).
+            var unstamped = videos.Where(v => v.ImportedAt == null).ToList();
+
+            if (unstamped.Any())
+            {
+                unstamped.ForEach(v => v.ImportedAt = now);
+                _engineLinkService.Save(downloadId, link);
+            }
+
+            if (videos.All(v => EngineSeedingRule.AreMet(rules, now - v.ImportedAt.Value, ratio)))
             {
                 // Seeding never costs a file: the torrent goes, its files stay in the library.
                 _logger.Info("'{0}' has met its seeding goals; removing it from the engine and keeping its files", torrent.Name);
@@ -129,25 +138,30 @@ namespace NzbDrone.Core.Download.Engine
         }
 
         // The engine's own share limits, so the goals still apply while Embarr is down. The engine stops a torrent as
-        // soon as either limit is reached, so limits are only written when the goals amount to one "time or ratio"
-        // goal; otherwise the torrent is left unlimited and Embarr removes it. The engine counts seeding time from when
-        // the whole torrent finished, never before any file did, so its limit is never reached early.
+        // soon as either of its limits is reached, so a ratio limit is only written when reaching that ratio meets
+        // every goal (a single "ratio" or "time or ratio" goal). Time is never written: the engine counts it from when
+        // the torrent finished, which can be well before its files were imported. Otherwise the torrent is left
+        // unlimited and Embarr removes it.
         private void UpdateShareLimits(IQBittorrentProxy proxy, QBittorrentSettings settings, QBittorrentTorrent torrent, List<EngineSeedingRule> rules)
         {
             var active = rules.Where(r => r.Mode != EngineSeedingMode.None).ToList();
             double ratioLimit = -1;
-            long minutesLimit = -1;
+            const long minutesLimit = -1;
 
-            if (active.Count == 1 && active[0].Mode != EngineSeedingMode.Both)
+            if (active.Count == 1 && active[0].Mode is EngineSeedingMode.Ratio or EngineSeedingMode.Either)
             {
-                ratioLimit = active[0].UsesRatio ? active[0].Ratio : -1;
-                minutesLimit = active[0].UsesTime ? active[0].Minutes : -1;
+                ratioLimit = active[0].Ratio;
             }
 
             if (Math.Abs(torrent.RatioLimit - ratioLimit) < 0.001 && torrent.SeedingTimeLimit == minutesLimit)
             {
                 return;
             }
+
+            // A torrent an earlier limit stopped (for example a tracker limit set when it was added) seeds again under
+            // the new one. A torrent stopped below its old limits was stopped by hand and stays stopped.
+            var stoppedByLimit = torrent.State is "pausedUP" or "stoppedUP" &&
+                                 ((torrent.RatioLimit >= 0 && torrent.Ratio >= torrent.RatioLimit - 0.001) || torrent.SeedingTimeLimit >= 0);
 
             proxy.SetTorrentSeedingConfiguration(torrent.Hash.ToLowerInvariant(),
                                                  new TorrentSeedConfiguration
@@ -156,20 +170,38 @@ namespace NzbDrone.Core.Download.Engine
                                                      SeedTime = TimeSpan.FromMinutes(minutesLimit)
                                                  },
                                                  settings);
+
+            if (stoppedByLimit && (ratioLimit < 0 || torrent.Ratio < ratioLimit))
+            {
+                _logger.Debug("'{0}' was stopped by its earlier share limits; seeding it again", torrent.Name);
+                proxy.StartTorrent(torrent.Hash.ToLowerInvariant(), settings);
+            }
         }
 
-        private EngineSeedingRule GetTrackerRule(string downloadId)
+        private EngineSeedingRule GetTrackerRule(string downloadId, EngineLink link)
         {
             var grab = _downloadHistoryService.GetLatestGrab(downloadId);
             var indexerId = grab?.Release?.IndexerId ?? 0;
 
-            if (indexerId == 0)
-            {
-                return null;
-            }
+            // The indexer's current settings while it is known; otherwise (a link restored without it) the minimum
+            // saved at grab time.
+            TorrentSeedConfiguration seedConfig;
 
-            var fullSeason = Parser.Parser.ParseTitle(grab.SourceTitle)?.FullSeason ?? false;
-            var seedConfig = _seedConfigProvider.GetSeedConfiguration(indexerId, fullSeason);
+            if (indexerId > 0)
+            {
+                var fullSeason = Parser.Parser.ParseTitle(grab.SourceTitle)?.FullSeason ?? false;
+                seedConfig = _seedConfigProvider.GetSeedConfiguration(indexerId, fullSeason);
+            }
+            else
+            {
+                seedConfig = link?.TrackerSeedRatio == null && link?.TrackerSeedMinutes == null
+                    ? null
+                    : new TorrentSeedConfiguration
+                    {
+                        Ratio = link.TrackerSeedRatio,
+                        SeedTime = link.TrackerSeedMinutes.HasValue ? TimeSpan.FromMinutes(link.TrackerSeedMinutes.Value) : null
+                    };
+            }
 
             if (seedConfig == null || (seedConfig.Ratio is not > 0 && seedConfig.SeedTime is not { TotalMinutes: > 0 }))
             {
