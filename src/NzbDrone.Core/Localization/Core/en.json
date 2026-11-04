@@ -756,6 +756,7 @@
   "EngineOrphansReviewHelpText": "These partial files belong to no torrent in the engine or download in the queue, and haven't been written to for {graceDays} day(s). Each is checked again just before it is deleted.",
   "EngineOrphansStatusLoadError": "Unable to load whether leftover files are deleted automatically",
   "EngineOrphansStopDeletingAutomatically": "Stop Deleting Automatically",
+  "EngineOrphansStopError": "Automatic deletion couldn't be turned off; try again",
   "EngineSeeding": "Seeding",
   "EngineSeedingCaption": "How long the built-in engine seeds each file after it is in the library. Files are always kept when seeding ends; a private tracker's minimum (its indexer's seed ratio and time) always applies as well.",
   "EngineSeedingGoal": "Seeding Goal",

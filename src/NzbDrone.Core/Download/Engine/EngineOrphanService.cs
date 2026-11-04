@@ -58,6 +58,9 @@ namespace NzbDrone.Core.Download.Engine
     // followed). All of that is checked again just before a file is deleted.
     public class EngineOrphanService : IEngineOrphanService, IExecute<EngineOrphanCleanupCommand>
     {
+        // Ten years: longer than any partial file is worth keeping, and the cutoff it gives is always a valid date.
+        public const int MaxGraceDays = 3650;
+
         private static readonly Regex PendingRegex = new(@"^\..+\.(?<id>[0-9a-f]{8})" + Regex.Escape(EngineFileMapper.PendingSuffix) + "(?:" + Regex.Escape(EngineLinkService.IncompleteSuffix) + ")?$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private static readonly Regex PartsRegex = new(@"^\.(?<id>[0-9a-f]{40}|[0-9a-f]{64})\.parts$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
@@ -260,7 +263,7 @@ namespace NzbDrone.Core.Download.Engine
 
         private DateTime GetCutoff()
         {
-            return DateTime.UtcNow.AddDays(-Math.Max(1, _configService.EngineOrphanGraceDays));
+            return DateTime.UtcNow.AddDays(-Math.Clamp(_configService.EngineOrphanGraceDays, 1, MaxGraceDays));
         }
 
         // True for an Embarr partial file whose torrent id none of the owners has. A pending file's id is a prefix of

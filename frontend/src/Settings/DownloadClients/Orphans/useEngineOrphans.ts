@@ -44,7 +44,7 @@ export const useStopEngineOrphanCleanup = () => {
     path: `${PATH}/stop`,
     method: 'POST',
     mutationOptions: {
-      onSuccess: () =>
+      onSettled: () =>
         queryClient.invalidateQueries({ queryKey: [STATUS_PATH] }),
     },
   });
@@ -61,8 +61,9 @@ export const useApproveEngineOrphans = () => {
     path: `${PATH}/delete`,
     method: 'POST',
     mutationOptions: {
-      // The approval sets automatic deletion too.
-      onSuccess: () =>
+      // The approval sets automatic deletion too, which can be saved even when the request then fails (the rescan
+      // after deleting can), so the state is refreshed either way.
+      onSettled: () =>
         Promise.all([
           queryClient.invalidateQueries({ queryKey: [PATH] }),
           queryClient.invalidateQueries({ queryKey: [STATUS_PATH] }),

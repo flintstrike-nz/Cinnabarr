@@ -31,7 +31,11 @@ function EngineOrphanOptions({
 }: EngineOrphanOptionsProps) {
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const { data: status, error: statusError } = useEngineOrphanStatus();
-  const { mutate: stop, isPending: isStopping } = useStopEngineOrphanCleanup();
+  const {
+    mutate: stop,
+    isPending: isStopping,
+    error: stopError,
+  } = useStopEngineOrphanCleanup();
 
   const handleStopPress = useCallback(() => {
     stop();
@@ -95,6 +99,16 @@ function EngineOrphanOptions({
               <SpinnerButton isSpinning={isStopping} onPress={handleStopPress}>
                 {translate('EngineOrphansStopDeletingAutomatically')}
               </SpinnerButton>
+            ) : null}
+
+            {stopError ? (
+              <FormInputHelpText
+                text={
+                  stopError.statusBody?.message ??
+                  translate('EngineOrphansStopError')
+                }
+                isError={true}
+              />
             ) : null}
           </div>
         </FormRow>
