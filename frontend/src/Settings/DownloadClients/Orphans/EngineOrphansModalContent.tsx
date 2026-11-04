@@ -62,8 +62,12 @@ function EngineOrphansModalContent({
   const { data, isFetching, error } = useEngineOrphans();
   const { mutate, isPending, error: deleteError } = useApproveEngineOrphans();
   const [deleteAutomatically, setDeleteAutomatically] = useState(true);
+  const [notDeletedCount, setNotDeletedCount] = useState(0);
 
   const files = useMemo(() => data?.files ?? [], [data]);
+
+  // Delete only acts on the list shown: never while the scan is in an error state, even with an older list cached.
+  const canDelete = !!data && !error && files.length > 0;
 
   const handleDeleteAutomaticallyChange = useCallback(
     ({ value }: InputChanged<boolean>) => {
@@ -73,9 +77,25 @@ function EngineOrphansModalContent({
   );
 
   const handleDeletePress = useCallback(() => {
+    const paths = files.map((f) => f.path);
+
     mutate(
-      { paths: files.map((f) => f.path), deleteAutomatically },
-      { onSuccess: onModalClose }
+      { paths, deleteAutomatically },
+      {
+        // The response lists the files still left over: one that was approved but couldn't be deleted (it's in the
+        // logs) keeps the review open, so it can be retried.
+        onSuccess: (remaining) => {
+          const notDeleted = remaining.files.filter((f) =>
+            paths.includes(f.path)
+          ).length;
+
+          setNotDeletedCount(notDeleted);
+
+          if (!notDeleted) {
+            onModalClose();
+          }
+        },
+      }
     );
   }, [files, deleteAutomatically, mutate, onModalClose]);
 
@@ -136,6 +156,12 @@ function EngineOrphansModalContent({
           </>
         ) : null}
 
+        {notDeletedCount ? (
+          <Alert kind={kinds.WARNING}>
+            {translate('EngineOrphansNotDeleted', { count: notDeletedCount })}
+          </Alert>
+        ) : null}
+
         {deleteError ? (
           <Alert kind={kinds.DANGER}>{getErrorMessage(deleteError)}</Alert>
         ) : null}
@@ -144,7 +170,7 @@ function EngineOrphansModalContent({
       <ModalFooter>
         <Button onPress={onModalClose}>{translate('Close')}</Button>
 
-        {files.length ? (
+        {canDelete ? (
           <SpinnerErrorButton
             kind={kinds.DANGER}
             error={deleteError}

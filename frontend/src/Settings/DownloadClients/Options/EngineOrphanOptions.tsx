@@ -7,6 +7,7 @@ import FormLabel from 'Components/Form/FormLabel';
 import FormRow from 'Components/Form/FormRow';
 import Button from 'Components/Link/Button';
 import SpinnerButton from 'Components/Link/SpinnerButton';
+import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import { inputTypes } from 'Helpers/Props';
 import EngineOrphansModal from 'Settings/DownloadClients/Orphans/EngineOrphansModal';
 import {
@@ -29,7 +30,7 @@ function EngineOrphanOptions({
   onInputChange,
 }: EngineOrphanOptionsProps) {
   const [isReviewOpen, setIsReviewOpen] = useState(false);
-  const { data: status } = useEngineOrphanStatus();
+  const { data: status, error: statusError } = useEngineOrphanStatus();
   const { mutate: stop, isPending: isStopping } = useStopEngineOrphanCleanup();
 
   const handleStopPress = useCallback(() => {
@@ -71,13 +72,24 @@ function EngineOrphanOptions({
           <FormLabel>{translate('EngineOrphansDeleteAutomatically')}</FormLabel>
 
           <div>
-            <FormInputHelpText
-              text={translate(
-                status?.deleteAutomatically
-                  ? 'EngineOrphansDeleteAutomaticallyOnHelpText'
-                  : 'EngineOrphansDeleteAutomaticallyOffHelpText'
-              )}
-            />
+            {status ? (
+              <FormInputHelpText
+                text={translate(
+                  status.deleteAutomatically
+                    ? 'EngineOrphansDeleteAutomaticallyOnHelpText'
+                    : 'EngineOrphansDeleteAutomaticallyOffHelpText'
+                )}
+              />
+            ) : null}
+
+            {!status && statusError ? (
+              <FormInputHelpText
+                text={translate('EngineOrphansStatusLoadError')}
+                isError={true}
+              />
+            ) : null}
+
+            {!status && !statusError ? <LoadingIndicator /> : null}
 
             {status?.deleteAutomatically ? (
               <SpinnerButton isSpinning={isStopping} onPress={handleStopPress}>
