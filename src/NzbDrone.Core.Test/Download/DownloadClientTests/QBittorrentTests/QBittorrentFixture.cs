@@ -692,6 +692,25 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.QBittorrentTests
         }
 
         [Test]
+        public void RemoveItem_should_keep_data_when_the_link_cannot_be_read()
+        {
+            Mocker.GetMock<IEngineClientRegistry>()
+                  .Setup(s => s.IsEngineClient(Subject.Definition.Id))
+                  .Returns(true);
+
+            Mocker.GetMock<IEngineLinkService>()
+                  .Setup(s => s.Exists("ABCDEF0123456789ABCDEF0123456789ABCDEF01"))
+                  .Returns(true);
+
+            Subject.RemoveItem(new DownloadClientItem { DownloadId = "ABCDEF0123456789ABCDEF0123456789ABCDEF01", Title = "Show" }, true);
+
+            Mocker.GetMock<IQBittorrentProxy>()
+                  .Verify(s => s.RemoveTorrent("abcdef0123456789abcdef0123456789abcdef01", false, It.IsAny<QBittorrentSettings>()), Times.Once());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
         public void RemoveItem_should_delete_data_of_an_engine_torrent_that_was_never_mapped()
         {
             Mocker.GetMock<IEngineClientRegistry>()

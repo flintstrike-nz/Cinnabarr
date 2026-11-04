@@ -412,6 +412,14 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         {
             var link = HoldNewTorrents ? _engineLinkService.Get(item.DownloadId) : null;
 
+            // A link that exists but can't be read may map the torrent into the library: never delete its data.
+            if (deleteData && HoldNewTorrents && link == null && _engineLinkService.Exists(item.DownloadId))
+            {
+                _logger.Warn("The link for '{0}' can't be read; removing it from the engine without deleting its files", item.Title);
+                Proxy.RemoveTorrent(item.DownloadId.ToLower(), false, Settings);
+                return;
+            }
+
             if (link?.Files == null)
             {
                 Proxy.RemoveTorrent(item.DownloadId.ToLower(), deleteData, Settings);

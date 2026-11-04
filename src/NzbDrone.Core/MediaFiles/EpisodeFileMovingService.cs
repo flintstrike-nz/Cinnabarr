@@ -126,6 +126,9 @@ namespace NzbDrone.Core.MediaFiles
                 episodeFile.RelativePath = series.Path.GetRelativePath(episodeFilePath);
                 localEpisode.FileNameBeforeRename = episodeFile.RelativePath;
 
+                // Nothing is moved, but the file still gets the configured permissions (the engine created it).
+                _mediaFileAttributeService.SetFilePermissions(episodeFilePath);
+
                 return episodeFile;
             }
 

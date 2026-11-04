@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using NLog;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
@@ -129,7 +130,7 @@ namespace NzbDrone.Core.Download.Engine
 
                     // Done once the download is recorded, no subtitle is still waiting to be published, and the
                     // link has been checked against the library since startup.
-                    if (link.Completed && link.Files.All(f => f.State != EngineLinkFileState.Pending) && _reconciled.ContainsKey(downloadId))
+                    if (link.Completed && link.Files.All(f => f.State is not (EngineLinkFileState.Pending or EngineLinkFileState.Renamed)) && _reconciled.ContainsKey(downloadId))
                     {
                         continue;
                     }
@@ -187,9 +188,13 @@ namespace NzbDrone.Core.Download.Engine
                 _reconciled[downloadId] = true;
             }
 
+            // Shared by every file, so the blocklist and search happen once per grab even when several files are
+            // rejected in the same poll.
+            var failedSinceGrab = new StrongBox<bool>(failures.Any());
+
             foreach (var file in link.Files.Where(f => !f.IsSubtitle))
             {
-                ProcessVideo(proxy, settings, hash, downloadId, link, file, engineFiles, series, seriesEpisodes, trackedDownload, grabs, failures.Any(), Save);
+                ProcessVideo(proxy, settings, hash, downloadId, link, file, engineFiles, series, seriesEpisodes, trackedDownload, grabs, failedSinceGrab, Save);
             }
 
             foreach (var file in link.Files.Where(f => f.IsSubtitle))
@@ -199,7 +204,10 @@ namespace NzbDrone.Core.Download.Engine
 
             var videos = link.Files.Where(f => !f.IsSubtitle).ToList();
 
-            if (!link.Completed && videos.All(f => f.State is EngineLinkFileState.Imported or EngineLinkFileState.Rejected))
+            // Completion can let the download be removed, so it waits until no subtitle rename is still outstanding.
+            if (!link.Completed &&
+                videos.All(f => f.State is EngineLinkFileState.Imported or EngineLinkFileState.Rejected) &&
+                link.Files.All(f => !(f.IsSubtitle && f.State == EngineLinkFileState.Renamed)))
             {
                 Complete(link, series, seriesEpisodes, grabs, trackedDownload);
                 Save();
@@ -272,7 +280,7 @@ namespace NzbDrone.Core.Download.Engine
                                   List<Episode> seriesEpisodes,
                                   TrackedDownload trackedDownload,
                                   List<EpisodeHistory> grabs,
-                                  bool failedSinceGrab,
+                                  StrongBox<bool> failedSinceGrab,
                                   Action save)
         {
             var downloadItem = trackedDownload.DownloadItem;
@@ -313,7 +321,7 @@ namespace NzbDrone.Core.Download.Engine
                         return;
                     }
 
-                    var decision = GetDecision(pendingPath, file.FinalPath, series, episodes, trackedDownload, link);
+                    var decision = GetDecision(pendingPath, file, series, episodes, trackedDownload, link);
 
                     if (!decision.Approved)
                     {
@@ -359,6 +367,7 @@ namespace NzbDrone.Core.Download.Engine
                     // The engine renames asynchronously; record the file once the rename is on disk.
                     if (!_diskProvider.FileExists(finalPath) || _diskProvider.FileExists(pendingPath))
                     {
+                        RetryRename(proxy, settings, hash, file, engineFiles, pendingPath, finalPath);
                         return;
                     }
 
@@ -379,7 +388,7 @@ namespace NzbDrone.Core.Download.Engine
                         return;
                     }
 
-                    var decision = GetDecision(finalPath, file.FinalPath, series, episodes, trackedDownload, link);
+                    var decision = GetDecision(finalPath, file, series, episodes, trackedDownload, link);
 
                     if (!decision.Approved)
                     {
@@ -421,7 +430,7 @@ namespace NzbDrone.Core.Download.Engine
 
         private void ProcessSubtitle(IQBittorrentProxy proxy, QBittorrentSettings settings, string hash, EngineLink link, EngineLinkFile file, List<QBittorrentTorrentFile> engineFiles, Action save)
         {
-            if (file.State != EngineLinkFileState.Pending)
+            if (file.State is not (EngineLinkFileState.Pending or EngineLinkFileState.Renamed))
             {
                 return;
             }
@@ -430,12 +439,19 @@ namespace NzbDrone.Core.Download.Engine
             var pendingPath = Path.Combine(link.SavePath, file.PendingPath);
             var finalPath = Path.Combine(link.SavePath, file.FinalPath);
 
-            // Recover a rename that happened before its state was saved.
+            // Published once the engine reports the final name and the rename is on disk (this also recovers a
+            // rename whose state wasn't saved).
             if (IsRenamedInEngine(engineFiles, file) && _diskProvider.FileExists(finalPath) && !_diskProvider.FileExists(pendingPath))
             {
                 file.State = EngineLinkFileState.Imported;
                 save();
 
+                return;
+            }
+
+            if (file.State == EngineLinkFileState.Renamed)
+            {
+                RetryRename(proxy, settings, hash, file, engineFiles, pendingPath, finalPath);
                 return;
             }
 
@@ -458,11 +474,24 @@ namespace NzbDrone.Core.Download.Engine
             }
 
             proxy.RenameFile(hash, file.PendingPath, file.FinalPath, settings);
-            file.State = EngineLinkFileState.Imported;
+            file.State = EngineLinkFileState.Renamed;
             save();
         }
 
-        private void RejectFile(IQBittorrentProxy proxy, QBittorrentSettings settings, string hash, EngineLinkFile file, string pendingPath, List<EpisodeHistory> grabs, bool failedSinceGrab)
+        // A rename the engine hasn't carried out (it failed, or was lost in a restart) is asked for again. Asking
+        // again while the first is still in flight is harmless: the engine skips a rename whose source is gone.
+        private void RetryRename(IQBittorrentProxy proxy, QBittorrentSettings settings, string hash, EngineLinkFile file, List<QBittorrentTorrentFile> engineFiles, string pendingPath, string finalPath)
+        {
+            if (IsRenamedInEngine(engineFiles, file) || !_diskProvider.FileExists(pendingPath) || _diskProvider.FileExists(finalPath))
+            {
+                return;
+            }
+
+            _logger.Debug("'{0}' hasn't been renamed yet; asking the engine again", file.FinalPath);
+            proxy.RenameFile(hash, file.PendingPath, file.FinalPath, settings);
+        }
+
+        private void RejectFile(IQBittorrentProxy proxy, QBittorrentSettings settings, string hash, EngineLinkFile file, string pendingPath, List<EpisodeHistory> grabs, StrongBox<bool> failedSinceGrab)
         {
             // The file was never published under its final name; stop downloading it and delete it.
             proxy.SetFilePriority(hash, new[] { file.Index }, 0, settings);
@@ -470,8 +499,9 @@ namespace NzbDrone.Core.Download.Engine
             file.State = EngineLinkFileState.Rejected;
 
             // Blocklist the release and search again, once per grab.
-            if (!failedSinceGrab)
+            if (!failedSinceGrab.Value)
             {
+                failedSinceGrab.Value = true;
                 _failedDownloadService.MarkAsFailed(grabs.MaxBy(g => g.Date).Id, RejectedMessage, "Embarr");
             }
         }
@@ -500,7 +530,7 @@ namespace NzbDrone.Core.Download.Engine
             _eventAggregator.PublishEvent(new DownloadCompletedEvent(trackedDownload, series, episodes, episodeFiles, new GrabbedReleaseInfo(grabs)));
         }
 
-        private ImportDecision GetDecision(string path, string finalName, Series series, List<Episode> episodes, TrackedDownload trackedDownload, EngineLink link)
+        private ImportDecision GetDecision(string path, EngineLinkFile file, Series series, List<Episode> episodes, TrackedDownload trackedDownload, EngineLink link)
         {
             var downloadItem = trackedDownload.DownloadItem;
 
@@ -510,8 +540,9 @@ namespace NzbDrone.Core.Download.Engine
                 Path = path,
                 Size = _diskProvider.GetFileSize(path),
 
-                // Parse the name the file will have, not its hidden pending name.
-                FileEpisodeInfo = Parser.Parser.ParsePath(finalName),
+                // Parse the file's name in the torrent (it carries tags such as REPACK or the release group), or the
+                // name it will have; never its hidden pending name.
+                FileEpisodeInfo = (file.OriginalName == null ? null : Parser.Parser.ParsePath(file.OriginalName)) ?? Parser.Parser.ParsePath(file.FinalPath),
                 DownloadClientEpisodeInfo = Parser.Parser.ParseTitle(link.SourceTitle),
                 DownloadItem = downloadItem,
                 SceneSource = true,
@@ -530,6 +561,14 @@ namespace NzbDrone.Core.Download.Engine
             catch (AugmentingFailedException)
             {
                 return new ImportDecision(localEpisode, new ImportRejection(ImportRejectionReason.UnableToParse, "Unable to parse file"));
+            }
+
+            // A file of a pack takes its scene name from its name in the torrent, not from its pending or final name.
+            if (localEpisode.OtherVideoFiles || localEpisode.DownloadClientEpisodeInfo == null || localEpisode.DownloadClientEpisodeInfo.FullSeason)
+            {
+                var originalStem = file.OriginalName == null ? null : Path.GetFileNameWithoutExtension(file.OriginalName);
+
+                localEpisode.SceneName = originalStem != null && Parser.SceneChecker.IsSceneTitle(originalStem) ? originalStem : null;
             }
 
             // The info-hash link decides the episodes, not the parsed name (roadmap §4.4 rule 1).

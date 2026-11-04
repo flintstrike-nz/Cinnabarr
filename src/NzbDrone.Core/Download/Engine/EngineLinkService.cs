@@ -26,6 +26,9 @@ namespace NzbDrone.Core.Download.Engine
         EngineLink Get(string downloadId);
         void Save(string downloadId, EngineLink link);
 
+        // True when a sidecar file exists for the download, whether or not it can be read.
+        bool Exists(string downloadId);
+
         // Deletes the hidden pending files of a mapped torrent (complete or still incomplete); never a final file.
         void DeletePendingFiles(EngineLink link);
     }
@@ -250,6 +253,11 @@ namespace NzbDrone.Core.Download.Engine
         public EngineLink Get(string downloadId)
         {
             return Read(downloadId);
+        }
+
+        public bool Exists(string downloadId)
+        {
+            return IsInfoHash(downloadId) && _diskProvider.FileExists(GetLinkPath(downloadId));
         }
 
         public void Save(string downloadId, EngineLink link)

@@ -79,6 +79,8 @@ namespace NzbDrone.Core.Test.MediaFiles.EpisodeFileMovingServiceTests
             result.RelativePath.Should().Be(Path.Combine("Season 01", "Engine Name.mkv"));
             Mocker.GetMock<IDiskTransferService>()
                   .Verify(s => s.TransferFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TransferMode>(), It.IsAny<bool>()), Times.Never());
+            Mocker.GetMock<IMediaFileAttributeService>()
+                  .Verify(s => s.SetFilePermissions(_episodeFile.Path), Times.Once());
         }
 
         [Test]

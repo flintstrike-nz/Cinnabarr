@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
@@ -180,9 +181,77 @@ namespace NzbDrone.Core.Test.Download.EngineTests
 
             _link.Files[0].State.Should().Be(EngineLinkFileState.Imported);
             _proxy.Verify(p => p.RenameFile(Hash, ".Show - S01E01.en.srt.pending", "Show - S01E01.en.srt", _settings), Times.Once());
+
+            // The subtitle is published once the engine has renamed it; until then the download isn't completed.
+            _link.Files[1].State.Should().Be(EngineLinkFileState.Renamed);
+            _link.Completed.Should().BeFalse();
+
+            GivenSubtitleRenamedByEngine();
+            Subject.Process(GivenClient());
+
             _link.Files[1].State.Should().Be(EngineLinkFileState.Imported);
             _link.Completed.Should().BeTrue();
+            Mocker.GetMock<IEventAggregator>().Verify(e => e.PublishEvent(It.IsAny<DownloadCompletedEvent>()), Times.Once());
             _proxy.Verify(p => p.RemoveTorrent(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+        }
+
+        private void GivenSubtitleRenamedByEngine()
+        {
+            _files[1].Name = "Show - S01E01.en.srt";
+            _existing.Remove(_subtitlePending);
+            _existing.Add(Path.Combine(_link.SavePath, "Show - S01E01.en.srt"));
+        }
+
+        [Test]
+        public void should_ask_again_for_a_subtitle_rename_the_engine_did_not_carry_out()
+        {
+            _link.Completed = true;
+            _link.Files[0].State = EngineLinkFileState.Imported;
+            _link.Files[1].State = EngineLinkFileState.Renamed;
+
+            Subject.Process(GivenClient());
+
+            _proxy.Verify(p => p.RenameFile(Hash, ".Show - S01E01.en.srt.pending", "Show - S01E01.en.srt", _settings), Times.Once());
+            _link.Files[1].State.Should().Be(EngineLinkFileState.Renamed);
+        }
+
+        [Test]
+        public void should_search_again_once_when_several_files_are_rejected_in_one_poll()
+        {
+            var savePath = _link.SavePath;
+            _link.Files.Add(new EngineLinkFile { Index = 2, FinalPath = "Show - S01E02.mkv", PendingPath = ".Show - S01E02.mkv.pending", Episodes = new List<EngineLinkEpisode> { new EngineLinkEpisode { SeasonNumber = 1, EpisodeNumber = 2 } } });
+            _files.Add(new QBittorrentTorrentFile { Name = ".Show - S01E02.mkv.pending", Progress = 1.0 });
+            _existing.Add(Path.Combine(savePath, ".Show - S01E02.mkv.pending"));
+
+            Mocker.GetMock<IEpisodeService>()
+                .Setup(s => s.GetEpisodeBySeries(1))
+                .Returns(new List<Episode> { new Episode { Id = 11, SeasonNumber = 1, EpisodeNumber = 1 }, new Episode { Id = 12, SeasonNumber = 1, EpisodeNumber = 2 } });
+
+            _approve = false;
+
+            Subject.Process(GivenClient());
+
+            _link.Files.Where(f => !f.IsSubtitle).Should().OnlyContain(f => f.State == EngineLinkFileState.Rejected);
+            Mocker.GetMock<IFailedDownloadService>().Verify(s => s.MarkAsFailed(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()), Times.Once());
+            ExceptionVerification.ExpectedWarns(2);
+        }
+
+        [Test]
+        public void should_check_a_file_of_a_pack_with_its_name_in_the_torrent()
+        {
+            _link.Files[0].OriginalName = "Show.S01E01.REPACK.720p.HDTV-Other.mkv";
+            _link.Files.Add(new EngineLinkFile { Index = 2, FinalPath = "Show - S01E02.mkv", PendingPath = ".Show - S01E02.mkv.pending", Episodes = new List<EngineLinkEpisode> { new EngineLinkEpisode { SeasonNumber = 1, EpisodeNumber = 2 } } });
+
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<IMakeImportDecision>().Verify(s => s.GetDecision(It.Is<LocalEpisode>(l => IsCheckedWithTorrentName(l)), It.IsAny<DownloadClientItem>()), Times.Once());
+        }
+
+        private static bool IsCheckedWithTorrentName(LocalEpisode localEpisode)
+        {
+            return localEpisode.FileEpisodeInfo.ReleaseGroup == "Other" &&
+                   localEpisode.FileEpisodeInfo.Quality.Revision.IsRepack &&
+                   localEpisode.SceneName == "Show.S01E01.REPACK.720p.HDTV-Other";
         }
 
         [Test]
@@ -469,6 +538,11 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             Subject.Process(GivenClient());
 
             _proxy.Verify(p => p.RenameFile(Hash, ".Show - S01E01.en.srt.pending", "Show - S01E01.en.srt", _settings), Times.Once());
+            _link.Files[1].State.Should().Be(EngineLinkFileState.Renamed);
+
+            GivenSubtitleRenamedByEngine();
+            Subject.Process(GivenClient());
+
             _link.Files[1].State.Should().Be(EngineLinkFileState.Imported);
             Mocker.GetMock<IEventAggregator>().Verify(e => e.PublishEvent(It.IsAny<DownloadCompletedEvent>()), Times.Never());
         }

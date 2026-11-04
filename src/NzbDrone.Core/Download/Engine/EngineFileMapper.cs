@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Download.Clients.QBittorrent;
@@ -39,6 +40,7 @@ namespace NzbDrone.Core.Download.Engine
         // Leading dot, ".{8 hex}" torrent id, ".pending", and the engine's ".!qB" while incomplete.
         public const int PendingOverheadBytes = 1 + 9 + 8 + 4;
         public const int MaxFileNameBytes = 255;
+        public const int MaxSuffixBytes = 64;
 
         private static readonly Regex PendingRegex = new(@"\.[0-9a-f]{8}\.pending$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
@@ -136,15 +138,6 @@ namespace NzbDrone.Core.Download.Engine
             var savePath = GetCommonFolder(mappedVideos.Select(v => Path.GetDirectoryName(v.FinalPath)).ToList());
             var map = new EngineFileMap { SavePath = savePath };
 
-            foreach (var video in mappedVideos)
-            {
-                var videoFile = CreateFile(savePath, pendingSuffix, video.Index, video.FinalPath, video.Episodes, null);
-
-                videoFile.SceneName = video.SceneName;
-                videoFile.OriginalName = video.OriginalName;
-                map.Files.Add(videoFile);
-            }
-
             var subtitles = new List<MappedSubtitle>();
 
             foreach (var (file, index) in indexed.Where(f => EngineFileWhitelist.IsSubtitle(f.File.Name)))
@@ -158,16 +151,17 @@ namespace NzbDrone.Core.Download.Engine
                 }
 
                 var videoStem = Path.GetFileNameWithoutExtension(GetFileName(video.File.Name));
-                var suffix = subtitleName.StartsWith(videoStem, StringComparison.OrdinalIgnoreCase)
+                var suffix = CapSuffix(subtitleName.StartsWith(videoStem, StringComparison.OrdinalIgnoreCase)
                     ? subtitleName.Substring(videoStem.Length)
-                    : "." + subtitleName;
+                    : "." + subtitleName);
 
                 subtitles.Add(new MappedSubtitle { File = file, Index = index, Video = video, Suffix = suffix });
             }
 
-            // Subtitles from different folders (for example English/ and SDH/) can end up with the same name: keep
-            // them apart by their folder name, then by their position if that isn't enough.
-            foreach (var group in subtitles.GroupBy(s => GetSubtitlePath(s.Video.FinalPath, s.Suffix), StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1))
+            // A video's subtitles share its name, so they only collide when their suffixes match: subtitles from
+            // different folders (for example English/ and SDH/) are kept apart by their folder name, then by their
+            // position if that isn't enough.
+            foreach (var group in subtitles.GroupBy(s => (s.Video.Index, s.Suffix.ToLowerInvariant())).Where(g => g.Count() > 1))
             {
                 foreach (var subtitle in group)
                 {
@@ -175,12 +169,12 @@ namespace NzbDrone.Core.Download.Engine
 
                     if (folder.IsNotNullOrWhiteSpace())
                     {
-                        subtitle.Suffix = "." + folder + subtitle.Suffix;
+                        subtitle.Suffix = CapSuffix("." + folder + subtitle.Suffix);
                     }
                 }
             }
 
-            foreach (var group in subtitles.GroupBy(s => GetSubtitlePath(s.Video.FinalPath, s.Suffix), StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1))
+            foreach (var group in subtitles.GroupBy(s => (s.Video.Index, s.Suffix.ToLowerInvariant())).Where(g => g.Count() > 1))
             {
                 foreach (var (subtitle, position) in group.Skip(1).Select((s, i) => (s, i + 2)))
                 {
@@ -188,10 +182,28 @@ namespace NzbDrone.Core.Download.Engine
                 }
             }
 
-            foreach (var subtitle in subtitles)
+            foreach (var video in mappedVideos)
             {
-                map.Files.Add(CreateFile(savePath, pendingSuffix, subtitle.Index, FitFileName(GetSubtitlePath(subtitle.Video.FinalPath, subtitle.Suffix)), new List<Episode>(), subtitle.Video.Index));
+                // The video's name is shortened (if needed) so that its own and every subtitle's pending name fit,
+                // and every subtitle keeps the video's exact name in front of its suffix.
+                var videoSubtitles = subtitles.Where(s => s.Video == video).ToList();
+                var folder = Path.GetDirectoryName(video.FinalPath);
+                var extension = Path.GetExtension(video.FinalPath);
+                var stem = FitStem(Path.GetFileNameWithoutExtension(video.FinalPath), videoSubtitles.Select(s => s.Suffix).Append(extension));
+
+                var videoFile = CreateFile(savePath, pendingSuffix, video.Index, Path.Combine(folder, stem + extension), video.Episodes, null);
+
+                videoFile.SceneName = video.SceneName;
+                videoFile.OriginalName = video.OriginalName;
+                map.Files.Add(videoFile);
+
+                foreach (var subtitle in videoSubtitles)
+                {
+                    map.Files.Add(CreateFile(savePath, pendingSuffix, subtitle.Index, Path.Combine(folder, stem + subtitle.Suffix), new List<Episode>(), video.Index));
+                }
             }
+
+            map.Files = map.Files.OrderBy(f => f.IsSubtitle).ThenBy(f => f.Index).ToList();
 
             return map;
         }
@@ -211,7 +223,19 @@ namespace NzbDrone.Core.Download.Engine
                 Size = localEpisode.Size
             };
 
-            var finalPath = BuildFinalPath(localEpisode.Episodes, series, episodeFile, Path.GetExtension(video.FinalPath), localEpisode.CustomFormats);
+            var oldStem = Path.GetFileNameWithoutExtension(video.FinalPath);
+            var extension = Path.GetExtension(video.FinalPath);
+            var subtitles = link.Files
+                .Where(f => f.IsSubtitle && f.VideoIndex == video.Index && f.State == EngineLinkFileState.Pending)
+                .Select(f => (File: f, Name: GetFileName(f.FinalPath)))
+                .Where(f => f.Name.StartsWith(oldStem, StringComparison.Ordinal))
+                .Select(f => (f.File, Suffix: f.Name.Substring(oldStem.Length)))
+                .ToList();
+
+            var rawPath = BuildFinalPath(localEpisode.Episodes, series, episodeFile, extension, localEpisode.CustomFormats);
+            var newFolder = Path.GetDirectoryName(rawPath);
+            var newStem = FitStem(Path.GetFileNameWithoutExtension(rawPath), subtitles.Select(s => s.Suffix).Append(extension));
+            var finalPath = Path.Combine(newFolder, newStem + extension);
             var finalRelative = Path.GetRelativePath(link.SavePath, finalPath).Replace('\\', '/');
 
             // The torrent saves into one folder; a name that would move out of it keeps the name it was mapped to.
@@ -220,20 +244,9 @@ namespace NzbDrone.Core.Download.Engine
                 return false;
             }
 
-            var oldStem = Path.GetFileNameWithoutExtension(video.FinalPath);
-            var newFolder = Path.GetDirectoryName(finalPath);
-            var newStem = Path.GetFileNameWithoutExtension(finalPath);
-
-            foreach (var subtitle in link.Files.Where(f => f.IsSubtitle && f.VideoIndex == video.Index && f.State == EngineLinkFileState.Pending))
+            foreach (var (subtitle, suffix) in subtitles)
             {
-                var name = subtitle.FinalPath.Replace('\\', '/').Split('/').Last();
-
-                if (name.StartsWith(oldStem, StringComparison.Ordinal))
-                {
-                    var subtitlePath = FitFileName(Path.Combine(newFolder, string.Concat(newStem, name.AsSpan(oldStem.Length))));
-
-                    subtitle.FinalPath = Path.GetRelativePath(link.SavePath, subtitlePath).Replace('\\', '/');
-                }
+                subtitle.FinalPath = Path.GetRelativePath(link.SavePath, Path.Combine(newFolder, newStem + suffix)).Replace('\\', '/');
             }
 
             video.FinalPath = finalRelative;
@@ -250,12 +263,24 @@ namespace NzbDrone.Core.Download.Engine
                                                      null,
                                                      customFormats);
 
-            return FitFileName(path);
+            return path;
         }
 
-        private static string GetSubtitlePath(string videoFinalPath, string suffix)
+        // A subtitle's own part of its name (for example ".en.srt") is kept short, so it never squeezes out the
+        // video's name; the end, which holds the language and extension, is what is kept.
+        private static string CapSuffix(string suffix)
         {
-            return Path.Combine(Path.GetDirectoryName(videoFinalPath), Path.GetFileNameWithoutExtension(videoFinalPath) + suffix);
+            if (Encoding.UTF8.GetByteCount(suffix) <= MaxSuffixBytes)
+            {
+                return suffix;
+            }
+
+            while (Encoding.UTF8.GetByteCount(suffix) > MaxSuffixBytes - 1)
+            {
+                suffix = suffix.Substring(char.IsHighSurrogate(suffix[0]) && suffix.Length > 1 ? 2 : 1);
+            }
+
+            return "." + suffix.TrimStart('.');
         }
 
         private static string GetFolderName(string torrentPath)
@@ -274,25 +299,23 @@ namespace NzbDrone.Core.Download.Engine
             return byName ?? (videos.Count == 1 ? videos[0] : null);
         }
 
-        // Keeps the pending name (final name plus the pending overhead) within the filesystem's 255-byte limit.
-        private static string FitFileName(string path)
+        // Shortens a name so that, with the longest of the given endings (extension or subtitle suffix), its pending
+        // name (final name plus the pending overhead) stays within the filesystem's 255-byte limit.
+        private static string FitStem(string stem, IEnumerable<string> endings)
         {
-            var name = Path.GetFileName(path);
-            var extension = Path.GetExtension(name);
-            var stem = Path.GetFileNameWithoutExtension(name);
-            var limit = MaxFileNameBytes - PendingOverheadBytes;
+            var limit = MaxFileNameBytes - PendingOverheadBytes - endings.Max(e => Encoding.UTF8.GetByteCount(e));
 
-            if (System.Text.Encoding.UTF8.GetByteCount(name) <= limit)
+            if (Encoding.UTF8.GetByteCount(stem) <= limit)
             {
-                return path;
+                return stem;
             }
 
-            while (stem.Length > 0 && System.Text.Encoding.UTF8.GetByteCount(stem + extension) > limit)
+            while (stem.Length > 0 && Encoding.UTF8.GetByteCount(stem) > limit)
             {
-                stem = stem.Substring(0, stem.Length - 1);
+                stem = stem.Substring(0, stem.Length - (stem.Length > 1 && char.IsLowSurrogate(stem[^1]) ? 2 : 1));
             }
 
-            return Path.Combine(Path.GetDirectoryName(path), stem.TrimEnd(' ', '.') + extension);
+            return stem.TrimEnd(' ', '.');
         }
 
         private static EngineLinkFile CreateFile(string savePath, string pendingSuffix, int index, string finalPath, List<Episode> episodes, int? videoIndex)

@@ -183,6 +183,23 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_shorten_a_long_name_so_every_subtitle_keeps_its_suffix()
+        {
+            Mocker.GetMock<IBuildFileNames>()
+                .Setup(s => s.BuildFilePath(It.IsAny<List<Episode>>(), _series, It.IsAny<EpisodeFile>(), It.IsAny<string>(), null, null))
+                .Returns((List<Episode> episodes, Series series, EpisodeFile file, string extension, NamingConfig naming, List<CustomFormat> formats) =>
+                    Path.Combine(_seasonFolder, new string('a', 229) + extension));
+
+            var map = Map(("Show.S01E01.mkv", 1000), ("Show.S01E01.en.srt", 10), ("Show.S01E01.fr.srt", 10));
+
+            var video = map.Files.Single(f => !f.IsSubtitle);
+            var stem = Path.GetFileNameWithoutExtension(video.FinalPath);
+
+            map.Files.Where(f => f.IsSubtitle).Select(f => f.FinalPath).Should().Equal(stem + ".en.srt", stem + ".fr.srt");
+            map.Files.Should().OnlyContain(f => System.Text.Encoding.UTF8.GetByteCount(f.PendingPath) + 4 <= 255);
+        }
+
+        [Test]
         public void should_rebuild_final_names_from_what_the_checks_learned()
         {
             var map = Map(("Show.S01E01.mkv", 1000), ("Show.S01E01.en.srt", 10));
