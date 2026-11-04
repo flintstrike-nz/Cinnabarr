@@ -25,6 +25,9 @@ namespace NzbDrone.Core.Tv
         public DateTime? AirDateUtc { get; set; }
         public string Overview { get; set; }
         public bool Monitored { get; set; }
+
+        // Overrides the season's seeding goal for this episode's file (roadmap §4.10); null to use the season's.
+        public Download.Engine.EngineSeedingRule SeedingRule { get; set; }
         public int? AbsoluteEpisodeNumber { get; set; }
         public int? SceneAbsoluteEpisodeNumber { get; set; }
         public int? SceneSeasonNumber { get; set; }

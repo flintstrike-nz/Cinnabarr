@@ -245,6 +245,47 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             _link.ResumeSeeding.Should().BeFalse();
         }
 
+        private void GivenSeries(EngineSeedingRule seriesRule, EngineSeedingRule seasonRule, EngineSeedingRule episodeRule)
+        {
+            _link.TvdbId = 77;
+            _link.Files[0].Episodes = new List<EngineLinkEpisode> { new EngineLinkEpisode { SeasonNumber = 1, EpisodeNumber = 2 } };
+
+            var series = new NzbDrone.Core.Tv.Series
+            {
+                Id = 9,
+                SeedingRule = seriesRule,
+                Seasons = new List<NzbDrone.Core.Tv.Season> { new NzbDrone.Core.Tv.Season { SeasonNumber = 1, SeedingRule = seasonRule } }
+            };
+
+            Mocker.GetMock<NzbDrone.Core.Tv.ISeriesService>().Setup(s => s.FindByTvdbId(77)).Returns(series);
+            Mocker.GetMock<NzbDrone.Core.Tv.IEpisodeService>()
+                .Setup(s => s.FindEpisode(9, 1, 2))
+                .Returns(new NzbDrone.Core.Tv.Episode { Id = 20, SeasonNumber = 1, EpisodeNumber = 2, SeedingRule = episodeRule });
+        }
+
+        [TestCase(true, true, true, "episode")]
+        [TestCase(true, true, false, "season")]
+        [TestCase(true, false, false, "series")]
+        [TestCase(false, false, false, "global")]
+        public void should_use_the_most_specific_goal_set(bool series, bool season, bool episode, string source)
+        {
+            var rule = new EngineSeedingRule { Mode = EngineSeedingMode.Time, Minutes = 60 };
+            GivenSeries(series ? rule : null, season ? rule : null, episode ? rule : null);
+
+            Subject.GetRules(Hash.ToUpperInvariant(), _link).Should().ContainSingle().Which.Source.Should().Be(source);
+        }
+
+        [Test]
+        public void should_remove_once_a_shorter_episode_goal_is_met()
+        {
+            // The global goal (14 days or ratio 1) isn't met, but the episode's own goal (an hour) is.
+            GivenSeries(null, null, new EngineSeedingRule { Mode = EngineSeedingMode.Time, Minutes = 60 });
+
+            Subject.Process(GivenClient());
+
+            VerifyRemoved(true);
+        }
+
         [Test]
         public void should_keep_seeding_with_a_goal_mode_it_does_not_know()
         {

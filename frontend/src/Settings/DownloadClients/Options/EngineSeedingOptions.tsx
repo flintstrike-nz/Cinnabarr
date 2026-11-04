@@ -134,6 +134,7 @@ function EngineSeedingOptions({
               type={inputTypes.NUMBER}
               name="engineSeedingTime"
               min={0}
+              isFloat={true}
               value={minutes / unit}
               errors={settings.engineSeedingMinutes.errors}
               warnings={settings.engineSeedingMinutes.warnings}
