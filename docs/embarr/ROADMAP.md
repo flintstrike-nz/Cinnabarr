@@ -237,7 +237,7 @@ This per-file import is idempotent. It's keyed by info-hash plus the file's inde
 
 **Part files.** libtorrent stores pieces that overlap unwanted files in a hidden `.parts` file in the save folder. The engine deletes it when the torrent is removed (`delete_partfile`), and orphan cleanup (§4.13) catches leftovers. The engine's "unwanted folder" option is forced off.
 
-**Optional staging folder.** This can be set per root folder, e.g. `<root>/.embarr-staging`. Files download there, then move into place when complete. Settings refuse a staging path on a different filesystem, so the move is always an instant rename and never a copy. Use it if writing torrents directly to slow hard drives hurts performance.
+**Optional staging folder.** One setting (Settings → Download Clients → Staging Folder) turns it on. Each torrent then downloads into `<root>/.embarr-staging/<torrent>/` in the root folder that holds its series, and each file moves into place when it passes its checks. The torrent saves into the root folder, so the move is a rename inside the same torrent. A file whose final folder is on a different drive from its root folder (a mount inside the root) is not staged, so the move is always an instant rename and never a copy. The staging folder is hidden from library scans and Library Import, and each torrent's folder is removed once it is empty. Use it if writing torrents directly to slow hard drives hurts performance. A per-root-folder toggle can come with the root folder settings in Phase 4.
 
 ### 4.9 Versions and concurrent sources
 

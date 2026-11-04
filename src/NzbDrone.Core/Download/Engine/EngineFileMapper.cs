@@ -4,7 +4,10 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using NLog;
+using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Download.Clients.QBittorrent;
 using NzbDrone.Core.Languages;
 using NzbDrone.Core.MediaFiles;
@@ -12,6 +15,7 @@ using NzbDrone.Core.Organizer;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
+using NzbDrone.Core.RootFolders;
 using NzbDrone.Core.Tv;
 
 namespace NzbDrone.Core.Download.Engine
@@ -42,10 +46,13 @@ namespace NzbDrone.Core.Download.Engine
         public const int PendingOverheadBytes = 1 + 9 + 8 + 4;
         public const int MaxFileNameBytes = 255;
         public const int MaxSuffixBytes = 64;
+        public const string StagingFolderName = ".embarr-staging";
         private const string StandIn = "x.";
 
         // Sonarr's subtitle tags (LanguageParser).
         private static readonly HashSet<string> SubtitleTags = new() { "forced", "foreign", "default", "cc", "psdh", "sdh" };
+        private static readonly Regex TrailingTagsRegex = new(@"(?:[-_. ](?:forced|foreign|default|cc|psdh|sdh))+$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        private static readonly Regex RegionalCodeRegex = new(@"(?:^|[-_. ])(?<code>[a-z]{2}-[a-z]{2})$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private static readonly HashSet<string> VobSubExtensions = new(StringComparer.OrdinalIgnoreCase) { ".idx", ".sub" };
 
         private static readonly Regex PendingRegex = new(@"\.[0-9a-f]{8}\.pending$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
@@ -54,11 +61,19 @@ namespace NzbDrone.Core.Download.Engine
 
         private readonly IParsingService _parsingService;
         private readonly IBuildFileNames _buildFileNames;
+        private readonly IConfigService _configService;
+        private readonly IRootFolderService _rootFolderService;
+        private readonly IDiskProvider _diskProvider;
+        private readonly Logger _logger;
 
-        public EngineFileMapper(IParsingService parsingService, IBuildFileNames buildFileNames)
+        public EngineFileMapper(IParsingService parsingService, IBuildFileNames buildFileNames, IConfigService configService, IRootFolderService rootFolderService, IDiskProvider diskProvider, Logger logger)
         {
             _parsingService = parsingService;
             _buildFileNames = buildFileNames;
+            _configService = configService;
+            _rootFolderService = rootFolderService;
+            _diskProvider = diskProvider;
+            _logger = logger;
         }
 
         public static string GetNameWithoutPendingSuffix(string path)
@@ -151,6 +166,20 @@ namespace NzbDrone.Core.Download.Engine
             }
 
             var savePath = GetCommonFolder(mappedVideos.Select(v => Path.GetDirectoryName(v.FinalPath)).ToList());
+
+            // With staging (roadmap §4.8), files download into <root>/.embarr-staging/<torrent>/ and the torrent saves
+            // into the root folder, so moving a finished file to its final path is a rename on the same drive.
+            string stagingFolder = null;
+            var root = _configService.EngineUseStagingFolder ? GetStagingRoot(series, savePath, mappedVideos.Select(v => Path.GetDirectoryName(v.FinalPath)).Distinct().ToList()) : null;
+
+            if (root != null)
+            {
+                savePath = root;
+                stagingFolder = StagingFolderName + "/" + downloadId.Substring(0, 8).ToLowerInvariant() + "/";
+
+                // Each file stages in its own folder, so files whose final names only differ by folder stay apart.
+            }
+
             var map = new EngineFileMap { SavePath = savePath };
 
             var subtitles = new List<MappedSubtitle>();
@@ -178,7 +207,7 @@ namespace NzbDrone.Core.Download.Engine
 
                     // A VobSub index and its data file are one track and must keep the same name.
                     Track = VobSubExtensions.Contains(Path.GetExtension(subtitleName))
-                        ? file.Name.Replace('\\', '/').ToLowerInvariant()[..^Path.GetExtension(subtitleName).Length]
+                        ? file.Name.Replace('\\', '/')[..^Path.GetExtension(subtitleName).Length]
                         : index.ToString()
                 });
             }
@@ -212,7 +241,7 @@ namespace NzbDrone.Core.Download.Engine
                 var extension = Path.GetExtension(video.FinalPath);
                 var stem = FitStem(Path.GetFileNameWithoutExtension(video.FinalPath), videoSubtitles.Select(s => s.Suffix).Append(extension));
 
-                var videoFile = CreateFile(savePath, pendingSuffix, video.Index, Path.Combine(folder, stem + extension), video.Episodes, null);
+                var videoFile = CreateFile(savePath, stagingFolder, pendingSuffix, video.Index, Path.Combine(folder, stem + extension), video.Episodes, null);
 
                 videoFile.SceneName = video.SceneName;
                 videoFile.OriginalName = video.OriginalName;
@@ -220,7 +249,7 @@ namespace NzbDrone.Core.Download.Engine
 
                 foreach (var subtitle in videoSubtitles)
                 {
-                    var subtitleFile = CreateFile(savePath, pendingSuffix, subtitle.Index, Path.Combine(folder, stem + subtitle.Suffix), new List<Episode>(), video.Index);
+                    var subtitleFile = CreateFile(savePath, stagingFolder, pendingSuffix, subtitle.Index, Path.Combine(folder, stem + subtitle.Suffix), new List<Episode>(), video.Index);
 
                     subtitleFile.LanguageId = subtitle.Language.Id;
                     subtitleFile.LanguageTags = subtitle.LanguageTags;
@@ -265,7 +294,7 @@ namespace NzbDrone.Core.Download.Engine
             var finalRelative = Path.GetRelativePath(link.SavePath, finalPath).Replace('\\', '/');
 
             // The torrent saves into one folder; a name that would move out of it keeps the name it was mapped to.
-            if (finalRelative == video.FinalPath || finalRelative.StartsWith("../") || Path.IsPathRooted(finalRelative))
+            if (finalRelative == video.FinalPath || finalRelative.StartsWith("../") || Path.IsPathRooted(finalRelative) || !IsOnStagingDrive(link, video, finalPath))
             {
                 return false;
             }
@@ -296,12 +325,22 @@ namespace NzbDrone.Core.Download.Engine
         // subtitles. A name or folder that is only a code ("en.srt", "Subs/eng/") gets a stand-in prefix first.
         public static Language ParseSubtitleLanguage(string fileName, string folder = null)
         {
-            var language = LanguageParser.ParseSubtitleLanguage(StandIn + fileName);
+            var stem = StripTrailingTags(Path.GetFileNameWithoutExtension(fileName));
 
-            // A full language name followed by tags ("….English.forced.srt"): parse it without them.
+            // A regional code ("….pt-BR.srt"), which the parser would read as its country part.
+            var regional = RegionalCodeRegex.Match(stem);
+            var language = regional.Success ? IsoLanguages.Find(regional.Groups["code"].Value)?.Language ?? Language.Unknown : Language.Unknown;
+
             if (language == Language.Unknown)
             {
-                language = LanguageParser.ParseSubtitleLanguage(StandIn + StripTrailingTags(Path.GetFileNameWithoutExtension(fileName)) + Path.GetExtension(fileName));
+                language = LanguageParser.ParseSubtitleLanguage(StandIn + fileName);
+            }
+
+            // A full language name followed by tags ("….English.forced.srt", "….Portuguese (Brazil).sdh.srt"): parse
+            // it without them.
+            if (language == Language.Unknown)
+            {
+                language = LanguageParser.ParseSubtitleLanguage(StandIn + stem + Path.GetExtension(fileName));
             }
 
             if (language == Language.Unknown && folder.IsNotNullOrWhiteSpace())
@@ -319,16 +358,10 @@ namespace NzbDrone.Core.Download.Engine
             return language == null || language == Language.Unknown || IsoLanguages.Get(language) == null ? Language.Unknown : language;
         }
 
+        // Removes only the trailing tags, keeping the separators of what comes before them.
         private static string StripTrailingTags(string stem)
         {
-            var tokens = stem.Split('-', '_', '.', ' ').ToList();
-
-            while (tokens.Count > 1 && SubtitleTags.Contains(tokens[^1].ToLowerInvariant()))
-            {
-                tokens.RemoveAt(tokens.Count - 1);
-            }
-
-            return string.Join(".", tokens);
+            return TrailingTagsRegex.Replace(stem, string.Empty);
         }
 
         // The tags (forced, sdh, cc…) at the end of a subtitle's name, whether or not the name gives a language, plus
@@ -443,11 +476,74 @@ namespace NzbDrone.Core.Download.Engine
             return stem.TrimEnd(' ', '.');
         }
 
-        private static EngineLinkFile CreateFile(string savePath, string pendingSuffix, int index, string finalPath, List<Episode> episodes, int? videoIndex)
+        // The root folder holding the series, when it is on the same drive as the files' final folder (a rename
+        // can't cross drives); otherwise null and the files download next to their final path.
+        private string GetMountRoot(string path)
+        {
+            return _diskProvider.GetMount(path)?.RootDirectory;
+        }
+
+        // A staged file moves to its final path by a rename, so a rebuilt final path must stay on the staging drive.
+        private bool IsOnStagingDrive(EngineLink link, EngineLinkFile video, string finalPath)
+        {
+            if (video.PendingPath == null || !video.PendingPath.StartsWith(StagingFolderName + "/"))
+            {
+                return true;
+            }
+
+            try
+            {
+                var stagingMount = GetMountRoot(Path.GetDirectoryName(Path.Combine(link.SavePath, video.PendingPath)));
+                var finalMount = GetMountRoot(Path.GetDirectoryName(finalPath));
+
+                return stagingMount != null && stagingMount.PathEquals(finalMount ?? string.Empty);
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug(ex, "Unable to check the drive of '{0}'", finalPath);
+                return false;
+            }
+        }
+
+        private string GetStagingRoot(Series series, string savePath, List<string> finalFolders)
+        {
+            try
+            {
+                var root = _rootFolderService.GetBestRootFolderPath(series.Path);
+
+                if (root.IsNullOrWhiteSpace() || !root.IsParentPath(savePath))
+                {
+                    return null;
+                }
+
+                // The staging folder itself (which can be a mount of its own) and every final folder (a multi-season
+                // torrent has several) must be on the same drive.
+                var stagingMount = GetMountRoot(Path.Combine(root, StagingFolderName));
+
+                foreach (var finalFolder in finalFolders)
+                {
+                    if (stagingMount == null || !stagingMount.PathEquals(GetMountRoot(finalFolder) ?? string.Empty))
+                    {
+                        _logger.Debug("'{0}' isn't on the same drive as the staging folder; not staging the torrent", finalFolder);
+                        return null;
+                    }
+                }
+
+                return root;
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug(ex, "Unable to check the drive of '{0}'; not staging it", savePath);
+                return null;
+            }
+        }
+
+        private static EngineLinkFile CreateFile(string savePath, string stagingFolder, string pendingSuffix, int index, string finalPath, List<Episode> episodes, int? videoIndex)
         {
             var finalRelative = Path.GetRelativePath(savePath, finalPath).Replace('\\', '/');
-            var folder = finalRelative.Contains('/') ? finalRelative.Substring(0, finalRelative.LastIndexOf('/') + 1) : string.Empty;
-            var name = finalRelative.Substring(folder.Length);
+            var finalFolder = finalRelative.Contains('/') ? finalRelative.Substring(0, finalRelative.LastIndexOf('/') + 1) : string.Empty;
+            var name = finalRelative.Substring(finalFolder.Length);
+            var folder = stagingFolder == null ? finalFolder : stagingFolder + index + "/";
 
             return new EngineLinkFile
             {

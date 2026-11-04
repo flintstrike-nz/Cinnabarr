@@ -91,6 +91,21 @@ function DownloadClientOptions({
             </FormRow>
 
             <FormRow>
+              <FormLabel>{translate('EngineUseStagingFolder')}</FormLabel>
+
+              <FormInputHelpText
+                text={translate('EngineUseStagingFolderHelpText')}
+              />
+
+              <FormInput
+                type={inputTypes.CHECK}
+                name="engineUseStagingFolder"
+                onChange={handleInputChange}
+                {...settings.engineUseStagingFolder}
+              />
+            </FormRow>
+
+            <FormRow>
               <FormLabel>{translate('AutoRedownloadFailed')}</FormLabel>
 
               <FormInputHelpText

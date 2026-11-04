@@ -115,6 +115,7 @@ namespace NzbDrone.Core.Test.RootFolderTests
         [TestCase(".appledouble")]
         [TestCase("@eadir")]
         [TestCase(".grab")]
+        [TestCase(".embarr-staging")]
         public void should_get_root_folder_with_subfolders_excluding_special_sub_folders(string subFolder)
         {
             var rootFolderPath = @"C:\Test\TV".AsOsAgnostic();
@@ -190,6 +191,30 @@ namespace NzbDrone.Core.Test.RootFolderTests
             var unmappedFolders = Subject.Get(rootFolder.Id, false).UnmappedFolders;
 
             unmappedFolders.Count.Should().Be(3);
+        }
+
+        [Test]
+        public void should_not_look_inside_special_folders_with_a_nested_series_folder_format()
+        {
+            _namingConfig.SeriesFolderFormat = "{Series TitleFirstCharacter}\\{Series Title}".AsOsAgnostic();
+
+            var rootFolderPath = @"C:\Test\TV".AsOsAgnostic();
+            var rootFolder = Builder<RootFolder>.CreateNew()
+                .With(r => r.Path = rootFolderPath)
+                .Build();
+
+            var letterFolder = Path.Combine(rootFolderPath, "S");
+            var stagingFolder = Path.Combine(rootFolderPath, ".embarr-staging");
+
+            Mocker.GetMock<IRootFolderRepository>().Setup(s => s.Get(It.IsAny<int>())).Returns(rootFolder);
+            Mocker.GetMock<ISeriesRepository>().Setup(s => s.AllSeriesPaths()).Returns(new Dictionary<int, string>());
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.GetDirectories(rootFolder.Path)).Returns(new[] { letterFolder, stagingFolder });
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.GetDirectories(letterFolder)).Returns(new[] { Path.Combine(letterFolder, "Series1") });
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.GetDirectories(stagingFolder)).Returns(new[] { Path.Combine(stagingFolder, "abcdef01") });
+
+            var unmappedFolders = Subject.Get(rootFolder.Id, false).UnmappedFolders;
+
+            unmappedFolders.Select(u => u.Name).Should().Equal("Series1");
         }
     }
 }

@@ -34,6 +34,9 @@ namespace NzbDrone.Core.Download.Engine
 
         // Deletes the hidden pending files of a mapped torrent (complete or still incomplete); never a final file.
         void DeletePendingFiles(EngineLink link);
+
+        // Removes the torrent's folder in the staging area once nothing is left in it.
+        void RemoveEmptyStagingFolder(EngineLink link);
     }
 
     // Writes the link-intent sidecar for every grab sent to the built-in engine, and uses it
@@ -320,6 +323,36 @@ namespace NzbDrone.Core.Download.Engine
                     {
                         _logger.Warn(ex, "Unable to delete '{0}'", path);
                     }
+                }
+            }
+
+            RemoveEmptyStagingFolder(link);
+        }
+
+        public void RemoveEmptyStagingFolder(EngineLink link)
+        {
+            // Each file stages in its own folder (<staging>/<torrent>/<file index>/) inside the torrent's folder.
+            var fileFolders = link?.Files?
+                .Where(f => f.PendingPath != null && f.PendingPath.StartsWith(EngineFileMapper.StagingFolderName + "/"))
+                .Select(f => Path.GetDirectoryName(Path.Combine(link.SavePath, f.PendingPath)))
+                .Distinct()
+                .ToList() ?? new List<string>();
+
+            var torrentFolders = fileFolders.Select(f => Path.GetDirectoryName(f)).Distinct().ToList();
+
+            foreach (var folder in fileFolders.Concat(torrentFolders))
+            {
+                try
+                {
+                    // Only ever an empty folder: a file the engine creates meanwhile keeps it.
+                    if (_diskProvider.FolderExists(folder))
+                    {
+                        _diskProvider.TryDeleteEmptyFolder(folder);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.Debug(ex, "Unable to remove staging folder '{0}'", folder);
                 }
             }
         }

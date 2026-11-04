@@ -20,6 +20,7 @@ namespace NzbDrone.Core.Configuration
 
         // Completed/Failed Download Handling (Download client)
         bool EnableCompletedDownloadHandling { get; set; }
+        bool EngineUseStagingFolder { get; set; }
         bool AutoRedownloadFailed { get; set; }
         bool AutoRedownloadFailedFromInteractiveSearch { get; set; }
 

@@ -256,5 +256,31 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             ExceptionVerification.ExpectedWarns(1);
             Mocker.GetMock<IHistoryRepository>().Verify(r => r.InsertMany(It.IsAny<IList<EpisodeHistory>>()), Times.Never());
         }
+
+        [Test]
+        public void should_remove_only_empty_staging_folders_of_the_torrent()
+        {
+            var root = @"C:\TV".AsOsAgnostic();
+            var torrentFolder = Path.Combine(root, ".embarr-staging", "abcdef01");
+            var link = new EngineLink
+            {
+                SavePath = root,
+                Files = new List<EngineLinkFile>
+                {
+                    new EngineLinkFile { PendingPath = ".embarr-staging/abcdef01/0/.Show - S01E01.mkv.abcdef01.pending" },
+                    new EngineLinkFile { PendingPath = ".embarr-staging/abcdef01/1/.Show - S01E01.en.srt.abcdef01.pending" }
+                }
+            };
+
+            Mocker.GetMock<IDiskProvider>().Setup(d => d.FolderExists(It.IsAny<string>())).Returns(true);
+
+            Subject.RemoveEmptyStagingFolder(link);
+
+            // Each file's folder, then the torrent's: never recursively, so a file appearing meanwhile is kept.
+            Mocker.GetMock<IDiskProvider>().Verify(d => d.TryDeleteEmptyFolder(Path.Combine(torrentFolder, "0")), Times.Once());
+            Mocker.GetMock<IDiskProvider>().Verify(d => d.TryDeleteEmptyFolder(Path.Combine(torrentFolder, "1")), Times.Once());
+            Mocker.GetMock<IDiskProvider>().Verify(d => d.TryDeleteEmptyFolder(torrentFolder), Times.Once());
+            Mocker.GetMock<IDiskProvider>().Verify(d => d.DeleteFolder(It.IsAny<string>(), It.IsAny<bool>()), Times.Never());
+        }
     }
 }

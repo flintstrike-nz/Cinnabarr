@@ -234,6 +234,12 @@ namespace NzbDrone.Core.Download.Engine
                     RemoveTorrent(proxy, settings, torrent);
                 }
             }
+
+            // Once nothing is left in the torrent's staging folder (the last subtitle can follow later), it goes.
+            if (link.Completed)
+            {
+                _engineLinkService.RemoveEmptyStagingFolder(link);
+            }
         }
 
         // After a database restore, a file the link records as imported may no longer be in the library: record it

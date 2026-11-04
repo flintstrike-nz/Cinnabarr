@@ -136,6 +136,14 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("DownloadPropersAndRepacks", value); }
         }
 
+        // Built-in engine: download into a hidden staging folder in each root folder (roadmap §4.8).
+        public bool EngineUseStagingFolder
+        {
+            get { return GetValueBoolean("EngineUseStagingFolder", false); }
+
+            set { SetValue("EngineUseStagingFolder", value); }
+        }
+
         public bool EnableCompletedDownloadHandling
         {
             get { return GetValueBoolean("EnableCompletedDownloadHandling", true); }
