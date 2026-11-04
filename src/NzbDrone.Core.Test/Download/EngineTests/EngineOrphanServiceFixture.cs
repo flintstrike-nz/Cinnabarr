@@ -11,6 +11,7 @@ using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.Clients;
 using NzbDrone.Core.Download.Clients.QBittorrent;
 using NzbDrone.Core.Download.Engine;
+using NzbDrone.Core.Download.History;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.RootFolders;
 using NzbDrone.Core.Test.Framework;
@@ -33,7 +34,8 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         [SetUp]
         public void Setup()
         {
-            _settings = new QBittorrentSettings();
+            // The built-in engine's client has no category (EngineSupervisor).
+            _settings = new QBittorrentSettings { TvCategory = string.Empty };
             _proxy = new Mock<IQBittorrentProxy>();
             _torrents = new List<QBittorrentTorrent> { new QBittorrentTorrent { Hash = Owned } };
             _root = @"C:\TV".AsOsAgnostic();
@@ -59,6 +61,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             disk.Setup(s => s.GetFileSize(It.IsAny<string>())).Returns(100);
 
             Mocker.GetMock<ITrackedDownloadService>().Setup(s => s.GetTrackedDownloads()).Returns(new List<TrackedDownload>());
+            Mocker.GetMock<IDownloadHistoryService>().Setup(s => s.GetUnfinishedGrabs(3)).Returns(new List<DownloadHistory>());
             Mocker.GetMock<IEngineAddGate>().Setup(s => s.TryBeginDelete()).Returns(() => new Mock<IDisposable>().Object);
         }
 
@@ -111,9 +114,51 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         {
             GivenFile("Show/.Show - S01E01.mkv.abcdef01.pending");
             Mocker.GetMock<ITrackedDownloadService>().Setup(s => s.GetTrackedDownloads())
-                  .Returns(new List<TrackedDownload> { new TrackedDownload { DownloadItem = new DownloadClientItem { DownloadId = Gone.ToUpperInvariant() } } });
+                  .Returns(new List<TrackedDownload> { new TrackedDownload { DownloadClient = 3, DownloadItem = new DownloadClientItem { DownloadId = Gone.ToUpperInvariant() } } });
 
             Subject.Scan().Should().BeEmpty();
+        }
+
+        [Test]
+        public void should_not_list_files_of_unfinished_grabs_not_in_the_queue_yet()
+        {
+            // After a restart, or before a download missing from the engine is back in the queue.
+            GivenFile("Show/.Show - S01E01.mkv.abcdef01.pending");
+            Mocker.GetMock<IDownloadHistoryService>().Setup(s => s.GetUnfinishedGrabs(3))
+                  .Returns(new List<DownloadHistory> { new DownloadHistory { DownloadId = Gone.ToUpperInvariant() } });
+
+            Subject.Scan().Should().BeEmpty();
+        }
+
+        [Test]
+        public void should_not_list_the_part_file_of_a_hybrid_download_missing_from_the_engine()
+        {
+            var v2 = new string('e', 64);
+            GivenFile($"Show/.{v2}.parts");
+            Mocker.GetMock<IDownloadHistoryService>().Setup(s => s.GetUnfinishedGrabs(3))
+                  .Returns(new List<DownloadHistory> { new DownloadHistory { DownloadId = Gone.ToUpperInvariant() } });
+            Mocker.GetMock<IEngineLinkService>().Setup(s => s.Get(Gone.ToUpperInvariant())).Returns(new EngineLink { InfoHashV2 = v2 });
+
+            Subject.Scan().Should().BeEmpty();
+        }
+
+        [Test]
+        public void should_ignore_queue_ids_that_are_not_info_hashes()
+        {
+            var pending = GivenFile("Show/.Show - S01E01.mkv.abcdef01.pending");
+            Mocker.GetMock<ITrackedDownloadService>().Setup(s => s.GetTrackedDownloads())
+                  .Returns(new List<TrackedDownload> { new TrackedDownload { DownloadClient = 3, DownloadItem = new DownloadClientItem { DownloadId = "a" } } });
+
+            Subject.Scan().Select(o => o.Path).Should().Equal(pending);
+        }
+
+        [Test]
+        public void should_not_scan_when_the_engine_lists_only_one_category()
+        {
+            _settings.TvCategory = "tv";
+            GivenFile("Show/.Show - S01E01.mkv.abcdef01.pending");
+
+            Assert.Throws<EngineOrphanException>(() => Subject.Scan());
         }
 
         [Test]

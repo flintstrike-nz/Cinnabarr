@@ -9,6 +9,7 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Messaging;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Download.Clients.QBittorrent;
+using NzbDrone.Core.Download.History;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
@@ -65,6 +66,8 @@ namespace NzbDrone.Core.Download.Engine
         private readonly IEngineSupervisor _engineSupervisor;
         private readonly IEngineAddGate _engineAddGate;
         private readonly ITrackedDownloadService _trackedDownloadService;
+        private readonly IDownloadHistoryService _downloadHistoryService;
+        private readonly IEngineLinkService _engineLinkService;
         private readonly IQBittorrentProxySelector _proxySelector;
         private readonly IRootFolderService _rootFolderService;
         private readonly IDiskProvider _diskProvider;
@@ -79,6 +82,8 @@ namespace NzbDrone.Core.Download.Engine
                                    IEngineSupervisor engineSupervisor,
                                    IEngineAddGate engineAddGate,
                                    ITrackedDownloadService trackedDownloadService,
+                                   IDownloadHistoryService downloadHistoryService,
+                                   IEngineLinkService engineLinkService,
                                    IQBittorrentProxySelector proxySelector,
                                    IRootFolderService rootFolderService,
                                    IDiskProvider diskProvider,
@@ -91,6 +96,8 @@ namespace NzbDrone.Core.Download.Engine
             _engineSupervisor = engineSupervisor;
             _engineAddGate = engineAddGate;
             _trackedDownloadService = trackedDownloadService;
+            _downloadHistoryService = downloadHistoryService;
+            _engineLinkService = engineLinkService;
             _proxySelector = proxySelector;
             _rootFolderService = rootFolderService;
             _diskProvider = diskProvider;
@@ -266,7 +273,10 @@ namespace NzbDrone.Core.Download.Engine
             return id != null && !owners.Any(h => h.StartsWith(id, StringComparison.Ordinal) || id.StartsWith(h, StringComparison.Ordinal));
         }
 
-        // Every id the engine's torrents, and the downloads still in the queue, are known by (lower-case). Throws when the engine can't be asked: without
+        // Every info-hash the engine's torrents are known by, and those of the engine's unfinished downloads, whether or
+        // not the engine still has them (lower-case): the downloads in the queue, and the unfinished grabs in history,
+        // which outlast a restart and the polls before a download missing from the engine shows in the queue again. A
+        // hybrid download's v2 hash comes from its link. Throws when the engine can't be asked: without
         // the full list, any file could belong to a torrent that wasn't seen.
         private List<string> GetOwners()
         {
@@ -282,6 +292,12 @@ namespace NzbDrone.Core.Download.Engine
                 throw new EngineOrphanException("the built-in engine's download client isn't available");
             }
 
+            // With a category set, the engine lists only the torrents in it.
+            if (settings.TvCategory.IsNotNullOrWhiteSpace())
+            {
+                throw new EngineOrphanException("the built-in engine's download client has a category set, so not every torrent can be listed");
+            }
+
             List<QBittorrentTorrent> torrents;
 
             try
@@ -293,10 +309,19 @@ namespace NzbDrone.Core.Download.Engine
                 throw new EngineOrphanException("the built-in engine's torrents couldn't be listed", ex);
             }
 
+            var unfinished = _trackedDownloadService.GetTrackedDownloads()
+                .Where(t => t.DownloadClient == client.Definition.Id)
+                .Select(t => t.DownloadItem?.DownloadId)
+                .Concat(_downloadHistoryService.GetUnfinishedGrabs(client.Definition.Id).Select(g => g.DownloadId))
+                .Where(EngineLinkService.IsInfoHash)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
             return torrents
                 .SelectMany(t => new[] { t.Hash, t.InfoHashV1, t.InfoHashV2 })
-                .Concat(_trackedDownloadService.GetTrackedDownloads().Select(t => t.DownloadItem?.DownloadId))
-                .Where(h => h.IsNotNullOrWhiteSpace())
+                .Concat(unfinished)
+                .Concat(unfinished.Select(id => _engineLinkService.Get(id.ToUpperInvariant())?.InfoHashV2))
+                .Where(EngineLinkService.IsInfoHash)
                 .Select(h => h.ToLowerInvariant())
                 .Distinct()
                 .ToList();
