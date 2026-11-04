@@ -5,7 +5,7 @@ using FluentAssertions;
 using NUnit.Framework;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Indexers.FileList;
-using NzbDrone.Core.Indexers.Newznab;
+using NzbDrone.Core.Indexers.Torznab;
 using NzbDrone.Core.Lifecycle;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Test.Common;
@@ -21,7 +21,7 @@ namespace NzbDrone.Core.Test.IndexerTests
         {
             _indexers = new List<IIndexer>();
 
-            _indexers.Add(Mocker.Resolve<Newznab>());
+            _indexers.Add(Mocker.Resolve<Torznab>());
             _indexers.Add(Mocker.Resolve<FileList>());
 
             Mocker.SetConstant<IEnumerable<IIndexer>>(_indexers);
@@ -35,7 +35,7 @@ namespace NzbDrone.Core.Test.IndexerTests
             Mocker.SetConstant<IIndexerRepository>(repo);
 
             var existingIndexers = Builder<IndexerDefinition>.CreateNew().BuildNew();
-            existingIndexers.ConfigContract = nameof(NewznabSettings);
+            existingIndexers.ConfigContract = nameof(TorznabSettings);
 
             repo.Insert(existingIndexers);
 
@@ -51,22 +51,11 @@ namespace NzbDrone.Core.Test.IndexerTests
         {
             var definitions = Subject.GetDefaultDefinitions().ToList();
 
-            definitions.Single(d => d.Implementation == nameof(Newznab)).Settings.As<NewznabSettings>().FailDownloads
+            definitions.Single(d => d.Implementation == nameof(Torznab)).Settings.As<TorznabSettings>().FailDownloads
                 .Should().BeEquivalentTo([(int)FailDownloads.Executables, (int)FailDownloads.PotentiallyDangerous]);
 
             definitions.Single(d => d.Implementation == nameof(FileList)).Settings.As<FileListSettings>().FailDownloads
                 .Should().BeEmpty();
-        }
-
-        [Test]
-        public void should_set_default_fail_downloads_on_preset_definitions()
-        {
-            var definition = Subject.GetDefaultDefinitions().Single(d => d.Implementation == nameof(Newznab));
-            int[] expected = [(int)FailDownloads.Executables, (int)FailDownloads.PotentiallyDangerous];
-
-            Subject.GetPresetDefinitions(definition)
-                .Should().NotBeEmpty()
-                .And.OnlyContain(d => d.Settings.As<NewznabSettings>().FailDownloads.SequenceEqual(expected));
         }
     }
 }

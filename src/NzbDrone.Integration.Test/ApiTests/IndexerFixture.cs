@@ -12,7 +12,7 @@ namespace NzbDrone.Integration.Test.ApiTests
     public class IndexerFixture : IntegrationTest
     {
         [Test]
-        [Ignore("Need mock Newznab to test")]
+        [Ignore("Need mock Torznab to test")]
         public void should_have_built_in_indexer()
         {
             var indexers = Indexers.All();
@@ -22,9 +22,9 @@ namespace NzbDrone.Integration.Test.ApiTests
             indexers.Where(c => c.ConfigContract == typeof(NullConfig).Name).Should().OnlyContain(c => c.EnableRss);
         }
 
-        private IndexerResource GetNewznabSchemav2(string name = null)
+        private IndexerResource GetTorznabSchemav2(string name = null)
         {
-            var schema = Indexers.Schema().First(v => v.Implementation == "Newznab");
+            var schema = Indexers.Schema().First(v => v.Implementation == "Torznab");
 
             schema.Name = name;
             schema.EnableRss = false;
@@ -44,7 +44,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         [Test]
         public void v2_categories_should_be_array()
         {
-            var schema = GetNewznabSchemav2();
+            var schema = GetTorznabSchemav2();
 
             var categoriesField = GetCategoriesField(schema);
 
@@ -54,7 +54,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         [Test]
         public void v2_categories_should_accept_null()
         {
-            var schema = GetNewznabSchemav2("Testv2null");
+            var schema = GetTorznabSchemav2("Testv2null");
 
             var categoriesField = GetCategoriesField(schema);
 
@@ -70,7 +70,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         [Test]
         public void v2_categories_should_accept_emptystring()
         {
-            var schema = GetNewznabSchemav2("Testv2emptystring");
+            var schema = GetTorznabSchemav2("Testv2emptystring");
 
             var categoriesField = GetCategoriesField(schema);
 
@@ -86,7 +86,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         [Test]
         public void v2_categories_should_accept_string()
         {
-            var schema = GetNewznabSchemav2("Testv2string");
+            var schema = GetTorznabSchemav2("Testv2string");
 
             var categoriesField = GetCategoriesField(schema);
 
@@ -102,7 +102,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         [Test]
         public void v2_categories_should_accept_array()
         {
-            var schema = GetNewznabSchemav2("Testv2array");
+            var schema = GetTorznabSchemav2("Testv2array");
 
             var categoriesField = GetCategoriesField(schema);
 
