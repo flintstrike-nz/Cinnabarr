@@ -185,11 +185,55 @@ namespace NzbDrone.Core.Test.Download.EngineTests
                           ("Show.S01E01.720p/A/Subs/Show.S01E01.720p.en.srt", 10),
                           ("Show.S01E01.720p/B/Subs/Show.S01E01.720p.en.srt", 10));
 
-            map.Files.Where(f => f.IsSubtitle).Select(f => f.FinalPath).Should().Equal(
+            var subtitles = map.Files.Where(f => f.IsSubtitle).ToList();
+
+            subtitles.Select(f => f.FinalPath).Should().Equal(
                 "Show - S01E01.1.en.srt",
-                "Show - S01E01.srt",
+                "Show - S01E01.sdh.srt",
                 "Show - S01E01.2.en.srt",
                 "Show - S01E01.3.en.srt");
+
+            // The number is saved as the title, which library renames keep.
+            subtitles.Select(f => f.SubtitleTitle).Should().Equal("1", null, "2", "3");
+        }
+
+        [Test]
+        public void should_read_languages_and_tags_from_short_names_and_folders()
+        {
+            var map = Map(("Show.S01E01/Show.S01E01.mkv", 1000),
+                          ("Show.S01E01/Subs/eng.forced.srt", 10),
+                          ("Show.S01E01/Subs/fr/1.srt", 10),
+                          ("Show.S01E01/Subs/English/Show.S01E01.forced.ass", 10));
+
+            map.Files.Where(f => f.IsSubtitle).Select(f => f.FinalPath).Should().Equal(
+                "Show - S01E01.en.forced.srt",
+                "Show - S01E01.fr.srt",
+                "Show - S01E01.en.forced.ass");
+        }
+
+        [Test]
+        public void should_keep_a_vobsub_index_and_its_data_on_the_same_name()
+        {
+            var map = Map(("Show.S01E01/Show.S01E01.mkv", 1000),
+                          ("Show.S01E01/Subs/Show.S01E01.en.idx", 10),
+                          ("Show.S01E01/Subs/Show.S01E01.en.sub", 10),
+                          ("Show.S01E01/Subs/Other/Show.S01E01.en.sub", 10));
+
+            map.Files.Where(f => f.IsSubtitle).Select(f => f.FinalPath).Should().Equal(
+                "Show - S01E01.1.en.idx",
+                "Show - S01E01.1.en.sub",
+                "Show - S01E01.2.en.sub");
+        }
+
+        [Test]
+        public void should_number_languages_that_share_a_code()
+        {
+            var map = Map(("Show.S01E01.mkv", 1000), ("Show.S01E01.Dutch.srt", 10), ("Show.S01E01.Flemish.srt", 10));
+
+            var subtitles = map.Files.Where(f => f.IsSubtitle).ToList();
+
+            subtitles.Select(f => f.FinalPath).Should().Equal("Show - S01E01.1.nl.srt", "Show - S01E01.2.nl.srt");
+            subtitles.Select(f => f.SubtitleTitle).Should().Equal("1", "2");
         }
 
         [Test]

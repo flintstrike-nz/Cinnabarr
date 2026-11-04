@@ -42,6 +42,11 @@ namespace NzbDrone.Core.Download.Engine
         public const int PendingOverheadBytes = 1 + 9 + 8 + 4;
         public const int MaxFileNameBytes = 255;
         public const int MaxSuffixBytes = 64;
+        private const string StandIn = "x.";
+
+        // Sonarr's subtitle tags (LanguageParser).
+        private static readonly HashSet<string> SubtitleTags = new() { "forced", "foreign", "default", "cc", "psdh", "sdh" };
+        private static readonly HashSet<string> VobSubExtensions = new(StringComparer.OrdinalIgnoreCase) { ".idx", ".sub" };
 
         private static readonly Regex PendingRegex = new(@"\.[0-9a-f]{8}\.pending$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
@@ -160,45 +165,41 @@ namespace NzbDrone.Core.Download.Engine
                     continue;
                 }
 
-                // Language and tags come from the file name, or from its folder (for example Subs/English/2_Eng.srt).
-                var language = LanguageParser.ParseSubtitleLanguage(subtitleName);
                 var folder = GetFolderName(file.Name);
-
-                if (language == Language.Unknown && folder.IsNotNullOrWhiteSpace())
-                {
-                    language = LanguageParser.ParseSubtitleLanguage(folder + Path.GetExtension(subtitleName));
-                }
 
                 subtitles.Add(new MappedSubtitle
                 {
                     File = file,
                     Index = index,
                     Video = video,
-                    Language = language,
-                    LanguageTags = LanguageParser.ParseLanguageTags(subtitleName),
-                    Extension = Path.GetExtension(subtitleName).ToLowerInvariant()
+                    Language = ParseSubtitleLanguage(subtitleName, folder),
+                    LanguageTags = ParseSubtitleTags(subtitleName, folder),
+                    Extension = Path.GetExtension(subtitleName).ToLowerInvariant(),
+
+                    // A VobSub index and its data file are one track and must keep the same name.
+                    Track = VobSubExtensions.Contains(Path.GetExtension(subtitleName))
+                        ? file.Name.Replace('\\', '/').ToLowerInvariant()[..^Path.GetExtension(subtitleName).Length]
+                        : index.ToString()
                 });
             }
 
-            // Named like any imported subtitle (roadmap §4.11): the video's name, then a copy number when several share
-            // a language, the language code, the tags and the extension, e.g. "….en.forced.srt".
-            foreach (var group in subtitles.GroupBy(s => (s.Video.Index, s.Language.Id, string.Join(".", s.LanguageTags), s.Extension)))
+            // Named like any imported subtitle (roadmap §4.11): the video's name, the language code, the tags and the
+            // extension, e.g. "….en.forced.srt". Tracks of a video that would get the same name (a VobSub pair counts as
+            // one track) are numbered first ("….1.en.srt", "….2.en.srt"); the number is saved as the subtitle's title,
+            // so library renames keep it.
+            foreach (var group in subtitles.GroupBy(s => (s.Video.Index,
+                                                         BuildSuffix(s.Language, null, s.LanguageTags, string.Empty).ToLowerInvariant(),
+                                                         VobSubExtensions.Contains(s.Extension) ? ".idx" : s.Extension)))
             {
-                var copy = 1;
+                var tracks = group.GroupBy(s => s.Track).ToList();
 
-                foreach (var subtitle in group)
+                foreach (var (track, number) in tracks.Select((t, i) => (t, i + 1)))
                 {
-                    subtitle.Copy = group.Count() > 1 ? copy++ : 0;
-                    subtitle.Suffix = BuildSuffix(subtitle.Language, subtitle.Copy, subtitle.LanguageTags, subtitle.Extension);
-                }
-            }
-
-            // A language without a two-letter code is named like an unknown one: keep any such names apart.
-            foreach (var group in subtitles.GroupBy(s => (s.Video.Index, s.Suffix.ToLowerInvariant())).Where(g => g.Count() > 1))
-            {
-                foreach (var (subtitle, position) in group.Skip(1).Select((s, i) => (s, i + 2)))
-                {
-                    subtitle.Suffix = "." + position + subtitle.Suffix;
+                    foreach (var subtitle in track)
+                    {
+                        subtitle.Title = tracks.Count > 1 ? number.ToString() : null;
+                        subtitle.Suffix = BuildSuffix(subtitle.Language, subtitle.Title, subtitle.LanguageTags, subtitle.Extension);
+                    }
                 }
             }
 
@@ -223,7 +224,7 @@ namespace NzbDrone.Core.Download.Engine
 
                     subtitleFile.LanguageId = subtitle.Language.Id;
                     subtitleFile.LanguageTags = subtitle.LanguageTags;
-                    subtitleFile.Copy = subtitle.Copy;
+                    subtitleFile.SubtitleTitle = subtitle.Title;
                     map.Files.Add(subtitleFile);
                 }
             }
@@ -291,13 +292,63 @@ namespace NzbDrone.Core.Download.Engine
             return path;
         }
 
-        private static string BuildSuffix(Language language, int copy, List<string> languageTags, string extension)
+        // The language a subtitle's name gives (or its folder's, e.g. Subs/English/), parsed as Sonarr parses
+        // subtitles. A name or folder that is only a code ("en.srt", "Subs/eng/") gets a stand-in prefix first.
+        public static Language ParseSubtitleLanguage(string fileName, string folder = null)
+        {
+            var language = LanguageParser.ParseSubtitleLanguage(StandIn + fileName);
+
+            if (language == Language.Unknown && folder.IsNotNullOrWhiteSpace())
+            {
+                language = LanguageParser.ParseSubtitleLanguage(StandIn + folder + Path.GetExtension(fileName));
+            }
+
+            return language;
+        }
+
+        // The tags (forced, sdh, cc…) at the end of a subtitle's name, whether or not the name gives a language, plus
+        // a folder that is itself a tag (e.g. Subs/SDH/).
+        public static List<string> ParseSubtitleTags(string fileName, string folder = null)
+        {
+            var tags = new List<string>();
+            var tokens = Path.GetFileNameWithoutExtension(fileName).Split('-', '_', '.', ' ');
+
+            // Read back from the end over tags and language words; stop at the first other word.
+            foreach (var token in tokens.Reverse().Select(t => t.ToLowerInvariant()))
+            {
+                if (SubtitleTags.Contains(token))
+                {
+                    tags.Insert(0, token);
+                }
+                else if (token.Length == 0 || !IsLanguageWord(token))
+                {
+                    break;
+                }
+            }
+
+            var folderTag = folder?.ToLowerInvariant();
+
+            if (folderTag != null && SubtitleTags.Contains(folderTag) && !tags.Contains(folderTag))
+            {
+                tags.Add(folderTag);
+            }
+
+            return tags;
+        }
+
+        private static bool IsLanguageWord(string token)
+        {
+            return (token.Length is 2 or 3 && IsoLanguages.Find(token) != null) ||
+                   Language.All.Any(l => string.Equals(l.Name, token, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static string BuildSuffix(Language language, string title, List<string> languageTags, string extension)
         {
             var suffix = new StringBuilder();
 
-            if (copy > 0)
+            if (title != null)
             {
-                suffix.Append('.').Append(copy);
+                suffix.Append('.').Append(title);
             }
 
             var isoLanguage = language == Language.Unknown ? null : IsoLanguages.Get(language);
@@ -428,7 +479,8 @@ namespace NzbDrone.Core.Download.Engine
             public Language Language { get; set; }
             public List<string> LanguageTags { get; set; }
             public string Extension { get; set; }
-            public int Copy { get; set; }
+            public string Title { get; set; }
+            public string Track { get; set; }
         }
     }
 }

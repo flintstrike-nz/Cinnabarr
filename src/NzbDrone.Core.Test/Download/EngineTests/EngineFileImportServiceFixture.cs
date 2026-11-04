@@ -246,6 +246,42 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_record_a_subtitle_of_an_older_link_with_the_language_its_name_gives()
+        {
+            // Mapped before subtitles carried their language: it is read back from the name they were given.
+            GivenVideoRecorded();
+            _link.Completed = true;
+            _link.Files[0].State = EngineLinkFileState.Imported;
+            _link.Files[1].State = EngineLinkFileState.Renamed;
+            _link.Files[1].FinalPath = "Show - S01E01.en.forced.srt";
+            _files[1].Name = "Show - S01E01.en.forced.srt";
+            _existing.Remove(_subtitlePending);
+            _existing.Add(Path.Combine(_link.SavePath, "Show - S01E01.en.forced.srt"));
+
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<NzbDrone.Core.Extras.Subtitles.ISubtitleFileService>()
+                .Verify(s => s.Upsert(It.Is<NzbDrone.Core.Extras.Subtitles.SubtitleFile>(f => f.Language == NzbDrone.Core.Languages.Language.English && f.LanguageTags.Single() == "forced")), Times.Once());
+        }
+
+        [Test]
+        public void should_record_again_published_subtitles_the_library_lost()
+        {
+            GivenVideoRecorded();
+            _link.Completed = true;
+            _link.Files.ForEach(f => f.State = EngineLinkFileState.Imported);
+            _existing.Remove(_pending);
+            _existing.Remove(_subtitlePending);
+            _existing.Add(_final);
+            _existing.Add(Path.Combine(_link.SavePath, "Show - S01E01.en.srt"));
+
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<NzbDrone.Core.Extras.Subtitles.ISubtitleFileService>()
+                .Verify(s => s.Upsert(It.Is<NzbDrone.Core.Extras.Subtitles.SubtitleFile>(f => f.RelativePath == Path.Combine("Season 01", "Show - S01E01.en.srt"))), Times.Once());
+        }
+
+        [Test]
         public void should_not_record_a_subtitle_twice()
         {
             GivenVideoRecorded();

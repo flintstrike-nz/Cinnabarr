@@ -251,6 +251,19 @@ namespace NzbDrone.Core.Download.Engine
                 })
                 .ToList();
 
+            // Published subtitles the library doesn't record (a restore) are recorded again; those of a video being
+            // recorded again follow once it is.
+            foreach (var subtitle in link.Files.Where(f => f.IsSubtitle && f.State == EngineLinkFileState.Imported))
+            {
+                var video = link.Files.FirstOrDefault(f => f.Index == subtitle.VideoIndex && f.State == EngineLinkFileState.Imported && !lost.Contains(f));
+                var subtitlePath = Path.Combine(link.SavePath, subtitle.FinalPath);
+
+                if (video != null && _diskProvider.FileExists(subtitlePath))
+                {
+                    RecordSubtitle(series, seriesEpisodes, link, video, subtitle, subtitlePath);
+                }
+            }
+
             if (lost.Empty())
             {
                 return;
@@ -423,6 +436,8 @@ namespace NzbDrone.Core.Download.Engine
                         file.State = EngineLinkFileState.Imported;
                         save();
 
+                        RecordPublishedSubtitles(series, seriesEpisodes, link, file);
+
                         RecheckDetached(proxy, settings, file, save);
 
                         return;
@@ -456,9 +471,24 @@ namespace NzbDrone.Core.Download.Engine
                     file.State = EngineLinkFileState.Imported;
                     save();
 
+                    RecordPublishedSubtitles(series, seriesEpisodes, link, file);
                     RecheckDetached(proxy, settings, file, save);
 
                     return;
+                }
+            }
+        }
+
+        // Subtitles already published for a video that is (again) recorded, for example after a restore.
+        private void RecordPublishedSubtitles(Series series, List<Episode> seriesEpisodes, EngineLink link, EngineLinkFile video)
+        {
+            foreach (var subtitle in link.Files.Where(f => f.IsSubtitle && f.VideoIndex == video.Index && f.State == EngineLinkFileState.Imported))
+            {
+                var subtitlePath = Path.Combine(link.SavePath, subtitle.FinalPath);
+
+                if (_diskProvider.FileExists(subtitlePath))
+                {
+                    RecordSubtitle(series, seriesEpisodes, link, video, subtitle, subtitlePath);
                 }
             }
         }
@@ -479,6 +509,7 @@ namespace NzbDrone.Core.Download.Engine
 
             var relativePath = series.Path.GetRelativePath(finalPath);
 
+            // A link mapped before subtitles carried their language keeps it in the name it was given.
             if (_subtitleFileService.FindByPath(series.Id, relativePath) == null)
             {
                 _subtitleFileService.Upsert(new SubtitleFile
@@ -488,9 +519,9 @@ namespace NzbDrone.Core.Download.Engine
                     EpisodeFileId = episode.EpisodeFileId,
                     RelativePath = relativePath,
                     Extension = Path.GetExtension(finalPath),
-                    Language = Language.FindById(file.LanguageId),
-                    LanguageTags = file.LanguageTags ?? new List<string>(),
-                    Copy = file.Copy
+                    Language = file.LanguageTags == null ? EngineFileMapper.ParseSubtitleLanguage(EngineFileMapper.GetFileName(file.FinalPath)) : Language.FindById(file.LanguageId),
+                    LanguageTags = file.LanguageTags ?? EngineFileMapper.ParseSubtitleTags(EngineFileMapper.GetFileName(file.FinalPath)),
+                    Title = file.SubtitleTitle
                 });
             }
 
