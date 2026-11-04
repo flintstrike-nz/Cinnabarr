@@ -139,7 +139,7 @@ namespace NzbDrone.Core.Download.Engine
 
             if (map != null)
             {
-                var infoHashV2 = torrent.InfoHashV2.IsNotNullOrWhiteSpace() ? torrent.InfoHashV2.ToLowerInvariant() : null;
+                var infoHashV2 = torrent.InfoHashV2?.ToLowerInvariant();
 
                 // Saved before renaming, so a retry after a failed rename reuses the same mapping.
                 if (link.Files == null || link.InfoHashV2 != infoHashV2)

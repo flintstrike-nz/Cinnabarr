@@ -265,20 +265,26 @@ namespace NzbDrone.Core.Download.Engine
 
         // True for an Embarr partial file whose torrent id none of the owners has. A pending file's id is a prefix of
         // its torrent's hash; a part file's name has the hash libtorrent prefers, which for a v2-only torrent is longer
-        // than the engine's (truncated) id.
-        private static bool IsOrphanName(string path, List<string> owners)
+        // than the engine's (truncated) id. A part file named by a v2 hash is kept while an unfinished download's v2
+        // hash isn't known: it may be that download's.
+        private static bool IsOrphanName(string path, Owners owners)
         {
             var id = GetTorrentId(Path.GetFileName(path));
 
-            return id != null && !owners.Any(h => h.StartsWith(id, StringComparison.Ordinal) || id.StartsWith(h, StringComparison.Ordinal));
+            if (id == null || (id.Length == 64 && owners.UnknownV2Hash))
+            {
+                return false;
+            }
+
+            return !owners.Hashes.Any(h => h.StartsWith(id, StringComparison.Ordinal) || id.StartsWith(h, StringComparison.Ordinal));
         }
 
         // Every info-hash the engine's torrents are known by, and those of the engine's unfinished downloads, whether or
         // not the engine still has them (lower-case): the downloads in the queue, and the unfinished grabs in history,
         // which outlast a restart and the polls before a download missing from the engine shows in the queue again. A
-        // hybrid download's v2 hash comes from its link. Throws when the engine can't be asked: without
-        // the full list, any file could belong to a torrent that wasn't seen.
-        private List<string> GetOwners()
+        // hybrid download's v2 hash comes from its link. Throws when the engine can't be asked: without the full list,
+        // any file could belong to a torrent that wasn't seen.
+        private Owners GetOwners()
         {
             if (_engineSupervisor.Status != EngineStatus.Running)
             {
@@ -309,22 +315,61 @@ namespace NzbDrone.Core.Download.Engine
                 throw new EngineOrphanException("the built-in engine's torrents couldn't be listed", ex);
             }
 
+            foreach (var torrent in torrents)
+            {
+                BackfillInfoHashV2(torrent);
+            }
+
             var unfinished = _trackedDownloadService.GetTrackedDownloads()
                 .Where(t => t.DownloadClient == client.Definition.Id)
                 .Select(t => t.DownloadItem?.DownloadId)
                 .Concat(_downloadHistoryService.GetUnfinishedGrabs(client.Definition.Id).Select(g => g.DownloadId))
                 .Where(EngineLinkService.IsInfoHash)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            return torrents
-                .SelectMany(t => new[] { t.Hash, t.InfoHashV1, t.InfoHashV2 })
-                .Concat(unfinished)
-                .Concat(unfinished.Select(id => _engineLinkService.Get(id.ToUpperInvariant())?.InfoHashV2))
-                .Where(EngineLinkService.IsInfoHash)
-                .Select(h => h.ToLowerInvariant())
+                .Select(id => id.ToUpperInvariant())
                 .Distinct()
                 .ToList();
+
+            var unfinishedLinks = unfinished.Select(id => _engineLinkService.Get(id)).Where(l => l != null).ToList();
+
+            return new Owners
+            {
+                Hashes = torrents
+                    .SelectMany(t => new[] { t.Hash, t.InfoHashV1, t.InfoHashV2 })
+                    .Concat(unfinished)
+                    .Concat(unfinishedLinks.Select(l => l.InfoHashV2))
+                    .Where(EngineLinkService.IsInfoHash)
+                    .Select(h => h.ToLowerInvariant())
+                    .Distinct()
+                    .ToList(),
+
+                // A prepared link without a v2 hash was prepared before it was recorded (BackfillInfoHashV2 fills those
+                // the engine still has).
+                UnknownV2Hash = unfinishedLinks.Any(l => l.Files != null && l.InfoHashV2 == null)
+            };
+        }
+
+        // Links prepared before v2 hashes were recorded get theirs while the engine still has the torrent.
+        private void BackfillInfoHashV2(QBittorrentTorrent torrent)
+        {
+            if (torrent.InfoHashV2 == null || !EngineLinkService.IsInfoHash(torrent.Hash))
+            {
+                return;
+            }
+
+            var downloadId = torrent.Hash.ToUpperInvariant();
+            var link = _engineLinkService.Get(downloadId);
+
+            if (link?.Files != null && link.InfoHashV2 == null)
+            {
+                link.InfoHashV2 = torrent.InfoHashV2.ToLowerInvariant();
+                _engineLinkService.Save(downloadId, link);
+            }
+        }
+
+        private class Owners
+        {
+            public List<string> Hashes { get; set; }
+            public bool UnknownV2Hash { get; set; }
         }
 
         // A staged file sits in .embarr-staging/{torrent}/{file}/: those folders go once they are empty, never the

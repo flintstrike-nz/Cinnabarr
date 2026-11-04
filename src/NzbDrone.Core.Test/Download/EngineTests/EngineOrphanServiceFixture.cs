@@ -143,6 +143,32 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_keep_v2_part_files_while_an_unfinished_downloads_v2_hash_is_unknown()
+        {
+            // Prepared before v2 hashes were recorded, and no longer in the engine.
+            var v1Parts = GivenFile($"Show/.{Gone}.parts");
+            GivenFile($"Show/.{new string('e', 64)}.parts");
+            Mocker.GetMock<IDownloadHistoryService>().Setup(s => s.GetUnfinishedGrabs(3))
+                  .Returns(new List<DownloadHistory> { new DownloadHistory { DownloadId = new string('F', 40) } });
+            Mocker.GetMock<IEngineLinkService>().Setup(s => s.Get(new string('F', 40))).Returns(new EngineLink { Files = new List<EngineLinkFile>() });
+
+            Subject.Scan().Select(o => o.Path).Should().Equal(v1Parts);
+        }
+
+        [Test]
+        public void should_record_the_v2_hash_of_a_torrent_prepared_before_it_was_recorded()
+        {
+            var link = new EngineLink { Files = new List<EngineLinkFile>() };
+            _torrents[0].InfoHashV2 = new string('C', 64);
+            Mocker.GetMock<IEngineLinkService>().Setup(s => s.Get(Owned.ToUpperInvariant())).Returns(link);
+
+            Subject.Scan();
+
+            link.InfoHashV2.Should().Be(new string('c', 64));
+            Mocker.GetMock<IEngineLinkService>().Verify(s => s.Save(Owned.ToUpperInvariant(), link), Times.Once());
+        }
+
+        [Test]
         public void should_ignore_queue_ids_that_are_not_info_hashes()
         {
             var pending = GivenFile("Show/.Show - S01E01.mkv.abcdef01.pending");

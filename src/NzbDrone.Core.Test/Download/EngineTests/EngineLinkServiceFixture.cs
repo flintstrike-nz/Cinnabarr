@@ -236,6 +236,20 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_keep_a_recorded_v2_hash_when_the_torrent_is_grabbed_again()
+        {
+            Subject.Handle(GivenGrab());
+
+            var link = Subject.Get(Hash);
+            link.InfoHashV2 = new string('c', 64);
+            Subject.Save(Hash, link);
+
+            Subject.Handle(GivenGrab());
+
+            Subject.Get(Hash).InfoHashV2.Should().Be(new string('c', 64));
+        }
+
+        [Test]
         public void should_not_restore_without_link()
         {
             GivenSeriesInLibrary();
