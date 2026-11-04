@@ -15,6 +15,7 @@ import {
   SetChildSave,
 } from 'typings/Settings/SettingsState';
 import translate from 'Utilities/String/translate';
+import EngineOrphanOptions from './EngineOrphanOptions';
 import EngineSeedingOptions from './EngineSeedingOptions';
 import { useManageDownloadClientSettings } from './useDownloadClientSettings';
 
@@ -147,6 +148,13 @@ function DownloadClientOptions({
 
       {hasSettings && isFetched && !error ? (
         <EngineSeedingOptions
+          settings={settings}
+          onInputChange={handleInputChange}
+        />
+      ) : null}
+
+      {hasSettings && isFetched && !error ? (
+        <EngineOrphanOptions
           settings={settings}
           onInputChange={handleInputChange}
         />

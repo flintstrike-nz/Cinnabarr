@@ -9,6 +9,19 @@ public class EngineOrphanFileResource
     public DateTime LastWrite { get; set; }
 }
 
+// How the scheduled orphan cleanup treats leftover files, without scanning for them.
+public class EngineOrphanStatusResource
+{
+    public int GraceDays { get; set; }
+
+    // False until a list has been approved: until then the scheduled cleanup only lists the files. Only an approval
+    // turns it on (it isn't a download client setting), so nothing is deleted that wasn't reviewed first.
+    public bool DeleteAutomatically { get; set; }
+
+    // Files the last scheduled run listed for review.
+    public int AwaitingReview { get; set; }
+}
+
 // Partial download files no engine torrent owns (roadmap §4.13), and how the scheduled cleanup treats them.
 public class EngineOrphansResource
 {

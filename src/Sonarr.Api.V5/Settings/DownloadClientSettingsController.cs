@@ -1,4 +1,6 @@
+using FluentValidation;
 using NzbDrone.Core.Configuration;
+using NzbDrone.Core.Download.Engine;
 using Sonarr.Http;
 
 namespace Sonarr.Api.V5.Settings;
@@ -9,6 +11,7 @@ public class DownloadClientSettingsController : SettingsController<DownloadClien
     public DownloadClientSettingsController(IConfigFileProvider configFileProvider, IConfigService configService)
         : base(configFileProvider, configService)
     {
+        SharedValidator.RuleFor(c => c.EngineOrphanGraceDays).InclusiveBetween(1, EngineOrphanService.MaxGraceDays).When(c => c.EngineOrphanGraceDays.HasValue);
     }
 
     protected override DownloadClientSettingsResource ToResource(IConfigFileProvider configFile, IConfigService model)
