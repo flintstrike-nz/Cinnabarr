@@ -291,6 +291,20 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             }
         }
 
+        public void RenameFile(string hash, string oldPath, string newPath, QBittorrentSettings settings)
+        {
+            throw new NotSupportedException("Renaming torrent files requires qBittorrent API v2");
+        }
+
+        public void SetLocation(string hash, string location, QBittorrentSettings settings)
+        {
+            var request = BuildRequest(settings).Resource("/command/setLocation")
+                                                .Post()
+                                                .AddFormParameter("hashes", hash)
+                                                .AddFormParameter("location", location);
+            ProcessRequest(request, settings);
+        }
+
         public void StartTorrent(string hash, QBittorrentSettings settings)
         {
             var request = BuildRequest(settings).Resource("/command/resume")

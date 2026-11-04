@@ -32,7 +32,8 @@ namespace NzbDrone.Core.MediaFiles.EpisodeImport.Specifications
 
             try
             {
-                if (localEpisode.ExistingFile)
+                // An in-place file already sits in its final folder; making it final is a rename, not a copy.
+                if (localEpisode.ExistingFile || localEpisode.InPlace)
                 {
                     _logger.Debug("Skipping free space check for existing episode");
                     return ImportSpecDecision.Accept();

@@ -29,6 +29,10 @@ namespace NzbDrone.Core.Parser.Model
         public ReleaseType ReleaseType { get; set; }
         public MediaInfoModel MediaInfo { get; set; }
         public bool ExistingFile { get; set; }
+
+        // Already at its final library path, written there by the built-in engine (roadmap §4.8): it is recorded
+        // where it is, never moved or copied, and its extra files are handled by Embarr.
+        public bool InPlace { get; set; }
         public bool SceneSource { get; set; }
         public string ReleaseGroup { get; set; }
         public string ReleaseHash { get; set; }

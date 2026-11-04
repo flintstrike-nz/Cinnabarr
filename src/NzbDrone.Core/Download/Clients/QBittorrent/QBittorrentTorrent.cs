@@ -66,6 +66,10 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
 
     public class QBittorrentTorrentFile
     {
+        public int Index { get; set; }
         public string Name { get; set; }
+        public long Size { get; set; }
+        public double Progress { get; set; }
+        public int Priority { get; set; }
     }
 }

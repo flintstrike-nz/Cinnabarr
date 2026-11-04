@@ -31,6 +31,8 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         void AddTags(string hash, IEnumerable<string> tags, QBittorrentSettings settings);
         void SetFilePriority(string hash, IEnumerable<int> fileIndexes, int priority, QBittorrentSettings settings);
         void StartTorrent(string hash, QBittorrentSettings settings);
+        void RenameFile(string hash, string oldPath, string newPath, QBittorrentSettings settings);
+        void SetLocation(string hash, string location, QBittorrentSettings settings);
     }
 
     public interface IQBittorrentProxySelector

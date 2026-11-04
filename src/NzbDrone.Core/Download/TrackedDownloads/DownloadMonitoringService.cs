@@ -34,6 +34,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         private readonly IEngineClientRegistry _engineClientRegistry;
         private readonly IEngineReconcileService _engineReconcileService;
         private readonly IEngineTorrentPreparationService _engineTorrentPreparationService;
+        private readonly IEngineFileImportService _engineFileImportService;
         private readonly Logger _logger;
         private readonly Debouncer _refreshDebounce;
 
@@ -48,6 +49,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                                          IEngineClientRegistry engineClientRegistry,
                                          IEngineReconcileService engineReconcileService,
                                          IEngineTorrentPreparationService engineTorrentPreparationService,
+                                         IEngineFileImportService engineFileImportService,
                                          Logger logger)
         {
             _downloadClientStatusService = downloadClientStatusService;
@@ -61,6 +63,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             _engineClientRegistry = engineClientRegistry;
             _engineReconcileService = engineReconcileService;
             _engineTorrentPreparationService = engineTorrentPreparationService;
+            _engineFileImportService = engineFileImportService;
             _logger = logger;
 
             _refreshDebounce = new Debouncer(QueueRefresh, TimeSpan.FromSeconds(5));
@@ -146,6 +149,13 @@ namespace NzbDrone.Core.Download.TrackedDownloads
 
             trackedDownloads.AddRange(missingFromEngine);
 
+            // After tracking, so each torrent's tracked download (and its ignored or failed state) is known. Like the
+            // folder import, it only runs with completed download handling on.
+            if (_configService.EnableCompletedDownloadHandling && _engineClientRegistry.IsEngineClient(downloadClient.Definition.Id))
+            {
+                ImportEngineFiles(downloadClient);
+            }
+
             return trackedDownloads;
         }
 
@@ -158,6 +168,18 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             catch (Exception ex)
             {
                 _logger.Warn(ex, "Unable to prepare new torrents in the engine");
+            }
+        }
+
+        private void ImportEngineFiles(IDownloadClient downloadClient)
+        {
+            try
+            {
+                _engineFileImportService.Process(downloadClient);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "Unable to import completed files from the engine");
             }
         }
 

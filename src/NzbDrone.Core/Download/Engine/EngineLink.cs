@@ -20,6 +20,40 @@ namespace NzbDrone.Core.Download.Engine
         // The grabbed quality; null in sidecars written before it was added, which fall back to parsing the title.
         public EngineLinkQuality Quality { get; set; }
         public DateTime Grabbed { get; set; }
+
+        // Written when the torrent is prepared (roadmap §4.8): the folder the engine saves into and, for each kept
+        // file, its hidden pending name and final library name, both relative to that folder.
+        public string SavePath { get; set; }
+        public List<EngineLinkFile> Files { get; set; }
+
+        // Set once every video in the torrent has been imported or rejected and the download is recorded as done.
+        public bool Completed { get; set; }
+    }
+
+    public enum EngineLinkFileState
+    {
+        Pending = 0,
+        Renamed = 1,
+        Imported = 2,
+        Rejected = 3
+    }
+
+    public class EngineLinkFile
+    {
+        public int Index { get; set; }
+        public bool IsSubtitle { get; set; }
+
+        // For a subtitle: the index of the video it belongs to.
+        public int? VideoIndex { get; set; }
+        public List<EngineLinkEpisode> Episodes { get; set; } = new();
+        public string PendingPath { get; set; }
+        public string FinalPath { get; set; }
+        public EngineLinkFileState State { get; set; }
+
+        // For a video: the original title and file name its final name was built from, so the name can be
+        // rebuilt once media info is known.
+        public string SceneName { get; set; }
+        public string OriginalName { get; set; }
     }
 
     public class EngineLinkQuality

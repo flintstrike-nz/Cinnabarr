@@ -27,6 +27,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         private readonly ICached<SeedingTimeCacheEntry> _seedingTimeCache;
         private readonly ITagRepository _tagRepository;
         private readonly IEngineClientRegistry _engineClientRegistry;
+        private readonly IEngineLinkService _engineLinkService;
 
         private class SeedingTimeCacheEntry
         {
@@ -45,6 +46,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                            IBlocklistService blocklistService,
                            ITagRepository tagRepository,
                            IEngineClientRegistry engineClientRegistry,
+                           IEngineLinkService engineLinkService,
                            Logger logger)
             : base(torrentFileInfoReader, httpClient, configService, diskProvider, remotePathMappingService, localizationService, blocklistService, logger)
         {
@@ -53,6 +55,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             _seedingTimeCache = cacheManager.GetCache<SeedingTimeCacheEntry>(GetType(), "seedingTime");
             _tagRepository = tagRepository;
             _engineClientRegistry = engineClientRegistry;
+            _engineLinkService = engineLinkService;
         }
 
         private IQBittorrentProxy Proxy => _proxySelector.GetProxy(Settings);
@@ -407,7 +410,30 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
 
         public override void RemoveItem(DownloadClientItem item, bool deleteData)
         {
-            Proxy.RemoveTorrent(item.DownloadId.ToLower(), deleteData, Settings);
+            var link = HoldNewTorrents ? _engineLinkService.Get(item.DownloadId) : null;
+
+            // A link that exists but can't be read may map the torrent into the library: never delete its data.
+            if (deleteData && HoldNewTorrents && link == null && _engineLinkService.Exists(item.DownloadId))
+            {
+                _logger.Warn("The link for '{0}' can't be read; removing it from the engine without deleting its files", item.Title);
+                Proxy.RemoveTorrent(item.DownloadId.ToLower(), false, Settings);
+                return;
+            }
+
+            if (link?.Files == null)
+            {
+                Proxy.RemoveTorrent(item.DownloadId.ToLower(), deleteData, Settings);
+                return;
+            }
+
+            // The torrent downloads straight into the library: removing it never deletes library files, whoever
+            // asks (completed or failed handling, a seed limit, the queue). Only its hidden pending files go.
+            Proxy.RemoveTorrent(item.DownloadId.ToLower(), false, Settings);
+
+            if (deleteData)
+            {
+                _engineLinkService.DeletePendingFiles(link);
+            }
         }
 
         public override IEnumerable<DownloadClientFile> GetFiles(DownloadClientItem item)

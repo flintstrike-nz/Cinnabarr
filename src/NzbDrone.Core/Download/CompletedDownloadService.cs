@@ -40,6 +40,7 @@ namespace NzbDrone.Core.Download
         private readonly IRejectedFileExtensionService _rejectedFileExtensionService;
         private readonly IProvideDownloadClient _downloadClientProvider;
         private readonly IEngineClientRegistry _engineClientRegistry;
+        private readonly IEngineLinkService _engineLinkService;
         private readonly Logger _logger;
 
         public CompletedDownloadService(IEventAggregator eventAggregator,
@@ -55,6 +56,7 @@ namespace NzbDrone.Core.Download
                                         IRejectedFileExtensionService rejectedFileExtensionService,
                                         IProvideDownloadClient downloadClientProvider,
                                         IEngineClientRegistry engineClientRegistry,
+                                        IEngineLinkService engineLinkService,
                                         Logger logger)
         {
             _eventAggregator = eventAggregator;
@@ -70,6 +72,7 @@ namespace NzbDrone.Core.Download
             _rejectedFileExtensionService = rejectedFileExtensionService;
             _downloadClientProvider = downloadClientProvider;
             _engineClientRegistry = engineClientRegistry;
+            _engineLinkService = engineLinkService;
             _logger = logger;
         }
 
@@ -100,6 +103,13 @@ namespace NzbDrone.Core.Download
             if (trackedDownload.HasIncompleteLink)
             {
                 trackedDownload.Warn(TrackedDownload.IncompleteLinkMessage);
+                return;
+            }
+
+            // Downloaded straight into the library: EngineFileImportService imports it file by file (roadmap §4.8).
+            if (_engineClientRegistry.IsEngineClient(trackedDownload.DownloadClient) &&
+                _engineLinkService.Get(trackedDownload.DownloadItem.DownloadId)?.Files != null)
+            {
                 return;
             }
 

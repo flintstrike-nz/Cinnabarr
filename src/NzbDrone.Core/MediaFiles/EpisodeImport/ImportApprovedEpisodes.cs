@@ -161,7 +161,8 @@ namespace NzbDrone.Core.MediaFiles.EpisodeImport
                             }
                         }
 
-                        if (!localEpisode.ScriptImported || localEpisode.ShouldImportExtras)
+                        // An in-place file's folder is the library folder; Embarr handles its subtitles itself.
+                        if (!localEpisode.InPlace && (!localEpisode.ScriptImported || localEpisode.ShouldImportExtras))
                         {
                             _extraService.ImportEpisode(localEpisode, episodeFile, copyOnly);
                         }

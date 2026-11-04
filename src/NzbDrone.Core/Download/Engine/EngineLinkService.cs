@@ -22,6 +22,15 @@ namespace NzbDrone.Core.Download.Engine
         // Rebuilds the grab record for a built-in engine torrent from its link sidecar.
         // Returns true if grab history was written.
         bool TryRestore(DownloadClientDefinition downloadClient, string downloadId);
+
+        EngineLink Get(string downloadId);
+        void Save(string downloadId, EngineLink link);
+
+        // True when a sidecar file exists for the download, whether or not it can be read.
+        bool Exists(string downloadId);
+
+        // Deletes the hidden pending files of a mapped torrent (complete or still incomplete); never a final file.
+        void DeletePendingFiles(EngineLink link);
     }
 
     // Writes the link-intent sidecar for every grab sent to the built-in engine, and uses it
@@ -30,6 +39,7 @@ namespace NzbDrone.Core.Download.Engine
     {
         public const string SeriesMediaType = "series";
         public const string RestoredFromKey = "LinkRestoredFrom";
+        public const string IncompleteSuffix = ".!qB";
 
         private static readonly Regex InfoHashRegex = new("^(?:[0-9a-f]{40}|[0-9a-f]{64})$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
@@ -237,6 +247,54 @@ namespace NzbDrone.Core.Download.Engine
             {
                 // An id this build doesn't know: fall back to parsing the title.
                 return null;
+            }
+        }
+
+        public EngineLink Get(string downloadId)
+        {
+            return Read(downloadId);
+        }
+
+        public bool Exists(string downloadId)
+        {
+            return IsInfoHash(downloadId) && _diskProvider.FileExists(GetLinkPath(downloadId));
+        }
+
+        public void Save(string downloadId, EngineLink link)
+        {
+            if (!IsInfoHash(downloadId))
+            {
+                throw new ArgumentException("Not an info-hash", nameof(downloadId));
+            }
+
+            Write(downloadId, link);
+        }
+
+        public void DeletePendingFiles(EngineLink link)
+        {
+            if (link?.Files == null || link.SavePath == null)
+            {
+                return;
+            }
+
+            foreach (var file in link.Files)
+            {
+                var pendingPath = Path.Combine(link.SavePath, file.PendingPath);
+
+                foreach (var path in new[] { pendingPath, pendingPath + IncompleteSuffix })
+                {
+                    try
+                    {
+                        if (_diskProvider.FileExists(path))
+                        {
+                            _diskProvider.DeleteFile(path);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Warn(ex, "Unable to delete '{0}'", path);
+                    }
+                }
             }
         }
 

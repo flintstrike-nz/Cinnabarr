@@ -136,6 +136,17 @@ namespace NzbDrone.Core.Test.MediaFiles.EpisodeImport.Specifications
         }
 
         [Test]
+        public void should_skip_check_for_in_place_files()
+        {
+            _localEpisode.InPlace = true;
+
+            Subject.IsSatisfiedBy(_localEpisode, null).Accepted.Should().BeTrue();
+
+            Mocker.GetMock<IDiskProvider>()
+                  .Verify(s => s.GetAvailableSpace(It.IsAny<string>()), Times.Never());
+        }
+
+        [Test]
         public void should_return_true_if_free_space_is_null()
         {
             long? freeSpace = null;
