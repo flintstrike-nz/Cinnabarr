@@ -114,6 +114,24 @@ namespace NzbDrone.Mono.Test.DiskProviderTests
         }
 
         [Test]
+        public void should_list_files_within_a_folder_without_following_links()
+        {
+            var root = GetTempFilePath();
+            var outside = GetTempFilePath();
+            Directory.CreateDirectory(Path.Combine(root, ".hidden", "sub"));
+            Directory.CreateDirectory(outside);
+
+            var inside = Path.Combine(root, ".hidden", "sub", ".a.12345678.pending");
+            File.WriteAllText(inside, "inside");
+            File.WriteAllText(Path.Combine(outside, ".b.12345678.pending"), "outside");
+
+            new UnixSymbolicLinkInfo(Path.Combine(root, "linked")).CreateSymbolicLinkTo(outside);
+            new UnixSymbolicLinkInfo(Path.Combine(root, ".c.12345678.pending")).CreateSymbolicLinkTo(Path.Combine(outside, ".b.12345678.pending"));
+
+            Subject.GetFilesWithinFolder(root).Should().BeEquivalentTo(new[] { inside });
+        }
+
+        [Test]
         public void should_copy_symlink()
         {
             var tempFolder = GetTempFilePath();

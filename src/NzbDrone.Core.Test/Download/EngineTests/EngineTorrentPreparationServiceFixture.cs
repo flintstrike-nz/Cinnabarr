@@ -157,6 +157,25 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_record_a_hybrid_torrents_v2_hash_in_its_link()
+        {
+            var link = new EngineLink
+            {
+                SavePath = "/tv/Show/Season 01",
+                Files = new List<EngineLinkFile> { new EngineLinkFile { Index = 0, FinalPath = "Show - S01E01.mkv", PendingPath = ".Show - S01E01.mkv.pending" } }
+            };
+
+            _files[0].Name = ".Show - S01E01.mkv.pending";
+            _torrent.InfoHashV2 = new string('C', 64);
+            Mocker.GetMock<IEngineLinkService>().Setup(s => s.Get(Hash.ToUpperInvariant())).Returns(link);
+
+            Subject.Prepare(GivenClient());
+
+            link.InfoHashV2.Should().Be(new string('c', 64));
+            Mocker.GetMock<IEngineLinkService>().Verify(s => s.Save(Hash.ToUpperInvariant(), link), Times.Once());
+        }
+
+        [Test]
         public void should_reject_when_no_video_matches_the_grabbed_episodes()
         {
             Mocker.GetMock<IEngineLinkService>().Setup(s => s.Get(Hash.ToUpperInvariant())).Returns(new EngineLink());

@@ -175,6 +175,42 @@ namespace NzbDrone.Common.Disk
             });
         }
 
+        public IEnumerable<string> GetFilesWithinFolder(string path)
+        {
+            Ensure.That(path, () => path).IsValidPath(PathValidationType.CurrentOs);
+
+            var options = new EnumerationOptions
+            {
+                AttributesToSkip = FileAttributes.System | FileAttributes.ReparsePoint,
+                RecurseSubdirectories = false,
+                IgnoreInaccessible = true
+            };
+
+            var folders = new Stack<DirectoryInfo>();
+            folders.Push(new DirectoryInfo(path));
+
+            while (folders.Count > 0)
+            {
+                foreach (var entry in folders.Pop().EnumerateFileSystemInfos("*", options))
+                {
+                    // Links are skipped by their attribute; LinkTarget catches any link a platform doesn't flag.
+                    if (entry.LinkTarget != null)
+                    {
+                        continue;
+                    }
+
+                    if (entry is DirectoryInfo folder)
+                    {
+                        folders.Push(folder);
+                    }
+                    else
+                    {
+                        yield return entry.FullName;
+                    }
+                }
+            }
+        }
+
         public long GetFolderSize(string path)
         {
             Ensure.That(path, () => path).IsValidPath(PathValidationType.CurrentOs);

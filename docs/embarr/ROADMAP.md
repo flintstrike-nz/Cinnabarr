@@ -326,6 +326,18 @@ A scheduled task deletes leftover partial downloads. It only touches `.!qB`, `.p
 
 The first run is a dry run that lists the files for approval. Nothing else is ever deleted by this task.
 
+Built so far (2f-1, backend):
+- **Which files.** Only Embarr's own partial files are considered: hidden pending files (`.{name}.{8 hex}.pending`, with or without `.!qB`) and libtorrent part files (`.{info-hash}.parts`). Each carries its torrent's id in its name. Any other `.!qB` file (from another client) is left alone, because its owner can't be known.
+- **Who owns them.** Ownership is checked against every id the engine reports for its torrents: the hash, `infohash_v1` and `infohash_v2`. This also covers hybrid and v2-only torrents, whose part files are named by the v2 hash.
+- **When nothing is decided.** If the engine isn't running or can't list its torrents, nothing is called an orphan.
+- **Unfinished downloads.** Files of the engine's unfinished downloads aren't orphans, even when the engine no longer has them (they can be re-added). That covers downloads in the queue and unfinished grabs in history, so it holds across a restart. A hybrid torrent's v2 hash is recorded in its link when it is prepared, because libtorrent names its part file after it. A re-grab keeps the recorded hash. Links prepared earlier get theirs from the engine during import, with the other link writes, while the engine still has the torrent. Orphan cleanup itself never writes links. While any unfinished download's v2 hash is still unknown, no part file named by a v2 hash is deleted.
+- **Category set.** If the engine's client has a category set, it can't list every torrent, so nothing is called an orphan.
+- **Links.** The scan doesn't follow links (symlinks, junctions), so every file it lists is physically inside a root folder.
+- **Just before deleting.** Ownership, age and existence are checked again for each file. Deletion takes turns with torrent adds (`EngineAddGate`) and doesn't run within 5 minutes of an add: the engine may not list a newly added torrent yet, and that torrent may own old files.
+- **Scheduled task.** `EngineOrphanCleanupCommand` runs daily. It only lists the files, and a health notice says how many are waiting, until a list is approved (`EngineOrphanCleanupApproved`). After that it deletes orphans itself. The grace period is `EngineOrphanGraceDays` (7).
+- **API.** `GET /api/v5/engine/orphans` scans now. `POST /api/v5/engine/orphans/delete` with `{paths, deleteAutomatically}` deletes the listed files that are still orphans on a fresh scan, then sets automatic deletion. Empty per-torrent staging folders go with their files.
+- **Next (2f-2).** A review screen in Settings → Download Clients, with the grace period and automatic deletion as settings.
+
 ### 4.14 Metadata sources
 
 | Source | Used for |

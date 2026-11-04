@@ -24,6 +24,8 @@ namespace NzbDrone.Core.Configuration
         int EngineSeedingMode { get; set; }
         int EngineSeedingMinutes { get; set; }
         double EngineSeedingRatio { get; set; }
+        bool EngineOrphanCleanupApproved { get; set; }
+        int EngineOrphanGraceDays { get; set; }
         bool AutoRedownloadFailed { get; set; }
         bool AutoRedownloadFailedFromInteractiveSearch { get; set; }
 

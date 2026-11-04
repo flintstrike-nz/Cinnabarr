@@ -209,7 +209,11 @@ namespace NzbDrone.Core.Download.Engine
                 TrackerSeedRatio = remoteEpisode.SeedConfiguration?.Ratio,
                 TrackerSeedMinutes = remoteEpisode.SeedConfiguration?.SeedTime is { } seedTime ? (int)seedTime.TotalMinutes : null,
                 Quality = FromQualityModel(remoteEpisode.ParsedEpisodeInfo?.Quality),
-                Grabbed = DateTime.UtcNow
+                Grabbed = DateTime.UtcNow,
+
+                // A re-grab of the same torrent (a re-add) keeps the v2 hash its earlier preparation recorded: its old
+                // part file is named after it, and it may be a while before the torrent is prepared again.
+                InfoHashV2 = Read(message.DownloadId)?.InfoHashV2
             };
 
             try

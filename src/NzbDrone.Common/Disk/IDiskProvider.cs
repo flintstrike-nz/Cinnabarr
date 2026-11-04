@@ -26,6 +26,10 @@ namespace NzbDrone.Common.Disk
         bool FolderEmpty(string path);
         IEnumerable<string> GetDirectories(string path);
         IEnumerable<string> GetFiles(string path, bool recursive);
+
+        // Every file under the folder, without following links: linked folders (symlinks, junctions) aren't entered
+        // and linked files aren't listed, so every path returned is physically inside the folder.
+        IEnumerable<string> GetFilesWithinFolder(string path);
         long GetFolderSize(string path);
         long GetFileSize(string path);
         void CreateFolder(string path);

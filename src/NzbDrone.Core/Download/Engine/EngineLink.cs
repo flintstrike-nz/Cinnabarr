@@ -34,6 +34,11 @@ namespace NzbDrone.Core.Download.Engine
         public string SavePath { get; set; }
         public List<EngineLinkFile> Files { get; set; }
 
+        // A hybrid torrent's v2 info-hash, written when it is prepared: libtorrent names its part file after it, while
+        // the download id is the v1 hash, so the part file's owner is still known when the torrent is gone (§4.13).
+        // Empty for a v1-only torrent; null when it isn't known (a link prepared before it was recorded).
+        public string InfoHashV2 { get; set; }
+
         // Set once every video in the torrent has been imported or rejected and the download is recorded as done.
         public bool Completed { get; set; }
     }

@@ -8,6 +8,12 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
     {
         public string Hash { get; set; } // Torrent hash
 
+        [JsonProperty(PropertyName = "infohash_v1")]
+        public string InfoHashV1 { get; set; } // BitTorrent v1 info-hash (qBittorrent 4.4+); empty for a v2-only torrent
+
+        [JsonProperty(PropertyName = "infohash_v2")]
+        public string InfoHashV2 { get; set; } // BitTorrent v2 info-hash (qBittorrent 4.4+); empty for a v1-only torrent
+
         public string Name { get; set; } // Torrent name
 
         public long Size { get; set; } // Torrent size (bytes)

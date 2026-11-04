@@ -119,6 +119,18 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_record_the_v2_hash_of_a_torrent_prepared_before_it_was_recorded()
+        {
+            _proxy.Setup(p => p.GetTorrents(_settings)).Returns(new List<QBittorrentTorrent> { new QBittorrentTorrent { Hash = Hash, Name = "Show", InfoHashV2 = new string('C', 64) } });
+            _trackedDownload = null;
+
+            Subject.Process(GivenClient());
+
+            _link.InfoHashV2.Should().Be(new string('c', 64));
+            Mocker.GetMock<IEngineLinkService>().Verify(s => s.Save(Hash.ToUpperInvariant(), _link), Times.Once());
+        }
+
+        [Test]
         public void should_check_a_completed_file_under_its_pending_name_then_rename_it()
         {
             Subject.Process(GivenClient());
