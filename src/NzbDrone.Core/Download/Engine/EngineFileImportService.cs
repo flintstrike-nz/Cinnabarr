@@ -9,7 +9,9 @@ using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Download.Clients.QBittorrent;
 using NzbDrone.Core.Download.TrackedDownloads;
+using NzbDrone.Core.Extras.Subtitles;
 using NzbDrone.Core.History;
+using NzbDrone.Core.Languages;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.EpisodeImport;
 using NzbDrone.Core.MediaFiles.EpisodeImport.Aggregation;
@@ -61,6 +63,8 @@ namespace NzbDrone.Core.Download.Engine
         private readonly IDiskProvider _diskProvider;
         private readonly IEngineFileMapper _fileMapper;
         private readonly IEngineFileReplacementService _replacementService;
+        private readonly IEngineSubtitleValidator _subtitleValidator;
+        private readonly ISubtitleFileService _subtitleFileService;
         private readonly Logger _logger;
 
         // Links checked against the library since startup (a restored database can have lost what a link records).
@@ -84,6 +88,8 @@ namespace NzbDrone.Core.Download.Engine
                                        IDiskProvider diskProvider,
                                        IEngineFileMapper fileMapper,
                                        IEngineFileReplacementService replacementService,
+                                       IEngineSubtitleValidator subtitleValidator,
+                                       ISubtitleFileService subtitleFileService,
                                        Logger logger)
         {
             _proxySelector = proxySelector;
@@ -101,6 +107,8 @@ namespace NzbDrone.Core.Download.Engine
             _diskProvider = diskProvider;
             _fileMapper = fileMapper;
             _replacementService = replacementService;
+            _subtitleValidator = subtitleValidator;
+            _subtitleFileService = subtitleFileService;
             _logger = logger;
         }
 
@@ -206,7 +214,7 @@ namespace NzbDrone.Core.Download.Engine
 
             foreach (var file in link.Files.Where(f => f.IsSubtitle))
             {
-                ProcessSubtitle(proxy, settings, hash, link, file, engineFiles, Save);
+                ProcessSubtitle(proxy, settings, hash, link, file, engineFiles, series, seriesEpisodes, Save);
             }
 
             var videos = link.Files.Where(f => !f.IsSubtitle).ToList();
@@ -455,6 +463,40 @@ namespace NzbDrone.Core.Download.Engine
             }
         }
 
+        // Records a published subtitle as an extra file of its video's episode file. False while the video's file
+        // isn't recorded (the subtitle is then recorded on a later poll).
+        private bool RecordSubtitle(Series series, List<Episode> seriesEpisodes, EngineLink link, EngineLinkFile video, EngineLinkFile file, string finalPath)
+        {
+            var episodes = video == null ? null : GetEpisodes(video, seriesEpisodes);
+            var videoPath = video == null ? null : Path.Combine(link.SavePath, video.FinalPath);
+            var episode = episodes?.FirstOrDefault(e => IsFileAt(series, e, videoPath));
+
+            if (episode == null)
+            {
+                _logger.Debug("'{0}' is published, but its video isn't recorded; recording it later", file.FinalPath);
+                return false;
+            }
+
+            var relativePath = series.Path.GetRelativePath(finalPath);
+
+            if (_subtitleFileService.FindByPath(series.Id, relativePath) == null)
+            {
+                _subtitleFileService.Upsert(new SubtitleFile
+                {
+                    SeriesId = series.Id,
+                    SeasonNumber = episode.SeasonNumber,
+                    EpisodeFileId = episode.EpisodeFileId,
+                    RelativePath = relativePath,
+                    Extension = Path.GetExtension(finalPath),
+                    Language = Language.FindById(file.LanguageId),
+                    LanguageTags = file.LanguageTags ?? new List<string>(),
+                    Copy = file.Copy
+                });
+            }
+
+            return true;
+        }
+
         // The files this one replaced are gone: their torrents stop offering them. Cleared only once done, so a
         // failure is retried on the next poll.
         private void RecheckDetached(IQBittorrentProxy proxy, QBittorrentSettings settings, EngineLinkFile file, Action save)
@@ -483,7 +525,15 @@ namespace NzbDrone.Core.Download.Engine
             _logger.Warn(text);
         }
 
-        private void ProcessSubtitle(IQBittorrentProxy proxy, QBittorrentSettings settings, string hash, EngineLink link, EngineLinkFile file, List<QBittorrentTorrentFile> engineFiles, Action save)
+        private void ProcessSubtitle(IQBittorrentProxy proxy,
+                                     QBittorrentSettings settings,
+                                     string hash,
+                                     EngineLink link,
+                                     EngineLinkFile file,
+                                     List<QBittorrentTorrentFile> engineFiles,
+                                     Series series,
+                                     List<Episode> seriesEpisodes,
+                                     Action save)
         {
             if (file.State is not (EngineLinkFileState.Pending or EngineLinkFileState.Renamed))
             {
@@ -498,6 +548,13 @@ namespace NzbDrone.Core.Download.Engine
             // rename whose state wasn't saved).
             if (IsRenamedInEngine(engineFiles, file) && _diskProvider.FileExists(finalPath) && !_diskProvider.FileExists(pendingPath))
             {
+                // Recorded with its video's file, so renames and deletions in the library carry it along. Recording
+                // is idempotent, so a restart before the state is saved records it once.
+                if (!RecordSubtitle(series, seriesEpisodes, link, video, file, finalPath))
+                {
+                    return;
+                }
+
                 file.State = EngineLinkFileState.Imported;
                 save();
 
@@ -521,10 +578,24 @@ namespace NzbDrone.Core.Download.Engine
                 return;
             }
 
-            // A subtitle is published once its video is in the library (subtitle validation and registration: §4.8).
+            // A subtitle is published once its video is in the library, and only if it passes its own checks.
             if (video?.State != EngineLinkFileState.Imported || !IsComplete(engineFiles, file) || !_diskProvider.FileExists(pendingPath) ||
                 _diskProvider.FileExists(finalPath))
             {
+                return;
+            }
+
+            var rejection = _subtitleValidator.Validate(pendingPath, file.FinalPath);
+
+            if (rejection != null)
+            {
+                // Only this subtitle goes: a bad subtitle never fails or blocklists the release.
+                _logger.Warn("Subtitle '{0}' was discarded: {1}", file.FinalPath, rejection);
+                proxy.SetFilePriority(hash, new[] { file.Index }, 0, settings);
+                DeletePending(pendingPath);
+                file.State = EngineLinkFileState.Rejected;
+                save();
+
                 return;
             }
 

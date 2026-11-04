@@ -62,6 +62,12 @@ namespace NzbDrone.Core.Download.Engine
         // they were detached from, which are rechecked once the new file is in the library.
         public List<int> ReplacesFileIds { get; set; }
         public List<string> DetachedFrom { get; set; }
+
+        // For a subtitle: what its name says (language id, tags such as forced or sdh, copy number when several
+        // share a language), recorded with it once it is published.
+        public int LanguageId { get; set; }
+        public List<string> LanguageTags { get; set; }
+        public int Copy { get; set; }
     }
 
     public class EngineLinkQuality

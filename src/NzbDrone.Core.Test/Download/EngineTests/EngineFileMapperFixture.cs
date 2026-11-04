@@ -177,7 +177,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
-        public void should_keep_subtitles_that_would_share_a_name_apart()
+        public void should_name_subtitles_by_language_and_number_copies_of_the_same_language()
         {
             var map = Map(("Show.S01E01.720p/Show.S01E01.720p.mkv", 1000),
                           ("Show.S01E01.720p/Subs/English/Show.S01E01.720p.srt", 10),
@@ -186,10 +186,23 @@ namespace NzbDrone.Core.Test.Download.EngineTests
                           ("Show.S01E01.720p/B/Subs/Show.S01E01.720p.en.srt", 10));
 
             map.Files.Where(f => f.IsSubtitle).Select(f => f.FinalPath).Should().Equal(
-                "Show - S01E01.English.srt",
-                "Show - S01E01.SDH.srt",
-                "Show - S01E01.Subs.en.srt",
-                "Show - S01E01.2.Subs.en.srt");
+                "Show - S01E01.1.en.srt",
+                "Show - S01E01.srt",
+                "Show - S01E01.2.en.srt",
+                "Show - S01E01.3.en.srt");
+        }
+
+        [Test]
+        public void should_keep_the_language_and_tags_a_subtitle_name_carries()
+        {
+            var map = Map(("Show.S01E01.mkv", 1000), ("Show.S01E01.fr.forced.srt", 10), ("Show.S01E01.de.sdh.srt", 10));
+
+            var subtitles = map.Files.Where(f => f.IsSubtitle).ToList();
+
+            subtitles.Select(f => f.FinalPath).Should().Equal("Show - S01E01.fr.forced.srt", "Show - S01E01.de.sdh.srt");
+            subtitles[0].LanguageId.Should().Be(NzbDrone.Core.Languages.Language.French.Id);
+            subtitles[0].LanguageTags.Should().Equal("forced");
+            subtitles[1].LanguageTags.Should().Equal("sdh");
         }
 
         [Test]

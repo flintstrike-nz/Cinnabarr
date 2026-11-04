@@ -291,7 +291,7 @@ Movies/{Movie} ({Year})/{Movie} ({Year}) - {Version}.{ext}
 
 - `{Version}` is the version slot's label, e.g. `2160p`, `HD`, `Remastered`.
 - The movie format, where every file name starts with the folder name, is what Emby's version switcher expects.
-- **Subtitles** use the video's base name plus `.{lang}[.forced|.sdh].{ext}`, e.g. `….en.forced.srt`.
+- **Subtitles** use the video's base name plus `.{lang}[.forced|.sdh].{ext}`, e.g. `….en.forced.srt`. When several subtitles share a language and tags, a copy number goes first (`….1.en.srt`, `….2.en.srt`). The language comes from the subtitle's file name, or its folder (`Subs/English/…`).
 - **Multi-episode files** use `S01E01-E02`. **Specials** go in `Season 00`.
 - Reuse Sonarr's file-name builder (`Embarr:src/NzbDrone.Core/Organizer`) for templates and for cleaning up characters that aren't allowed in file names.
 - Emby, Jellyfin and Plex each handle multiple versions of an **episode** differently. Verify this in Phase 5 before naming is locked.

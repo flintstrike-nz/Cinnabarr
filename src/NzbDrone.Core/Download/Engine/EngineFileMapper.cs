@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Download.Clients.QBittorrent;
+using NzbDrone.Core.Languages;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Organizer;
 using NzbDrone.Core.Parser;
@@ -159,30 +160,40 @@ namespace NzbDrone.Core.Download.Engine
                     continue;
                 }
 
-                var videoStem = Path.GetFileNameWithoutExtension(GetFileName(video.File.Name));
-                var suffix = CapSuffix(subtitleName.StartsWith(videoStem, StringComparison.OrdinalIgnoreCase)
-                    ? subtitleName.Substring(videoStem.Length)
-                    : "." + subtitleName);
+                // Language and tags come from the file name, or from its folder (for example Subs/English/2_Eng.srt).
+                var language = LanguageParser.ParseSubtitleLanguage(subtitleName);
+                var folder = GetFolderName(file.Name);
 
-                subtitles.Add(new MappedSubtitle { File = file, Index = index, Video = video, Suffix = suffix });
+                if (language == Language.Unknown && folder.IsNotNullOrWhiteSpace())
+                {
+                    language = LanguageParser.ParseSubtitleLanguage(folder + Path.GetExtension(subtitleName));
+                }
+
+                subtitles.Add(new MappedSubtitle
+                {
+                    File = file,
+                    Index = index,
+                    Video = video,
+                    Language = language,
+                    LanguageTags = LanguageParser.ParseLanguageTags(subtitleName),
+                    Extension = Path.GetExtension(subtitleName).ToLowerInvariant()
+                });
             }
 
-            // A video's subtitles share its name, so they only collide when their suffixes match: subtitles from
-            // different folders (for example English/ and SDH/) are kept apart by their folder name, then by their
-            // position if that isn't enough.
-            foreach (var group in subtitles.GroupBy(s => (s.Video.Index, s.Suffix.ToLowerInvariant())).Where(g => g.Count() > 1))
+            // Named like any imported subtitle (roadmap §4.11): the video's name, then a copy number when several share
+            // a language, the language code, the tags and the extension, e.g. "….en.forced.srt".
+            foreach (var group in subtitles.GroupBy(s => (s.Video.Index, s.Language.Id, string.Join(".", s.LanguageTags), s.Extension)))
             {
+                var copy = 1;
+
                 foreach (var subtitle in group)
                 {
-                    var folder = GetFolderName(subtitle.File.Name);
-
-                    if (folder.IsNotNullOrWhiteSpace())
-                    {
-                        subtitle.Suffix = CapSuffix("." + folder + subtitle.Suffix);
-                    }
+                    subtitle.Copy = group.Count() > 1 ? copy++ : 0;
+                    subtitle.Suffix = BuildSuffix(subtitle.Language, subtitle.Copy, subtitle.LanguageTags, subtitle.Extension);
                 }
             }
 
+            // A language without a two-letter code is named like an unknown one: keep any such names apart.
             foreach (var group in subtitles.GroupBy(s => (s.Video.Index, s.Suffix.ToLowerInvariant())).Where(g => g.Count() > 1))
             {
                 foreach (var (subtitle, position) in group.Skip(1).Select((s, i) => (s, i + 2)))
@@ -208,7 +219,12 @@ namespace NzbDrone.Core.Download.Engine
 
                 foreach (var subtitle in videoSubtitles)
                 {
-                    map.Files.Add(CreateFile(savePath, pendingSuffix, subtitle.Index, Path.Combine(folder, stem + subtitle.Suffix), new List<Episode>(), video.Index));
+                    var subtitleFile = CreateFile(savePath, pendingSuffix, subtitle.Index, Path.Combine(folder, stem + subtitle.Suffix), new List<Episode>(), video.Index);
+
+                    subtitleFile.LanguageId = subtitle.Language.Id;
+                    subtitleFile.LanguageTags = subtitle.LanguageTags;
+                    subtitleFile.Copy = subtitle.Copy;
+                    map.Files.Add(subtitleFile);
                 }
             }
 
@@ -273,6 +289,30 @@ namespace NzbDrone.Core.Download.Engine
                                                      customFormats);
 
             return path;
+        }
+
+        private static string BuildSuffix(Language language, int copy, List<string> languageTags, string extension)
+        {
+            var suffix = new StringBuilder();
+
+            if (copy > 0)
+            {
+                suffix.Append('.').Append(copy);
+            }
+
+            var isoLanguage = language == Language.Unknown ? null : IsoLanguages.Get(language);
+
+            if (isoLanguage != null)
+            {
+                suffix.Append('.').Append(isoLanguage.TwoLetterCode);
+            }
+
+            foreach (var tag in languageTags)
+            {
+                suffix.Append('.').Append(tag);
+            }
+
+            return CapSuffix(suffix.Append(extension).ToString());
         }
 
         // A subtitle's own part of its name (for example ".en.srt") is kept short, so it never squeezes out the
@@ -385,6 +425,10 @@ namespace NzbDrone.Core.Download.Engine
             public int Index { get; set; }
             public MappedVideo Video { get; set; }
             public string Suffix { get; set; }
+            public Language Language { get; set; }
+            public List<string> LanguageTags { get; set; }
+            public string Extension { get; set; }
+            public int Copy { get; set; }
         }
     }
 }
