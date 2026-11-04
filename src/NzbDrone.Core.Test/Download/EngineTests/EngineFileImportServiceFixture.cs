@@ -35,6 +35,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         private string _subtitlePending;
         private bool _approve;
         private TrackedDownload _trackedDownload;
+        private List<Episode> _seriesEpisodes;
 
         [SetUp]
         public void Setup()
@@ -80,8 +81,9 @@ namespace NzbDrone.Core.Test.Download.EngineTests
                 .Returns(new List<EpisodeHistory> { new EpisodeHistory { Id = 5, SeriesId = 1, EpisodeId = 11, DownloadId = Hash.ToUpperInvariant(), EventType = EpisodeHistoryEventType.Grabbed } });
 
             Mocker.GetMock<ISeriesService>().Setup(s => s.GetSeries(1)).Returns(new Series { Id = 1, Path = @"C:\TV\Show".AsOsAgnostic() });
-            Mocker.GetMock<IEpisodeService>().Setup(s => s.GetEpisodeBySeries(1)).Returns(new List<Episode> { new Episode { Id = 11, SeasonNumber = 1, EpisodeNumber = 1 } });
-            Mocker.GetMock<IEpisodeService>().Setup(s => s.GetEpisodes(It.IsAny<IEnumerable<int>>())).Returns(new List<Episode>());
+            _seriesEpisodes = new List<Episode> { new Episode { Id = 11, SeasonNumber = 1, EpisodeNumber = 1 } };
+            Mocker.GetMock<IEpisodeService>().Setup(s => s.GetEpisodeBySeries(1)).Returns(() => _seriesEpisodes);
+            Mocker.GetMock<IEpisodeService>().Setup(s => s.GetEpisodes(It.IsAny<IEnumerable<int>>())).Returns(() => _seriesEpisodes);
 
             Mocker.GetMock<IDiskProvider>().Setup(s => s.FileExists(It.IsAny<string>())).Returns<string>(p => _existing.Contains(p));
             Mocker.GetMock<IAggregationService>().Setup(s => s.Augment(It.IsAny<LocalEpisode>(), It.IsAny<DownloadClientItem>())).Returns<LocalEpisode, DownloadClientItem>((l, d) => l);
@@ -92,7 +94,20 @@ namespace NzbDrone.Core.Test.Download.EngineTests
 
             Mocker.GetMock<IImportApprovedEpisodes>()
                 .Setup(s => s.Import(It.IsAny<List<ImportDecision>>(), true, It.IsAny<DownloadClientItem>(), ImportMode.Move))
-                .Returns<List<ImportDecision>, bool, DownloadClientItem, ImportMode>((d, n, i, m) => new List<ImportResult> { new ImportResult(d[0]) });
+                .Returns<List<ImportDecision>, bool, DownloadClientItem, ImportMode>((d, n, i, m) =>
+                {
+                    GivenVideoRecorded();
+                    return new List<ImportResult> { new ImportResult(d[0]) };
+                });
+        }
+
+        // The video's file is recorded on its episode, at its final path.
+        private void GivenVideoRecorded()
+        {
+            _seriesEpisodes = new List<Episode>
+            {
+                new Episode { Id = 11, SeasonNumber = 1, EpisodeNumber = 1, EpisodeFileId = 30, EpisodeFile = new NzbDrone.Core.Datastore.LazyLoaded<NzbDrone.Core.MediaFiles.EpisodeFile>(new NzbDrone.Core.MediaFiles.EpisodeFile { Id = 30, RelativePath = Path.Combine("Season 01", "Show - S01E01.mkv") }) }
+            };
         }
 
         private IDownloadClient GivenClient()
@@ -200,6 +215,130 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             _files[1].Name = "Show - S01E01.en.srt";
             _existing.Remove(_subtitlePending);
             _existing.Add(Path.Combine(_link.SavePath, "Show - S01E01.en.srt"));
+        }
+
+        [Test]
+        public void should_record_a_published_subtitle_with_its_video_file_once()
+        {
+            GivenVideoRecorded();
+            _link.Completed = true;
+            _link.Files[0].State = EngineLinkFileState.Imported;
+            _link.Files[1].State = EngineLinkFileState.Renamed;
+            _link.Files[1].LanguageId = NzbDrone.Core.Languages.Language.English.Id;
+            _link.Files[1].LanguageTags = new List<string> { "forced" };
+            GivenSubtitleRenamedByEngine();
+
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<NzbDrone.Core.Extras.Subtitles.ISubtitleFileService>()
+                .Verify(s => s.Upsert(It.Is<NzbDrone.Core.Extras.Subtitles.SubtitleFile>(f => IsRecordedSubtitle(f))), Times.Once());
+            _link.Files[1].State.Should().Be(EngineLinkFileState.Imported);
+        }
+
+        private static bool IsRecordedSubtitle(NzbDrone.Core.Extras.Subtitles.SubtitleFile file)
+        {
+            return file.EpisodeFileId == 30 &&
+                   file.SeriesId == 1 &&
+                   file.SeasonNumber == 1 &&
+                   file.RelativePath == Path.Combine("Season 01", "Show - S01E01.en.srt") &&
+                   file.Language == NzbDrone.Core.Languages.Language.English &&
+                   file.LanguageTags.Single() == "forced";
+        }
+
+        [Test]
+        public void should_record_a_subtitle_of_an_older_link_with_the_language_its_name_gives()
+        {
+            // Mapped before subtitles carried their language: it is read back from the name they were given.
+            GivenVideoRecorded();
+            _link.Completed = true;
+            _link.Files[0].State = EngineLinkFileState.Imported;
+            _link.Files[1].State = EngineLinkFileState.Renamed;
+            _link.Files[1].FinalPath = "Show - S01E01.en.forced.srt";
+            _files[1].Name = "Show - S01E01.en.forced.srt";
+            _existing.Remove(_subtitlePending);
+            _existing.Add(Path.Combine(_link.SavePath, "Show - S01E01.en.forced.srt"));
+
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<NzbDrone.Core.Extras.Subtitles.ISubtitleFileService>()
+                .Verify(s => s.Upsert(It.Is<NzbDrone.Core.Extras.Subtitles.SubtitleFile>(f => f.Language == NzbDrone.Core.Languages.Language.English && f.LanguageTags.Single() == "forced")), Times.Once());
+        }
+
+        [Test]
+        public void should_record_again_published_subtitles_the_library_lost()
+        {
+            GivenVideoRecorded();
+            _link.Completed = true;
+            _link.Files.ForEach(f => f.State = EngineLinkFileState.Imported);
+            _existing.Remove(_pending);
+            _existing.Remove(_subtitlePending);
+            _existing.Add(_final);
+            _existing.Add(Path.Combine(_link.SavePath, "Show - S01E01.en.srt"));
+
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<NzbDrone.Core.Extras.Subtitles.ISubtitleFileService>()
+                .Verify(s => s.Upsert(It.Is<NzbDrone.Core.Extras.Subtitles.SubtitleFile>(f => f.RelativePath == Path.Combine("Season 01", "Show - S01E01.en.srt"))), Times.Once());
+        }
+
+        [Test]
+        public void should_record_published_subtitles_with_the_file_their_video_was_just_recorded_as()
+        {
+            // A restore left the episode pointing at the file this one replaced: the subtitle is recorded with the
+            // new file, read again after the import.
+            GivenExistingFile(7, "Show - S01E01 - Other.mkv");
+            _link.Files[0].State = EngineLinkFileState.Renamed;
+            _link.Files[0].ReplacesFileIds = new List<int> { 7 };
+            _link.Files[1].State = EngineLinkFileState.Imported;
+            _existing.Remove(_pending);
+            _existing.Remove(_subtitlePending);
+            _existing.Add(_final);
+            _existing.Add(Path.Combine(_link.SavePath, "Show - S01E01.en.srt"));
+
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<NzbDrone.Core.Extras.Subtitles.ISubtitleFileService>()
+                .Verify(s => s.Upsert(It.Is<NzbDrone.Core.Extras.Subtitles.SubtitleFile>(f => f.EpisodeFileId == 30)), Times.Once());
+        }
+
+        [Test]
+        public void should_not_record_a_subtitle_twice()
+        {
+            GivenVideoRecorded();
+            _link.Completed = true;
+            _link.Files[0].State = EngineLinkFileState.Imported;
+            _link.Files[1].State = EngineLinkFileState.Renamed;
+            GivenSubtitleRenamedByEngine();
+
+            Mocker.GetMock<NzbDrone.Core.Extras.Subtitles.ISubtitleFileService>()
+                .Setup(s => s.FindByPath(1, Path.Combine("Season 01", "Show - S01E01.en.srt")))
+                .Returns(new NzbDrone.Core.Extras.Subtitles.SubtitleFile());
+
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<NzbDrone.Core.Extras.Subtitles.ISubtitleFileService>().Verify(s => s.Upsert(It.IsAny<NzbDrone.Core.Extras.Subtitles.SubtitleFile>()), Times.Never());
+            _link.Files[1].State.Should().Be(EngineLinkFileState.Imported);
+        }
+
+        [Test]
+        public void should_discard_only_a_subtitle_that_fails_its_checks()
+        {
+            GivenVideoRecorded();
+            _link.Completed = true;
+            _link.Files[0].State = EngineLinkFileState.Imported;
+
+            Mocker.GetMock<IEngineSubtitleValidator>()
+                .Setup(s => s.Validate(_subtitlePending, "Show - S01E01.en.srt"))
+                .Returns("it is empty");
+
+            Subject.Process(GivenClient());
+
+            _proxy.Verify(p => p.SetFilePriority(Hash, new[] { 1 }, 0, _settings), Times.Once());
+            _proxy.Verify(p => p.RenameFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+            Mocker.GetMock<IDiskProvider>().Verify(s => s.DeleteFile(_subtitlePending), Times.Once());
+            Mocker.GetMock<IFailedDownloadService>().Verify(s => s.MarkAsFailed(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()), Times.Never());
+            _link.Files[1].State.Should().Be(EngineLinkFileState.Rejected);
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]
@@ -572,6 +711,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         [Test]
         public void should_recover_a_subtitle_rename_whose_state_was_not_saved()
         {
+            GivenVideoRecorded();
             _link.Completed = true;
             _link.Files[0].State = EngineLinkFileState.Imported;
             _files[1].Name = "Show - S01E01.en.srt";
@@ -669,6 +809,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         [Test]
         public void should_publish_a_subtitle_that_finishes_after_the_download_is_recorded()
         {
+            GivenVideoRecorded();
             _link.Completed = true;
             _link.Files[0].State = EngineLinkFileState.Imported;
 

@@ -62,6 +62,13 @@ namespace NzbDrone.Core.Download.Engine
         // they were detached from, which are rechecked once the new file is in the library.
         public List<int> ReplacesFileIds { get; set; }
         public List<string> DetachedFrom { get; set; }
+
+        // For a subtitle: what its name says (language id, tags such as forced or sdh), and the number that keeps it
+        // apart from other subtitles of its video named alike (saved as the subtitle's title, which is what library
+        // renames keep). Recorded with it once it is published.
+        public int LanguageId { get; set; }
+        public List<string> LanguageTags { get; set; }
+        public string SubtitleTitle { get; set; }
     }
 
     public class EngineLinkQuality
