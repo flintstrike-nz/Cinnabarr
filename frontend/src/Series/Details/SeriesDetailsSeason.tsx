@@ -32,6 +32,7 @@ import { manageEpisodesOptionsStore } from 'InteractiveImport/interactiveImportO
 import OrganizePreviewModal from 'Organize/OrganizePreviewModal';
 import SeriesHistoryModal from 'Series/History/SeriesHistoryModal';
 import SeasonInteractiveSearchModal from 'Series/Search/SeasonInteractiveSearchModal';
+import SeedingRuleModal from 'Series/Seeding/SeedingRuleModal';
 import { Statistics } from 'Series/Series';
 import { useSingleSeries, useToggleSeasonMonitored } from 'Series/useSeries';
 import { TableOptionsChangePayload } from 'typings/Table';
@@ -138,6 +139,7 @@ function SeriesDetailsSeason({
   const [isOrganizeModalOpen, setIsOrganizeModalOpen] = useState(false);
   const [isManageEpisodesOpen, setIsManageEpisodesOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isSeedingModalOpen, setIsSeedingModalOpen] = useState(false);
   const [isInteractiveSearchModalOpen, setIsInteractiveSearchModalOpen] =
     useState(false);
 
@@ -257,6 +259,14 @@ function SeriesDetailsSeason({
 
   const handleHistoryModalClose = useCallback(() => {
     setIsHistoryModalOpen(false);
+  }, []);
+
+  const handleSeedingPress = useCallback(() => {
+    setIsSeedingModalOpen(true);
+  }, []);
+
+  const handleSeedingModalClose = useCallback(() => {
+    setIsSeedingModalOpen(false);
   }, []);
 
   const handleInteractiveSearchPress = useCallback(() => {
@@ -462,6 +472,12 @@ function SeriesDetailsSeason({
 
                 {translate('History')}
               </MenuItem>
+
+              <MenuItem onPress={handleSeedingPress}>
+                <Icon className={styles.actionMenuIcon} name={icons.SEEDING} />
+
+                {translate('SeedingGoal')}
+              </MenuItem>
             </MenuContent>
           </Menu>
         ) : (
@@ -525,6 +541,15 @@ function SeriesDetailsSeason({
               size={20}
               isDisabled={!totalEpisodeCount}
               onPress={handleHistoryPress}
+            />
+
+            <IconButton
+              className={styles.actionButton}
+              name={icons.SEEDING}
+              title={translate('SeedingGoal')}
+              aria-label={translate('SeedingGoal')}
+              size={20}
+              onPress={handleSeedingPress}
             />
           </div>
         )}
@@ -597,6 +622,15 @@ function SeriesDetailsSeason({
         showImportMode={false}
         modalTitle={translate('ManageEpisodes')}
         onModalClose={handleManageEpisodesModalClose}
+      />
+
+      <SeedingRuleModal
+        isOpen={isSeedingModalOpen}
+        seriesId={seriesId}
+        seasonNumber={seasonNumber}
+        title={seasonNumberTitle}
+        inheritLabel={translate('SeedingGoalUseSeries')}
+        onModalClose={handleSeedingModalClose}
       />
 
       <SeriesHistoryModal

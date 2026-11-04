@@ -212,6 +212,7 @@ export const SCENE_MAPPING = Network;
 export const SCHEDULED = Clock;
 export const SCORE = UserPlus;
 export const SEARCH = Search;
+export const SEEDING = CircleArrowUp;
 export const SERIES_CONTINUING = Play;
 export const SERIES_ENDED = CircleStop;
 export const SERIES_DELETED = TriangleAlert;

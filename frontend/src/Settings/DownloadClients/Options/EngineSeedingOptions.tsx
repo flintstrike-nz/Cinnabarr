@@ -5,68 +5,18 @@ import FormInput from 'Components/Form/FormInput';
 import FormInputHelpText from 'Components/Form/FormInputHelpText';
 import FormLabel from 'Components/Form/FormLabel';
 import FormRow from 'Components/Form/FormRow';
-import { EnhancedSelectInputValue } from 'Components/Form/Select/EnhancedSelectInput';
 import { inputTypes } from 'Helpers/Props';
+import {
+  getTimeUnit,
+  seedingModeOptions,
+  timeUnitOptions,
+  usesRatio as modeUsesRatio,
+  usesTime as modeUsesTime,
+} from 'Series/Seeding/seedingRuleOptions';
 import { InputChanged } from 'typings/inputs';
 import { PendingSection } from 'typings/pending';
 import translate from 'Utilities/String/translate';
 import { DownloadClientSettingsModel } from './useDownloadClientSettings';
-
-// Matches EngineSeedingMode in Embarr's backend.
-const seedingModeOptions: EnhancedSelectInputValue<number>[] = [
-  {
-    key: 0,
-    get value() {
-      return translate('EngineSeedingModeNone');
-    },
-  },
-  {
-    key: 1,
-    get value() {
-      return translate('EngineSeedingModeTime');
-    },
-  },
-  {
-    key: 2,
-    get value() {
-      return translate('EngineSeedingModeRatio');
-    },
-  },
-  {
-    key: 3,
-    get value() {
-      return translate('EngineSeedingModeEither');
-    },
-  },
-  {
-    key: 4,
-    get value() {
-      return translate('EngineSeedingModeBoth');
-    },
-  },
-];
-
-// Minutes per unit; the time is stored in minutes.
-const timeUnits = [
-  { key: 43200, label: () => translate('EngineSeedingUnitMonths') },
-  { key: 10080, label: () => translate('EngineSeedingUnitWeeks') },
-  { key: 1440, label: () => translate('EngineSeedingUnitDays') },
-  { key: 60, label: () => translate('EngineSeedingUnitHours') },
-];
-
-const timeUnitOptions: EnhancedSelectInputValue<number>[] = timeUnits.map(
-  (unit) => ({
-    key: unit.key,
-    get value() {
-      return unit.label();
-    },
-  })
-);
-
-// The largest unit the stored minutes are a whole number of.
-function getUnit(minutes: number) {
-  return timeUnits.find((u) => minutes > 0 && minutes % u.key === 0)?.key ?? 60;
-}
 
 interface EngineSeedingOptionsProps {
   settings: PendingSection<DownloadClientSettingsModel>;
@@ -79,7 +29,7 @@ function EngineSeedingOptions({
 }: EngineSeedingOptionsProps) {
   const minutes = settings.engineSeedingMinutes.value;
   const mode = settings.engineSeedingMode.value;
-  const [unit, setUnit] = useState(() => getUnit(minutes));
+  const [unit, setUnit] = useState(() => getTimeUnit(minutes));
 
   const handleTimeChange = useCallback(
     ({ value }: InputChanged<number | null>) => {
@@ -103,8 +53,8 @@ function EngineSeedingOptions({
     [minutes, unit, onInputChange]
   );
 
-  const usesTime = mode === 1 || mode === 3 || mode === 4;
-  const usesRatio = mode === 2 || mode === 3 || mode === 4;
+  const usesTime = modeUsesTime(mode);
+  const usesRatio = modeUsesRatio(mode);
 
   return (
     <FieldSet
