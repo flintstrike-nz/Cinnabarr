@@ -239,7 +239,7 @@ namespace NzbDrone.Core.Download.Engine
                     var episodes = GetEpisodes(f, seriesEpisodes);
                     var finalPath = Path.Combine(link.SavePath, f.FinalPath);
 
-                    return episodes != null && _diskProvider.FileExists(finalPath) && !IsRecorded(series, episodes, finalPath);
+                    return episodes != null && _diskProvider.FileExists(finalPath) && !IsRecorded(series, episodes, finalPath, f);
                 })
                 .ToList();
 
@@ -363,6 +363,14 @@ namespace NzbDrone.Core.Download.Engine
                     if (_diskProvider.FileExists(finalPath) && !existingFiles.Any(f => Path.Combine(series.Path, f.RelativePath).PathEquals(finalPath)))
                     {
                         LogWaiting(waitingKey, "'{0}' is ready, but a file already exists at its final path; it stays under its pending name", file.FinalPath);
+                        return;
+                    }
+
+                    // Another download already replacing the same files, or headed for the same path, goes first: its
+                    // new file may already be at the path the old record still points to.
+                    if (existingFiles.Any() && _replacementService.IsReserved(downloadId, finalPath, existingFiles))
+                    {
+                        LogWaiting(waitingKey, "'{0}' is ready, but another download is replacing the same file; it stays under its pending name", file.FinalPath);
                         return;
                     }
 

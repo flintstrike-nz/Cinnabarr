@@ -124,11 +124,20 @@ namespace NzbDrone.Core.Download.Engine
                 });
             }
 
-            // Two files for the same episodes (for example a release and a re-encode): keep the larger one.
-            mappedVideos = mappedVideos
-                .GroupBy(v => string.Join(",", v.Episodes.Select(e => e.Id).OrderBy(id => id)))
-                .Select(g => g.OrderByDescending(v => v.File.Size).First())
-                .ToList();
+            // Files whose episodes overlap (a release and a re-encode, or E01 next to E01-E02): keep one per episode,
+            // preferring the file that covers more episodes, then the larger one. A torrent never maps two files to the
+            // same episode, so one of its files never has to replace another.
+            var kept = new List<MappedVideo>();
+
+            foreach (var video in mappedVideos.OrderByDescending(v => v.Episodes.Count).ThenByDescending(v => v.File.Size))
+            {
+                if (!kept.Any(k => k.Episodes.Any(e => video.Episodes.Any(v => v.Id == e.Id))))
+                {
+                    kept.Add(video);
+                }
+            }
+
+            mappedVideos = kept.OrderBy(v => v.Index).ToList();
 
             if (mappedVideos.Count == 0)
             {

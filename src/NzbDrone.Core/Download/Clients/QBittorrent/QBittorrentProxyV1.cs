@@ -298,11 +298,8 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
 
         public void RecheckTorrent(string hash, QBittorrentSettings settings)
         {
-            var request = BuildRequest(settings).Resource("/command/recheck")
-                                                .Post()
-                                                .AddFormParameter("hash", hash);
-
-            ProcessRequest(request, settings);
+            // Only the built-in engine's per-file flow rechecks, and it already needs API v2 to rename files.
+            throw new NotSupportedException("Rechecking torrent files requires qBittorrent API v2");
         }
 
         public void SetLocation(string hash, string location, QBittorrentSettings settings)

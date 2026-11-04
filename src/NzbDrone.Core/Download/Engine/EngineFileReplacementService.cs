@@ -16,6 +16,10 @@ namespace NzbDrone.Core.Download.Engine
         // caller can save them first: a detachment cut short can then still be rechecked.
         List<string> FindHolders(string replacingDownloadId, Series series, List<EpisodeFile> existingFiles);
 
+        // True while another download's replacement of any of the same files, or of the same final path, is under way
+        // (started but not yet recorded).
+        bool IsReserved(string replacingDownloadId, string finalPath, List<EpisodeFile> existingFiles);
+
         // Gets existing episode files ready to be replaced by a newer file (roadmap §4.8 "Name already taken", §4.10
         // "Removing one file from a torrent that's still seeding"): each one an engine torrent still holds is detached
         // from it, with its subtitles, and a file at the new file's final path is moved to the recycle bin so the new
@@ -44,11 +48,38 @@ namespace NzbDrone.Core.Download.Engine
         public List<string> FindHolders(string replacingDownloadId, Series series, List<EpisodeFile> existingFiles)
         {
             var links = GetLinks(replacingDownloadId);
+            var holders = new List<string>();
 
-            return existingFiles
-                .SelectMany(f => links.Where(l => FindVideo(l.Value, Path.Combine(series.Path, f.RelativePath)) != null).Select(l => l.Key))
-                .Distinct()
-                .ToList();
+            foreach (var existingFile in existingFiles)
+            {
+                foreach (var (downloadId, link) in links)
+                {
+                    var video = FindVideo(link, Path.Combine(series.Path, existingFile.RelativePath), existingFile.Id);
+
+                    if (video == null)
+                    {
+                        continue;
+                    }
+
+                    holders.Add(downloadId);
+
+                    // Rechecks the holder still owed for its own replacements carry over: once its video is replaced,
+                    // nothing else retries them.
+                    holders.AddRange(video.DetachedFrom ?? new List<string>());
+                }
+            }
+
+            return holders.Distinct().ToList();
+        }
+
+        public bool IsReserved(string replacingDownloadId, string finalPath, List<EpisodeFile> existingFiles)
+        {
+            var fileIds = existingFiles.Select(f => f.Id).ToHashSet();
+
+            return GetLinks(replacingDownloadId)
+                .SelectMany(l => l.Value.Files.Where(f => !f.IsSubtitle).Select(f => (Link: l.Value, File: f)))
+                .Any(x => (x.File.State == EngineLinkFileState.Renamed || (x.File.State == EngineLinkFileState.Pending && x.File.ReplacesFileIds != null)) &&
+                          ((x.File.ReplacesFileIds?.Any(fileIds.Contains) ?? false) || Path.Combine(x.Link.SavePath, x.File.FinalPath).PathEquals(finalPath)));
         }
 
         public void Detach(IQBittorrentProxy proxy, QBittorrentSettings settings, string replacingDownloadId, Series series, List<EpisodeFile> existingFiles, string finalPath)
@@ -63,7 +94,7 @@ namespace NzbDrone.Core.Download.Engine
 
                 foreach (var (downloadId, link) in links)
                 {
-                    var video = FindVideo(link, path);
+                    var video = FindVideo(link, path, existingFile.Id);
 
                     if (video == null)
                     {
@@ -121,9 +152,13 @@ namespace NzbDrone.Core.Download.Engine
             return _engineLinkService.GetAll().Where(l => l.Key != replacingDownloadId && l.Value.Files != null).ToList();
         }
 
-        private static EngineLinkFile FindVideo(EngineLink link, string path)
+        // The video a link holds at the path of an existing file. A Renamed video counts when the record is its own
+        // (its import finished but the state wasn't saved), not when it is the file it replaces.
+        private static EngineLinkFile FindVideo(EngineLink link, string path, int fileId)
         {
-            return link.Files.FirstOrDefault(f => !f.IsSubtitle && f.State == EngineLinkFileState.Imported && Path.Combine(link.SavePath, f.FinalPath).PathEquals(path));
+            return link.Files.FirstOrDefault(f => !f.IsSubtitle &&
+                                                  (f.State == EngineLinkFileState.Imported || (f.State == EngineLinkFileState.Renamed && f.ReplacesFileIds?.Contains(fileId) != true)) &&
+                                                  Path.Combine(link.SavePath, f.FinalPath).PathEquals(path));
         }
 
         private void Delete(string path)

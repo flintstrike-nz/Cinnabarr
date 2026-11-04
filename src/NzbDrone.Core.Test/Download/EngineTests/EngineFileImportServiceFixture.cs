@@ -439,6 +439,39 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_wait_while_another_download_is_replacing_the_same_file()
+        {
+            GivenExistingFile(7, "Show - S01E01 - Other.mkv");
+
+            Mocker.GetMock<IEngineFileReplacementService>()
+                .Setup(s => s.IsReserved(Hash.ToUpperInvariant(), _final, It.IsAny<List<NzbDrone.Core.MediaFiles.EpisodeFile>>()))
+                .Returns(true);
+
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<IEngineFileReplacementService>().Verify(s => s.Detach(It.IsAny<IQBittorrentProxy>(), It.IsAny<QBittorrentSettings>(), It.IsAny<string>(), It.IsAny<Series>(), It.IsAny<List<NzbDrone.Core.MediaFiles.EpisodeFile>>(), It.IsAny<string>()), Times.Never());
+            _proxy.Verify(p => p.RenameFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+            _link.Files[0].State.Should().Be(EngineLinkFileState.Pending);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_record_again_an_upgrade_whose_record_a_restore_lost()
+        {
+            // A restored database still has the replaced file's record at the same path.
+            GivenExistingFile(3, "Show - S01E01.mkv");
+            _link.Completed = true;
+            _link.Files.ForEach(f => f.State = EngineLinkFileState.Imported);
+            _link.Files[0].ReplacesFileIds = new List<int> { 3 };
+            _existing.Remove(_pending);
+            _existing.Add(_final);
+
+            Subject.Process(GivenClient());
+
+            Mocker.GetMock<IImportApprovedEpisodes>().Verify(s => s.Import(It.Is<List<ImportDecision>>(d => d[0].LocalEpisode.Path == _final), true, It.IsAny<DownloadClientItem>(), ImportMode.Move), Times.Once());
+        }
+
+        [Test]
         public void should_retry_a_recheck_that_did_not_happen()
         {
             _link.Completed = true;

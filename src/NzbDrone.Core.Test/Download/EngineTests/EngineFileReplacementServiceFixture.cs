@@ -84,6 +84,49 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_carry_over_rechecks_a_holder_still_owes()
+        {
+            _owner.Files[0].DetachedFrom = new List<string> { "EARLIER" };
+
+            Subject.FindHolders(Replacing, _series, new List<EpisodeFile> { _oldFile }).Should().Equal(Owner, "EARLIER");
+        }
+
+        [Test]
+        public void should_find_a_holder_whose_import_finished_but_was_not_saved()
+        {
+            _owner.Files[0].State = EngineLinkFileState.Renamed;
+
+            Subject.FindHolders(Replacing, _series, new List<EpisodeFile> { _oldFile }).Should().Equal(Owner);
+        }
+
+        [Test]
+        public void should_not_take_a_renamed_file_for_the_holder_of_the_file_it_replaces()
+        {
+            _owner.Files[0].State = EngineLinkFileState.Renamed;
+            _owner.Files[0].ReplacesFileIds = new List<int> { 7 };
+
+            Subject.FindHolders(Replacing, _series, new List<EpisodeFile> { _oldFile }).Should().BeEmpty();
+        }
+
+        [Test]
+        public void should_reserve_files_another_download_is_replacing()
+        {
+            _owner.Files[2].State = EngineLinkFileState.Renamed;
+            _owner.Files[2].ReplacesFileIds = new List<int> { 7 };
+
+            Subject.IsReserved(Replacing, Path.Combine(_seasonFolder, "Show - S01E01 - WEBDL.mkv"), new List<EpisodeFile> { _oldFile }).Should().BeTrue();
+        }
+
+        [Test]
+        public void should_reserve_a_final_path_another_download_renamed_to()
+        {
+            _owner.Files[2].State = EngineLinkFileState.Renamed;
+
+            Subject.IsReserved(Replacing, Path.Combine(_seasonFolder, "Show - S01E02 - HDTV.mkv"), new List<EpisodeFile> { _oldFile }).Should().BeTrue();
+            Subject.IsReserved(Replacing, Path.Combine(_seasonFolder, "Show - S01E01 - WEBDL.mkv"), new List<EpisodeFile> { _oldFile }).Should().BeFalse();
+        }
+
+        [Test]
         public void should_detach_and_clean_up_subtitles_that_were_not_published_yet()
         {
             _owner.Files[1].State = EngineLinkFileState.Pending;
