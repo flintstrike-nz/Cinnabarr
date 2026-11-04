@@ -158,13 +158,14 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             // so a time limit there could stop it early.
             Subject.Process(GivenClient());
 
-            _proxy.Verify(p => p.SetTorrentSeedingConfiguration(Hash, It.Is<TorrentSeedConfiguration>(c => c.Ratio == 1.0 && c.SeedTime == TimeSpan.FromMinutes(-1)), _settings), Times.Once());
+            _proxy.Verify(p => p.SetShareLimitsWithoutTimeLimits(Hash, 1.0, _settings), Times.Once());
 
             _torrent.RatioLimit = 1.0f;
             _torrent.SeedingTimeLimit = -1;
+            _torrent.InactiveSeedingTimeLimit = -1;
             Subject.Process(GivenClient());
 
-            _proxy.Verify(p => p.SetTorrentSeedingConfiguration(It.IsAny<string>(), It.IsAny<TorrentSeedConfiguration>(), It.IsAny<QBittorrentSettings>()), Times.Once());
+            _proxy.Verify(p => p.SetShareLimitsWithoutTimeLimits(It.IsAny<string>(), It.IsAny<double>(), It.IsAny<QBittorrentSettings>()), Times.Once());
         }
 
         [Test]
@@ -245,6 +246,43 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_keep_seeding_with_a_goal_mode_it_does_not_know()
+        {
+            GivenGlobalGoal((EngineSeedingMode)5, 0, 0);
+
+            Subject.Process(GivenClient());
+
+            VerifyRemoved(false);
+        }
+
+        [Test]
+        public void should_leave_a_download_the_user_ignored_alone()
+        {
+            GivenGlobalGoal(EngineSeedingMode.None, 0, 0);
+
+            Mocker.GetMock<NzbDrone.Core.Download.TrackedDownloads.ITrackedDownloadService>()
+                .Setup(s => s.Find(Hash.ToUpperInvariant()))
+                .Returns(new NzbDrone.Core.Download.TrackedDownloads.TrackedDownload { State = NzbDrone.Core.Download.TrackedDownloads.TrackedDownloadState.Ignored });
+
+            Subject.Process(GivenClient());
+
+            VerifyRemoved(false);
+            _proxy.Verify(p => p.SetShareLimitsWithoutTimeLimits(It.IsAny<string>(), It.IsAny<double>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+        }
+
+        [Test]
+        public void should_seed_again_a_torrent_an_earlier_inactive_time_limit_stopped()
+        {
+            _torrent.State = "stoppedUP";
+            _torrent.InactiveSeedingTimeLimit = 60;
+
+            Subject.Process(GivenClient());
+
+            _proxy.Verify(p => p.SetShareLimitsWithoutTimeLimits(Hash, 1.0, _settings), Times.Once());
+            _proxy.Verify(p => p.StartTorrent(Hash, _settings), Times.Once());
+        }
+
+        [Test]
         public void should_leave_a_torrent_stopped_by_hand_stopped()
         {
             _torrent.State = "stoppedUP";
@@ -264,7 +302,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
 
             Subject.Process(GivenClient());
 
-            _proxy.Verify(p => p.SetTorrentSeedingConfiguration(Hash, It.Is<TorrentSeedConfiguration>(c => c.Ratio == -1 && c.SeedTime == TimeSpan.FromMinutes(-1)), _settings), Times.Once());
+            _proxy.Verify(p => p.SetShareLimitsWithoutTimeLimits(Hash, -1, _settings), Times.Once());
         }
     }
 }

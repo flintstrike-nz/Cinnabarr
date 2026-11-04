@@ -8,10 +8,12 @@ namespace Sonarr.Api.V3.Config
         public string DownloadClientWorkingFolders { get; set; }
 
         public bool EnableCompletedDownloadHandling { get; set; }
-        public bool EngineUseStagingFolder { get; set; }
-        public int EngineSeedingMode { get; set; }
-        public int EngineSeedingMinutes { get; set; }
-        public double EngineSeedingRatio { get; set; }
+
+        // Nullable, so a client that doesn't send them leaves the saved values as they are.
+        public bool? EngineUseStagingFolder { get; set; }
+        public int? EngineSeedingMode { get; set; }
+        public int? EngineSeedingMinutes { get; set; }
+        public double? EngineSeedingRatio { get; set; }
         public bool AutoRedownloadFailed { get; set; }
         public bool AutoRedownloadFailedFromInteractiveSearch { get; set; }
     }

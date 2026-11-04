@@ -34,6 +34,9 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         void RenameFile(string hash, string oldPath, string newPath, QBittorrentSettings settings);
         void SetLocation(string hash, string location, QBittorrentSettings settings);
         void RecheckTorrent(string hash, QBittorrentSettings settings);
+
+        // Sets a torrent's ratio limit and clears both its seeding time limits (total and inactive).
+        void SetShareLimitsWithoutTimeLimits(string hash, double ratioLimit, QBittorrentSettings settings);
     }
 
     public interface IQBittorrentProxySelector

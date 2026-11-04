@@ -47,7 +47,9 @@ namespace NzbDrone.Core.Download.Engine
                 EngineSeedingMode.Ratio => ratioMet,
                 EngineSeedingMode.Either => timeMet || ratioMet,
                 EngineSeedingMode.Both => timeMet && ratioMet,
-                _ => true
+
+                // A mode this version doesn't know is never taken as met: seeding goes on rather than stopping early.
+                _ => false
             };
         }
 

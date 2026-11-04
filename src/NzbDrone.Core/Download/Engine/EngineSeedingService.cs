@@ -7,6 +7,7 @@ using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Download.Clients;
 using NzbDrone.Core.Download.Clients.QBittorrent;
 using NzbDrone.Core.Download.History;
+using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.Indexers;
 
 namespace NzbDrone.Core.Download.Engine
@@ -29,6 +30,7 @@ namespace NzbDrone.Core.Download.Engine
         private readonly IDownloadHistoryService _downloadHistoryService;
         private readonly ISeedConfigProvider _seedConfigProvider;
         private readonly IConfigService _configService;
+        private readonly ITrackedDownloadService _trackedDownloadService;
         private readonly Logger _logger;
 
         public EngineSeedingService(IQBittorrentProxySelector proxySelector,
@@ -36,6 +38,7 @@ namespace NzbDrone.Core.Download.Engine
                                     IDownloadHistoryService downloadHistoryService,
                                     ISeedConfigProvider seedConfigProvider,
                                     IConfigService configService,
+                                    ITrackedDownloadService trackedDownloadService,
                                     Logger logger)
         {
             _proxySelector = proxySelector;
@@ -43,6 +46,7 @@ namespace NzbDrone.Core.Download.Engine
             _downloadHistoryService = downloadHistoryService;
             _seedConfigProvider = seedConfigProvider;
             _configService = configService;
+            _trackedDownloadService = trackedDownloadService;
             _logger = logger;
         }
 
@@ -98,8 +102,9 @@ namespace NzbDrone.Core.Download.Engine
         {
             var link = EngineLinkService.IsInfoHash(downloadId) ? _engineLinkService.Get(downloadId) : null;
 
-            // Only a torrent whose files are all in the library: one still downloading or importing isn't done.
-            if (link?.Files == null || !link.Completed)
+            // Only a torrent whose files are all in the library: one still downloading or importing isn't done. One the
+            // user ignored is left as it is.
+            if (link?.Files == null || !link.Completed || _trackedDownloadService.Find(downloadId)?.State == TrackedDownloadState.Ignored)
             {
                 return;
             }
@@ -168,7 +173,7 @@ namespace NzbDrone.Core.Download.Engine
                 ratioLimit = active[0].Ratio;
             }
 
-            if (Math.Abs(torrent.RatioLimit - ratioLimit) < EngineSeedingRule.RatioTolerance && torrent.SeedingTimeLimit == minutesLimit)
+            if (Math.Abs(torrent.RatioLimit - ratioLimit) < EngineSeedingRule.RatioTolerance && torrent.SeedingTimeLimit == minutesLimit && torrent.InactiveSeedingTimeLimit == minutesLimit)
             {
                 return;
             }
@@ -176,15 +181,12 @@ namespace NzbDrone.Core.Download.Engine
             // A torrent an earlier limit stopped (for example a tracker limit set when it was added) seeds again under
             // the new one. A torrent stopped below its old limits was stopped by hand and stays stopped.
             var stoppedByLimit = stopped &&
-                                 ((torrent.RatioLimit >= 0 && torrent.Ratio >= torrent.RatioLimit - EngineSeedingRule.RatioTolerance) || torrent.SeedingTimeLimit >= 0);
+                                 ((torrent.RatioLimit >= 0 && torrent.Ratio >= torrent.RatioLimit - EngineSeedingRule.RatioTolerance) ||
+                                  torrent.SeedingTimeLimit >= 0 ||
+                                  torrent.InactiveSeedingTimeLimit >= 0);
 
-            proxy.SetTorrentSeedingConfiguration(torrent.Hash.ToLowerInvariant(),
-                                                 new TorrentSeedConfiguration
-                                                 {
-                                                     Ratio = ratioLimit,
-                                                     SeedTime = TimeSpan.FromMinutes(minutesLimit)
-                                                 },
-                                                 settings);
+            // Both of the engine's time limits (total and inactive) are cleared, whichever the client settings name.
+            proxy.SetShareLimitsWithoutTimeLimits(torrent.Hash.ToLowerInvariant(), ratioLimit, settings);
 
             if (stoppedByLimit && (ratioLimit < 0 || torrent.Ratio < ratioLimit - EngineSeedingRule.RatioTolerance))
             {

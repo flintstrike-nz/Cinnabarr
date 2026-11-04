@@ -296,6 +296,12 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             throw new NotSupportedException("Renaming torrent files requires qBittorrent API v2");
         }
 
+        public void SetShareLimitsWithoutTimeLimits(string hash, double ratioLimit, QBittorrentSettings settings)
+        {
+            // Only the built-in engine's seeding goals use it, and the engine flow already needs API v2.
+            throw new NotSupportedException("Setting share limits requires qBittorrent API v2");
+        }
+
         public void RecheckTorrent(string hash, QBittorrentSettings settings)
         {
             // Only the built-in engine's per-file flow rechecks, and it already needs API v2 to rename files.

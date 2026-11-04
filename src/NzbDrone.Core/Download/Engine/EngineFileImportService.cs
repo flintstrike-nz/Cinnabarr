@@ -619,13 +619,16 @@ namespace NzbDrone.Core.Download.Engine
             }
 
             // A subtitle is published once its video is in the library, and only if it passes its own checks.
-            if (video?.State != EngineLinkFileState.Imported || !IsComplete(engineFiles, file) || !_diskProvider.FileExists(pendingPath) ||
-                _diskProvider.FileExists(finalPath))
+            if (video?.State != EngineLinkFileState.Imported || !IsComplete(engineFiles, file) || !_diskProvider.FileExists(pendingPath))
             {
                 return;
             }
 
-            var rejection = _subtitleValidator.Validate(pendingPath, file.FinalPath);
+            // Another file already has its name (the subtitle never renames over it): it is discarded like a bad one,
+            // so it doesn't hold the download back.
+            var rejection = _diskProvider.FileExists(finalPath)
+                ? "a file with its name is already there"
+                : _subtitleValidator.Validate(pendingPath, file.FinalPath);
 
             if (rejection != null)
             {
