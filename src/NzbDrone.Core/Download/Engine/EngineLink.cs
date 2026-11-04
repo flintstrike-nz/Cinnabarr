@@ -35,7 +35,10 @@ namespace NzbDrone.Core.Download.Engine
         Pending = 0,
         Renamed = 1,
         Imported = 2,
-        Rejected = 3
+        Rejected = 3,
+
+        // An imported file that a newer file for the same episodes replaced; no longer downloaded or seeded.
+        Replaced = 4
     }
 
     public class EngineLinkFile
@@ -54,6 +57,11 @@ namespace NzbDrone.Core.Download.Engine
         // rebuilt once media info is known.
         public string SceneName { get; set; }
         public string OriginalName { get; set; }
+
+        // For a video that upgrades existing episode files: the files it replaces, and the engine torrents (info-hashes)
+        // they were detached from, which are rechecked once the new file is in the library.
+        public List<int> ReplacesFileIds { get; set; }
+        public List<string> DetachedFrom { get; set; }
     }
 
     public class EngineLinkQuality

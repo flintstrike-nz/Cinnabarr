@@ -10,6 +10,7 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Download.Clients.QBittorrent;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.History;
+using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.EpisodeImport;
 using NzbDrone.Core.MediaFiles.EpisodeImport.Aggregation;
 using NzbDrone.Core.Messaging.Events;
@@ -59,6 +60,7 @@ namespace NzbDrone.Core.Download.Engine
         private readonly IEventAggregator _eventAggregator;
         private readonly IDiskProvider _diskProvider;
         private readonly IEngineFileMapper _fileMapper;
+        private readonly IEngineFileReplacementService _replacementService;
         private readonly Logger _logger;
 
         // Links checked against the library since startup (a restored database can have lost what a link records).
@@ -81,6 +83,7 @@ namespace NzbDrone.Core.Download.Engine
                                        IEventAggregator eventAggregator,
                                        IDiskProvider diskProvider,
                                        IEngineFileMapper fileMapper,
+                                       IEngineFileReplacementService replacementService,
                                        Logger logger)
         {
             _proxySelector = proxySelector;
@@ -97,6 +100,7 @@ namespace NzbDrone.Core.Download.Engine
             _eventAggregator = eventAggregator;
             _diskProvider = diskProvider;
             _fileMapper = fileMapper;
+            _replacementService = replacementService;
             _logger = logger;
         }
 
@@ -121,8 +125,9 @@ namespace NzbDrone.Core.Download.Engine
 
                 try
                 {
-                    // Every video was rejected but the torrent is still here: its removal failed, so try again.
-                    if (link.Completed && AllVideosRejected(link))
+                    // Every video was rejected or replaced but the torrent is still here: remove it (this also retries a
+                    // removal that failed).
+                    if (link.Completed && NoVideosLeft(link))
                     {
                         RemoveTorrent(proxy, settings, torrent);
                         continue;
@@ -206,15 +211,15 @@ namespace NzbDrone.Core.Download.Engine
 
             // Completion can let the download be removed, so it waits until no subtitle rename is still outstanding.
             if (!link.Completed &&
-                videos.All(f => f.State is EngineLinkFileState.Imported or EngineLinkFileState.Rejected) &&
+                videos.All(f => f.State is EngineLinkFileState.Imported or EngineLinkFileState.Rejected or EngineLinkFileState.Replaced) &&
                 link.Files.All(f => !(f.IsSubtitle && f.State == EngineLinkFileState.Renamed)))
             {
                 Complete(link, series, seriesEpisodes, grabs, trackedDownload);
                 Save();
 
-                // Every video was rejected (and deleted): nothing is left to download or seed. Retried on later polls
-                // if it fails.
-                if (AllVideosRejected(link))
+                // Every video was rejected (and deleted) or replaced: nothing is left to download or seed. Retried
+                // on later polls if it fails.
+                if (NoVideosLeft(link))
                 {
                     RemoveTorrent(proxy, settings, torrent);
                 }
@@ -257,11 +262,12 @@ namespace NzbDrone.Core.Download.Engine
             proxy.RemoveTorrent(torrent.Hash.ToLowerInvariant(), false, settings);
         }
 
-        private static bool AllVideosRejected(EngineLink link)
+        // Every video was rejected or replaced by a newer file: nothing is left to seed.
+        private static bool NoVideosLeft(EngineLink link)
         {
             var videos = link.Files.Where(f => !f.IsSubtitle).ToList();
 
-            return videos.Any() && videos.All(f => f.State == EngineLinkFileState.Rejected);
+            return videos.Any() && videos.All(f => f.State is EngineLinkFileState.Rejected or EngineLinkFileState.Replaced);
         }
 
         private static bool IsRejectionFailure(EpisodeHistory failure)
@@ -313,14 +319,7 @@ namespace NzbDrone.Core.Download.Engine
                         return;
                     }
 
-                    // Replacing an episode's existing file (an upgrade) needs engine-aware handling, since that file can
-                    // belong to another torrent that is still seeding: until then the file waits.
-                    if (HasOtherFile(series, episodes, finalPath))
-                    {
-                        LogWaiting(waitingKey, "'{0}' is ready, but its episodes already have a file; it stays under its pending name", file.FinalPath);
-                        return;
-                    }
-
+                    // When the episodes already have a file, the checks include whether this one is an upgrade.
                     var decision = GetDecision(pendingPath, file, series, episodes, trackedDownload, link);
 
                     if (!decision.Approved)
@@ -347,7 +346,22 @@ namespace NzbDrone.Core.Download.Engine
                         save();
                     }
 
-                    // Never replace a library file by renaming over it.
+                    // An upgrade: detach the files it replaces from any torrent still seeding them, and clear the
+                    // final path if one of them holds it. Saved first, so a restart carries on with the replacement.
+                    var existingFiles = GetEpisodeFiles(episodes);
+
+                    if (existingFiles.Any())
+                    {
+                        file.ReplacesFileIds = existingFiles.Select(f => f.Id).ToList();
+                        save();
+
+                        var detachedFrom = _replacementService.Detach(proxy, settings, downloadId, series, existingFiles, finalPath);
+
+                        file.DetachedFrom = (file.DetachedFrom ?? new List<string>()).Union(detachedFrom).ToList();
+                        save();
+                    }
+
+                    // Never rename over a file that isn't one being replaced.
                     if (_diskProvider.FileExists(finalPath))
                     {
                         LogWaiting(waitingKey, "'{0}' is ready, but a file already exists at its final path; it stays under its pending name", file.FinalPath);
@@ -373,7 +387,7 @@ namespace NzbDrone.Core.Download.Engine
 
                     // Already recorded (the import finished but its state wasn't saved): never import it again,
                     // which would treat the file as an upgrade of itself.
-                    if (IsRecorded(series, episodes, finalPath))
+                    if (IsRecorded(series, episodes, finalPath, file))
                     {
                         file.State = EngineLinkFileState.Imported;
                         save();
@@ -382,7 +396,7 @@ namespace NzbDrone.Core.Download.Engine
                     }
 
                     // Another file was recorded for these episodes since this one was renamed: never replace it here.
-                    if (HasOtherFile(series, episodes, finalPath))
+                    if (HasOtherFile(series, episodes, finalPath, file))
                     {
                         LogWaiting(waitingKey, "'{0}' can't be recorded: its episodes already have another file", file.FinalPath);
                         return;
@@ -408,6 +422,14 @@ namespace NzbDrone.Core.Download.Engine
                     _waiting.TryRemove(waitingKey, out _);
                     file.State = EngineLinkFileState.Imported;
                     save();
+
+                    // The replaced files are gone: their torrents stop offering them.
+                    if (file.DetachedFrom?.Any() == true)
+                    {
+                        _replacementService.Recheck(proxy, settings, file.DetachedFrom);
+                        file.DetachedFrom = null;
+                        save();
+                    }
 
                     return;
                 }
@@ -510,7 +532,8 @@ namespace NzbDrone.Core.Download.Engine
         {
             link.Completed = true;
 
-            var imported = link.Files.Where(f => !f.IsSubtitle && f.State == EngineLinkFileState.Imported).ToList();
+            // A file replaced by a newer one was imported first, so it counts.
+            var imported = link.Files.Where(f => !f.IsSubtitle && f.State is EngineLinkFileState.Imported or EngineLinkFileState.Replaced).ToList();
 
             if (imported.Empty())
             {
@@ -579,9 +602,24 @@ namespace NzbDrone.Core.Download.Engine
             return _importDecisionMaker.GetDecision(localEpisode, downloadItem);
         }
 
-        private bool IsRecorded(Series series, List<Episode> episodes, string finalPath)
+        // True when this file is what the episodes record (a file it replaces at the same path doesn't count).
+        private static bool IsRecorded(Series series, List<Episode> episodes, string finalPath, EngineLinkFile file = null)
         {
-            return episodes.All(e => IsFileAt(series, e, finalPath));
+            return episodes.All(e => IsFileAt(series, e, finalPath) && !IsReplaced(file, e));
+        }
+
+        private static bool IsReplaced(EngineLinkFile file, Episode episode)
+        {
+            return file?.ReplacesFileIds?.Contains(episode.EpisodeFileId) == true;
+        }
+
+        private static List<EpisodeFile> GetEpisodeFiles(List<Episode> episodes)
+        {
+            return episodes.Where(e => e.EpisodeFileId > 0)
+                .Select(e => e.EpisodeFile?.Value)
+                .Where(f => f != null)
+                .DistinctBy(f => f.Id)
+                .ToList();
         }
 
         private static bool IsFileAt(Series series, Episode episode, string path)
@@ -592,9 +630,9 @@ namespace NzbDrone.Core.Download.Engine
         }
 
         // True when any of the episodes has a file other than the one at this final path.
-        private static bool HasOtherFile(Series series, List<Episode> episodes, string finalPath)
+        private static bool HasOtherFile(Series series, List<Episode> episodes, string finalPath, EngineLinkFile file)
         {
-            return episodes.Any(e => e.EpisodeFileId > 0 && !IsFileAt(series, e, finalPath));
+            return episodes.Any(e => e.EpisodeFileId > 0 && !IsFileAt(series, e, finalPath) && !IsReplaced(file, e));
         }
 
         // Null when any mapped episode no longer exists.

@@ -29,6 +29,9 @@ namespace NzbDrone.Core.Download.Engine
         // True when a sidecar file exists for the download, whether or not it can be read.
         bool Exists(string downloadId);
 
+        // Every readable link, by download id (upper-case info-hash).
+        Dictionary<string, EngineLink> GetAll();
+
         // Deletes the hidden pending files of a mapped torrent (complete or still incomplete); never a final file.
         void DeletePendingFiles(EngineLink link);
     }
@@ -253,6 +256,29 @@ namespace NzbDrone.Core.Download.Engine
         public EngineLink Get(string downloadId)
         {
             return Read(downloadId);
+        }
+
+        public Dictionary<string, EngineLink> GetAll()
+        {
+            var links = new Dictionary<string, EngineLink>();
+
+            if (!_diskProvider.FolderExists(LinkFolder))
+            {
+                return links;
+            }
+
+            foreach (var path in _diskProvider.GetFiles(LinkFolder, false).Where(p => p.EndsWith(".json", StringComparison.OrdinalIgnoreCase)))
+            {
+                var downloadId = Path.GetFileNameWithoutExtension(path).ToUpperInvariant();
+                var link = Read(downloadId);
+
+                if (link != null)
+                {
+                    links[downloadId] = link;
+                }
+            }
+
+            return links;
         }
 
         public bool Exists(string downloadId)
