@@ -36,6 +36,20 @@ namespace NzbDrone.Common.Extensions
             return dateTime >= afterDateTime;
         }
 
+        public static bool IsFutureDate(this string dateTime)
+        {
+            DateTime.TryParse(dateTime, out var result);
+
+            return !result.Equals(default(DateTime)) && result.After(DateTime.Now);
+        }
+
+        public static bool IsValidDate(this string dateTime)
+        {
+            DateTime.TryParse(dateTime, out var result);
+
+            return !result.Equals(default(DateTime));
+        }
+
         public static bool Between(this DateTime dateTime, DateTime afterDateTime, DateTime beforeDateTime)
         {
             return dateTime >= afterDateTime && dateTime <= beforeDateTime;

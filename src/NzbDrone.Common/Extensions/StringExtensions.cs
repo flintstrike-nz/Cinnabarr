@@ -171,6 +171,41 @@ namespace NzbDrone.Common.Extensions
             return source.Contains(value, StringComparer.InvariantCultureIgnoreCase);
         }
 
+        public static bool IsAllDigits(this string input)
+        {
+            foreach (var c in input)
+            {
+                if (c < '0' || c > '9')
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        public static string UrlEncode(this string searchString, Encoding encoding)
+        {
+            if (string.IsNullOrEmpty(searchString))
+            {
+                return string.Empty;
+            }
+
+            var bytes = encoding.GetBytes(searchString);
+            return encoding.GetString(WebUtility.UrlEncodeToBytes(bytes, 0, bytes.Length));
+        }
+
+        public static string UrlDecode(this string searchString, Encoding encoding)
+        {
+            if (string.IsNullOrEmpty(searchString))
+            {
+                return string.Empty;
+            }
+
+            var inputBytes = encoding.GetBytes(searchString);
+            return encoding.GetString(WebUtility.UrlDecodeToBytes(inputBytes, 0, inputBytes.Length));
+        }
+
         public static string ToUrlSlug(this string value)
         {
             // First to lower case

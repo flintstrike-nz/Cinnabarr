@@ -1,0 +1,8 @@
+# Code ported from Prowlarr (roadmap Phase 3). It is kept as close to Prowlarr's as possible, so Prowlarr fixes can
+# still be cherry-picked; its style differs slightly from Embarr's, so style-only rules are not enforced here.
+[*.cs]
+dotnet_diagnostic.SA1005.severity = none
+dotnet_diagnostic.SA1210.severity = none
+dotnet_diagnostic.IDE0005.severity = none
+dotnet_diagnostic.CA1845.severity = none
+dotnet_diagnostic.CA1849.severity = none

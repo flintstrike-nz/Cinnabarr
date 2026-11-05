@@ -69,7 +69,13 @@ namespace NzbDrone.Common.Reflection
 
         public static Type FindTypeByName(this Assembly assembly, string name)
         {
-            return assembly.GetExportedTypes().SingleOrDefault(c => c.Name.Equals(name, StringComparison.InvariantCultureIgnoreCase));
+            var matches = assembly.GetExportedTypes().Where(c => c.Name.Equals(name, StringComparison.InvariantCultureIgnoreCase)).ToList();
+
+            // Code ported from Prowlarr lives under NzbDrone.Core.IndexerEngine and can share a class name with Embarr's
+            // own (such as TorznabSettings). While both exist, Embarr's own wins (roadmap Phase 3).
+            return matches.Count > 1
+                ? matches.SingleOrDefault(c => c.Namespace?.StartsWith("NzbDrone.Core.IndexerEngine", StringComparison.Ordinal) != true)
+                : matches.SingleOrDefault();
         }
 
         public static bool HasAttribute<TAttribute>(this Type type)

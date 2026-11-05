@@ -545,6 +545,24 @@ Each phase ends in a working, shippable build.
 | 3f | Settings → Indexers on the engine: add from definitions, test, flags. |
 | 3g | Search page. |
 
+Built so far (3a-1):
+- **Code.** Prowlarr's indexer core, Cardigann files, Torznab/Newznab base code, proxies, history, search criteria and parser helpers are in `NzbDrone.Core.IndexerEngine`. They compile, but nothing uses them yet.
+- **Inert on purpose.**
+  - The engine's two start-up handlers are switched off (marked `EMBARR`).
+  - The definition updater never contacts Prowlarr's servers; Embarr's source comes in 3a-2.
+  - The default app profile waits for the engine's tables in 3b.
+  - Proxy tests use a neutral host in place of Prowlarr's cloud service.
+- **Style.** `IndexerEngine/.editorconfig` relaxes style-only rules for the folder, so the ported files stay as close to Prowlarr's as possible.
+- **Name clashes.** Where a ported class has the same name as an Embarr class (such as `TorznabSettings`), name lookups in `FindTypeByName` prefer Embarr's own. This ends when 3b removes Sonarr's native indexers.
+- **Shared code.** These were added, with existing behaviour unchanged:
+  - on `HttpRequest`: `Encoding`, `ProxySettings` and `GetContent`;
+  - on `HttpResponse`: `ElapsedTime` and `RedirectUrl`;
+  - on `HttpHeader`: `ContentEncoding`, `Vary` and `UserAgent`;
+  - on `HttpRequestBuilder`: `SetHeaders`, `SetEncoding` and the cookie flags;
+  - `CookieUtil`, `UrlEncode`/`UrlDecode` with an encoding, `IsAllDigits`, `IsValidDate`/`IsFutureDate`, `SelectOption.ParentValue`, the config settings `HistoryCleanupDays` and `LogIndexerResponse`, and overridable `ProviderFactory.All()`/`Get()`.
+- **Left out.** The Usenet indexer (Newznab) and its base class.
+- **Tests.** 103 of Prowlarr's tests for the parser, Cardigann templates, capabilities and Torznab, plus tests for the shared-code additions.
+
 ### Phase 4 — Movies and the merged library (EmbarrPre2 → Embarr)
 
 - Port the movie domain, movie metadata, parser, decisions, naming, import and import lists.

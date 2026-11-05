@@ -170,6 +170,22 @@ namespace NzbDrone.Core.Configuration
 
         // Off until the first list of orphaned partial files is approved (roadmap §4.13): until then the cleanup only
         // lists what it would delete.
+        // Days of indexer-engine query history to keep (roadmap Phase 3).
+        public int HistoryCleanupDays
+        {
+            get { return GetValueInt("HistoryCleanupDays", 30); }
+
+            set { SetValue("HistoryCleanupDays", value); }
+        }
+
+        // Logs the responses indexers send back, for troubleshooting an indexer.
+        public bool LogIndexerResponse
+        {
+            get { return GetValueBoolean("LogIndexerResponse", false); }
+
+            set { SetValue("LogIndexerResponse", value); }
+        }
+
         public bool EngineOrphanCleanupApproved
         {
             get { return GetValueBoolean("EngineOrphanCleanupApproved", false); }
