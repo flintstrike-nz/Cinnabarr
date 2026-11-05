@@ -508,6 +508,11 @@ Each phase ends in a working, shippable build.
 - Downloads page per §6.2.
 - Remove external download clients, Usenet clients, Usenet indexers and remote path mappings.
 - **Exit:** grab → download into the library → seed works end-to-end with no external client. No torrent is ever lost or seeding out of sight, and the Downloads page is the only download UI.
+- **Status:** done.
+  - Embarr #7–#30 and EmbarrPre3 #1–#2.
+  - The CI-built `embarr-engine` binaries move to Phase 7 (packaging), because Actions don't run on these forks.
+  - Race groups on the Downloads page come with race mode (Phase 5).
+  - Per-row priority, speed and share limits on the Downloads page are left for later.
 
 ### Phase 3 — Indexer engine (EmbarrPre4 → Embarr)
 
