@@ -594,6 +594,20 @@ Built so far (3a-2):
 - Add `MediaType`, the `LibraryItem` read model, and the Calendar and Wanted projections (§4.1).
 - Switch metadata to TVDB, TMDb and IMDb (§4.14).
 - Merged Library, Add, Calendar, Wanted and Activity pages; movie detail and collection pages.
+**How Phase 4 is split** (each step is its own PR, in this order):
+
+| Step | What |
+| --- | --- |
+| 4a | Movie metadata layer: the metadata tables, models and stores, and a client for the Radarr project's metadata service. **Done.** |
+| 4b | The movie itself: `Movie`, `MovieFile`, their stores and services, add-movie, root folders and monitoring. |
+| 4c | Movie parser, quality and custom-format matching, and the decision engine for movie releases. |
+| 4d | Movie search and RSS: movie criteria for the indexers, release grabbing, and the media-type-aware download pipeline (§4.4). |
+| 4e | Movie import, naming and renaming; extras. |
+| 4f | Movie import lists. |
+| 4g | API v5 and screens for movies: add, detail, collections, discover. |
+| 4h | The merged Library, Calendar and Wanted pages (§4.1), and the Search page that moved here from Phase 3. |
+| 4i | Series metadata moves to TVDB/TMDb directly, and movie metadata to TMDb directly (§4.14), when keys are available. |
+
 - **Exit:** a user can manage movies and series side by side with shared profiles, one queue and one history, with no dependency on Sonarr's or Radarr's services.
 
 ### Phase 5 — Versions and concurrent sources
@@ -951,3 +965,12 @@ Built so far (3e):
 - **Still open in Phase 3.** 3g (Search page) and 3c (the native Prowlarr trackers). 3c is only worth doing for trackers the 580 definition files do not cover, so it is on hold until one is missed.
 
 Phase 3 status: 3a, 3b, 3d, 3e and 3f-1 are done. 3c is on hold (see above) and 3g moved to Phase 4. What now works end to end: the engine is in, about 580 sites can be added from Settings > Indexers with their own login fields, Cloudflare and proxy handling is available through Settings > Indexers > Proxies, and every query is recorded under Activity. Not yet exercised against a real site (the sandbox has no outside network), so the first real-site test is the next thing to do by hand: add a site, press Test, run an RSS sync, check Activity > Indexer Queries.
+
+Built so far (4a):
+
+- **Where movie information comes from.** For now, the Radarr project's metadata service (`https://api.radarr.video/v1/`), which reads TMDb on our behalf, so Cinnabarr needs no key. The address is the setting `MovieMetadataUrl`, read on every call, so it can be pointed at another service with the same routes, or at a service of our own later (4i). Series information still comes from Sonarr's service in the same way.
+- **Radarr's embedded TMDb token is not used.** Radarr's source also carries a TMDb bearer token for direct TMDb calls; nothing in Radarr's metadata client uses it, and it was not copied. It is the Radarr project's credential, not ours.
+- **Tables.** Migration 244 creates `MovieMetadata`, `AlternativeTitles`, `MovieTranslations` and `Credits` in their final Radarr shape, with a collection id and title on the movie. There is no data to carry over.
+- **Code.** `NzbDrone.Core.Movies` holds the models, stores and services (credits, alternative titles, translations, metadata upsert), `RadarrMetadataProxy` does the lookups (movie by TMDb id, by IMDb id, bulk, trending, popular, changed since), and `CleanMovieTitle` gives titles a comparable form. The Radarr response types live in `MetadataSource/RadarrMetadata/Resource`, separate from Sonarr's.
+- **Left for later steps.** Searching for a movie by name and collections need the `Movie` itself (4b, 4g). The check that nothing still uses a metadata row before it is deleted arrives with `Movie`.
+- **Checked.** The proxy was tested against a canned response (mapping, certification by country, the 404 case); the stores against a real test database. It has not talked to the live service, which the sandbox cannot reach.
