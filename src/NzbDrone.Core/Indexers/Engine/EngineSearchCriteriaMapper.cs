@@ -105,14 +105,17 @@ namespace NzbDrone.Core.Indexers.Engine
 
         public static List<List<EngineCriteria>> Map(AnimeSeasonSearchCriteria criteria, IndexerCapabilities caps, EngineSearchOptions options)
         {
-            if (!caps.SearchAvailable || criteria.SeasonNumber <= 0)
+            var standard = options.AnimeStandardFormatSearch && caps.TvSearchSeasonAvailable;
+
+            // Each path below needs a different capability: titles alone use the generic search, the S/E format uses tv search.
+            if (criteria.SeasonNumber <= 0 || (!standard && !caps.SearchAvailable))
             {
                 return Tiers();
             }
 
             var first = new List<EngineCriteria>();
 
-            if (options.AnimeStandardFormatSearch && caps.TvSearchSeasonAvailable)
+            if (standard)
             {
                 AddIds(first, criteria, caps, options.AnimeCategories, criteria.SeasonNumber, null);
             }
@@ -124,9 +127,12 @@ namespace NzbDrone.Core.Indexers.Engine
                 if (seasonTitles.Contains(title, StringComparer.InvariantCultureIgnoreCase))
                 {
                     // A season title alias already identifies the season, no need to add a season number.
-                    first.Add(Basic(title, options.AnimeCategories));
+                    if (caps.SearchAvailable)
+                    {
+                        first.Add(Basic(title, options.AnimeCategories));
+                    }
                 }
-                else if (options.AnimeStandardFormatSearch && caps.TvSearchSeasonAvailable)
+                else if (standard)
                 {
                     first.Add(Tv(title, options.AnimeCategories, criteria.SeasonNumber, null));
                 }

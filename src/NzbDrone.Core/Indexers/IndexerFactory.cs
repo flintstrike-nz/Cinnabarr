@@ -66,7 +66,10 @@ namespace NzbDrone.Core.Indexers
 
         public override IEnumerable<IndexerDefinition> GetDefaultDefinitions()
         {
-            return base.GetDefaultDefinitions().Select(SetDefaultFailDownloads);
+            // The generic Cardigann entry is blank; indexers are added from the definition list instead (roadmap 3f).
+            return base.GetDefaultDefinitions()
+                .Where(d => d.Implementation != "Cardigann")
+                .Select(SetDefaultFailDownloads);
         }
 
         public override IEnumerable<IndexerDefinition> GetPresetDefinitions(IndexerDefinition providerDefinition)

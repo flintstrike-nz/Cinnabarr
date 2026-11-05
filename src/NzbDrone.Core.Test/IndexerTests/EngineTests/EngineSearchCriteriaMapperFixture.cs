@@ -156,6 +156,24 @@ namespace NzbDrone.Core.Test.IndexerTests.EngineTests
         }
 
         [Test]
+        public void anime_season_works_on_tv_search_alone()
+        {
+            var criteria = new AnimeSeasonSearchCriteria
+            {
+                Series = new Series { Title = "Anime", TvdbId = 5, SeriesType = SeriesTypes.Anime },
+                SceneTitles = new List<string> { "Anime" },
+                SeasonNumber = 2
+            };
+
+            var tvOnly = new IndexerCapabilities { TvSearchParams = new List<TvSearchParam> { TvSearchParam.Season, TvSearchParam.TvdbId } };
+
+            var tiers = EngineSearchCriteriaMapper.Map(criteria, tvOnly, _options);
+
+            tiers.Single().Should().OnlyContain(c => c is EngineTvCriteria);
+            tiers.Single().Cast<EngineTvCriteria>().Should().Contain(c => c.TvdbId == 5 && c.Season == 2);
+        }
+
+        [Test]
         public void special_episode_searches_each_title()
         {
             var criteria = new SpecialEpisodeSearchCriteria

@@ -260,7 +260,7 @@ namespace NzbDrone.Core.IndexerEngine.IndexerVersions
             // EMBARR: only the first start fetches definitions; after that the daily scheduled task keeps them current.
             var definitionsFolder = Path.Combine(_appFolderInfo.AppDataFolder, "Definitions");
 
-            if (!Directory.Exists(definitionsFolder) || !Directory.EnumerateFiles(definitionsFolder, "*.yml", SearchOption.AllDirectories).Any())
+            if (!Directory.Exists(definitionsFolder) || !Directory.EnumerateFiles(definitionsFolder, "*.yml", SearchOption.TopDirectoryOnly).Any())
             {
                 UpdateLocalDefinitions();
             }

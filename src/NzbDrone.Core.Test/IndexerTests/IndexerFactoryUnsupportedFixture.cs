@@ -55,6 +55,14 @@ namespace NzbDrone.Core.Test.IndexerTests
         }
 
         [Test]
+        public void should_not_offer_a_blank_cardigann_entry_in_the_schema()
+        {
+            Mocker.SetConstant<IEnumerable<IIndexer>>(new List<IIndexer> { Mocker.Resolve<NzbDrone.Core.Indexers.Cardigann.Cardigann>() });
+
+            Subject.GetDefaultDefinitions().Should().NotContain(d => d.Implementation == "Cardigann");
+        }
+
+        [Test]
         public void should_not_throw_when_filling_in_provider_details_for_the_api()
         {
             Subject.Invoking(f => f.SetProviderCharacteristics(_unsupported)).Should().NotThrow();

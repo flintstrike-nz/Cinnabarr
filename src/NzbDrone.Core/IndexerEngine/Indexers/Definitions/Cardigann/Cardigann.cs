@@ -47,7 +47,8 @@ namespace NzbDrone.Core.IndexerEngine.Indexers.Definitions.Cardigann
 
         public override IIndexerRequestGenerator GetRequestGenerator()
         {
-            var generator = _generatorCache.Get(Settings.DefinitionFile, () =>
+            // EMBARR: keyed per saved indexer, not per definition file, so two accounts on the same site never share a generator (and its cookies and login state).
+            var generator = _generatorCache.Get($"{Definition.Id}:{Settings.DefinitionFile}", () =>
                 new CardigannRequestGenerator(_configService,
                     _definitionService.GetCachedDefinition(Settings.DefinitionFile),
                     _logger,

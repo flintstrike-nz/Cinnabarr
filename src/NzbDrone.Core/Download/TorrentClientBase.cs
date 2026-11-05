@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Text;
 using System.Threading.Tasks;
 using MonoTorrent;
 using NLog;
@@ -143,6 +144,12 @@ namespace NzbDrone.Core.Download
                 if (indexer is IIndexerFileDownloader downloader)
                 {
                     torrentFile = await downloader.DownloadTorrentFile(torrentUrl);
+
+                    // The engine hands a magnet link back as text; follow it as a magnet rather than as a torrent file.
+                    if (torrentFile.Length > 7 && Encoding.ASCII.GetString(torrentFile, 0, 7).Equals("magnet:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return DownloadFromMagnetUrl(remoteEpisode, indexer, Encoding.UTF8.GetString(torrentFile).Trim());
+                    }
 
                     _logger.Debug("Downloading torrent for episode '{0}' finished ({1} bytes from {2})", remoteEpisode.Release.Title, torrentFile.Length, torrentUrl);
                 }
