@@ -47,11 +47,20 @@ namespace NzbDrone.Core.Test.IndexerTests.EngineTests
         [Test]
         public void recent_search_is_a_single_tv_rss_query_over_all_categories()
         {
-            var tiers = EngineSearchCriteriaMapper.Recent(_options);
+            var tiers = EngineSearchCriteriaMapper.Recent(Caps(TvSearchParam.Q), _options);
 
             var query = tiers.Should().ContainSingle().Which.Should().ContainSingle().Which.Should().BeOfType<EngineTvCriteria>().Subject;
             query.IsRssSearch.Should().BeTrue();
             query.Categories.Should().BeEquivalentTo(new[] { 5000, 5070 });
+        }
+
+        [Test]
+        public void recent_search_uses_the_generic_feed_when_there_is_no_tv_search()
+        {
+            var tiers = EngineSearchCriteriaMapper.Recent(new IndexerCapabilities { SearchParams = new List<SearchParam> { SearchParam.Q } }, _options);
+
+            var query = tiers.Should().ContainSingle().Which.Should().ContainSingle().Which.Should().BeOfType<EngineBasicCriteria>().Subject;
+            query.Categories.Should().BeEquivalentTo(new[] { 5070 });
         }
 
         [Test]

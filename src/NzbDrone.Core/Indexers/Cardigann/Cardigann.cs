@@ -59,7 +59,7 @@ namespace NzbDrone.Core.Indexers.Cardigann
 
         public override Task<IList<ReleaseInfo>> FetchRecent()
         {
-            return Run(_ => EngineSearchCriteriaMapper.Recent(Options));
+            return Run(caps => EngineSearchCriteriaMapper.Recent(caps, Options));
         }
 
         public override Task<IList<ReleaseInfo>> Fetch(SeasonSearchCriteria searchCriteria)

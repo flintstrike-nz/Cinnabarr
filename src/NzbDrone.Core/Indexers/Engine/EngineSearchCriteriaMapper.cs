@@ -26,9 +26,20 @@ namespace NzbDrone.Core.Indexers.Engine
     /// </summary>
     public static class EngineSearchCriteriaMapper
     {
-        public static List<List<EngineCriteria>> Recent(EngineSearchOptions options)
+        public static List<List<EngineCriteria>> Recent(IndexerCapabilities caps, EngineSearchOptions options)
         {
-            return Tiers(Tier(new EngineTvCriteria { SearchType = "tvsearch", Categories = AllCategories(options) }));
+            if (caps.TvSearchAvailable)
+            {
+                return Tiers(Tier(new EngineTvCriteria { SearchType = "tvsearch", Categories = AllCategories(options) }));
+            }
+
+            // Sites without tv search only offer the generic feed, which Sonarr reads with the anime categories.
+            if (caps.SearchAvailable)
+            {
+                return Tiers(Tier(new EngineBasicCriteria { SearchType = "search", Categories = options.AnimeCategories }));
+            }
+
+            return Tiers();
         }
 
         public static List<List<EngineCriteria>> Map(SingleEpisodeSearchCriteria criteria, IndexerCapabilities caps, EngineSearchOptions options)
