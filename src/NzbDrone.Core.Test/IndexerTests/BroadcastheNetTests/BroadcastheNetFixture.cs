@@ -1,7 +1,6 @@
 using System;
 using System.Linq;
 using System.Net.Http;
-using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Moq;
@@ -11,7 +10,9 @@ using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Indexers.BroadcastheNet;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Test.Framework;
+using NzbDrone.Core.ThingiProvider;
 using NzbDrone.Test.Common;
+using IIndexerHttpClient = NzbDrone.Core.IndexerEngine.Indexers.IIndexerHttpClient;
 
 namespace NzbDrone.Core.Test.IndexerTests.BroadcastheNetTests
 {
@@ -33,9 +34,9 @@ namespace NzbDrone.Core.Test.IndexerTests.BroadcastheNetTests
         {
             var recentFeed = ReadAllText(@"Files/Indexers/BroadcastheNet/RecentFeed.json");
 
-            Mocker.GetMock<IHttpClient>()
-                .Setup(o => o.ExecuteAsync(It.Is<HttpRequest>(v => v.Method == HttpMethod.Post)))
-                .ReturnsAsync((HttpRequest r, CancellationToken _) => new HttpResponse(r, new HttpHeader(), recentFeed));
+            Mocker.GetMock<IIndexerHttpClient>()
+                .Setup(o => o.ExecuteProxiedAsync(It.Is<HttpRequest>(v => v.Method == HttpMethod.Post), It.IsAny<ProviderDefinition>()))
+                .ReturnsAsync((HttpRequest r, ProviderDefinition _) => new HttpResponse(r, new HttpHeader(), recentFeed));
 
             var releases = await Subject.FetchRecent();
 
@@ -78,9 +79,9 @@ namespace NzbDrone.Core.Test.IndexerTests.BroadcastheNetTests
         [Test]
         public async Task should_back_off_on_bad_request()
         {
-            Mocker.GetMock<IHttpClient>()
-                .Setup(v => v.ExecuteAsync(It.IsAny<HttpRequest>()))
-                .ReturnsAsync((HttpRequest r, CancellationToken _) => new HttpResponse(r, new HttpHeader(), Array.Empty<byte>(), System.Net.HttpStatusCode.BadRequest));
+            Mocker.GetMock<IIndexerHttpClient>()
+                .Setup(v => v.ExecuteProxiedAsync(It.IsAny<HttpRequest>(), It.IsAny<ProviderDefinition>()))
+                .ReturnsAsync((HttpRequest r, ProviderDefinition _) => new HttpResponse(r, new HttpHeader(), Array.Empty<byte>(), System.Net.HttpStatusCode.BadRequest));
 
             var results = await Subject.FetchRecent();
 
@@ -94,9 +95,9 @@ namespace NzbDrone.Core.Test.IndexerTests.BroadcastheNetTests
         [Test]
         public async Task should_back_off_and_report_api_key_invalid()
         {
-            Mocker.GetMock<IHttpClient>()
-                .Setup(v => v.ExecuteAsync(It.IsAny<HttpRequest>()))
-                .ReturnsAsync((HttpRequest r, CancellationToken _) => new HttpResponse(r, new HttpHeader(), Array.Empty<byte>(), System.Net.HttpStatusCode.Unauthorized));
+            Mocker.GetMock<IIndexerHttpClient>()
+                .Setup(v => v.ExecuteProxiedAsync(It.IsAny<HttpRequest>(), It.IsAny<ProviderDefinition>()))
+                .ReturnsAsync((HttpRequest r, ProviderDefinition _) => new HttpResponse(r, new HttpHeader(), Array.Empty<byte>(), System.Net.HttpStatusCode.Unauthorized));
 
             var results = await Subject.FetchRecent();
 
@@ -110,9 +111,9 @@ namespace NzbDrone.Core.Test.IndexerTests.BroadcastheNetTests
         [Test]
         public async Task should_back_off_on_unknown_method()
         {
-            Mocker.GetMock<IHttpClient>()
-                .Setup(v => v.ExecuteAsync(It.IsAny<HttpRequest>()))
-                .ReturnsAsync((HttpRequest r, CancellationToken _) => new HttpResponse(r, new HttpHeader(), Array.Empty<byte>(), System.Net.HttpStatusCode.NotFound));
+            Mocker.GetMock<IIndexerHttpClient>()
+                .Setup(v => v.ExecuteProxiedAsync(It.IsAny<HttpRequest>(), It.IsAny<ProviderDefinition>()))
+                .ReturnsAsync((HttpRequest r, ProviderDefinition _) => new HttpResponse(r, new HttpHeader(), Array.Empty<byte>(), System.Net.HttpStatusCode.NotFound));
 
             var results = await Subject.FetchRecent();
 
@@ -126,9 +127,9 @@ namespace NzbDrone.Core.Test.IndexerTests.BroadcastheNetTests
         [Test]
         public async Task should_back_off_api_limit_reached()
         {
-            Mocker.GetMock<IHttpClient>()
-                .Setup(v => v.ExecuteAsync(It.IsAny<HttpRequest>()))
-                .ReturnsAsync((HttpRequest r, CancellationToken _) => new HttpResponse(r, new HttpHeader(), Array.Empty<byte>(), System.Net.HttpStatusCode.ServiceUnavailable));
+            Mocker.GetMock<IIndexerHttpClient>()
+                .Setup(v => v.ExecuteProxiedAsync(It.IsAny<HttpRequest>(), It.IsAny<ProviderDefinition>()))
+                .ReturnsAsync((HttpRequest r, ProviderDefinition _) => new HttpResponse(r, new HttpHeader(), Array.Empty<byte>(), System.Net.HttpStatusCode.ServiceUnavailable));
 
             var results = await Subject.FetchRecent();
 
@@ -148,9 +149,9 @@ namespace NzbDrone.Core.Test.IndexerTests.BroadcastheNetTests
 
             recentFeed = recentFeed.Replace("http:", "https:");
 
-            Mocker.GetMock<IHttpClient>()
-                .Setup(o => o.ExecuteAsync(It.Is<HttpRequest>(v => v.Method == HttpMethod.Post)))
-                .ReturnsAsync((HttpRequest r, CancellationToken _) => new HttpResponse(r, new HttpHeader(), recentFeed));
+            Mocker.GetMock<IIndexerHttpClient>()
+                .Setup(o => o.ExecuteProxiedAsync(It.Is<HttpRequest>(v => v.Method == HttpMethod.Post), It.IsAny<ProviderDefinition>()))
+                .ReturnsAsync((HttpRequest r, ProviderDefinition _) => new HttpResponse(r, new HttpHeader(), recentFeed));
 
             var releases = await Subject.FetchRecent();
 

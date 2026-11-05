@@ -28,7 +28,7 @@ namespace NzbDrone.Core.Test.IndexerTests
         }
 
         [Test]
-        public void should_remove_missing_indexers_on_startup()
+        public void should_keep_but_disable_indexers_without_an_implementation_on_startup()
         {
             var repo = Mocker.Resolve<IndexerRepository>();
 
@@ -36,14 +36,17 @@ namespace NzbDrone.Core.Test.IndexerTests
 
             var existingIndexers = Builder<IndexerDefinition>.CreateNew().BuildNew();
             existingIndexers.ConfigContract = nameof(TorznabSettings);
+            existingIndexers.EnableRss = true;
+            existingIndexers.EnableAutomaticSearch = true;
+            existingIndexers.EnableInteractiveSearch = true;
 
             repo.Insert(existingIndexers);
 
             Subject.Handle(new ApplicationStartedEvent());
 
-            AllStoredModels.Should().NotContain(c => c.Id == existingIndexers.Id);
+            AllStoredModels.Should().ContainSingle(c => c.Id == existingIndexers.Id).Which.Enable.Should().BeFalse();
 
-            ExceptionVerification.ExpectedWarns(1);
+            ExceptionVerification.IgnoreWarns();
         }
 
         [Test]

@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using NzbDrone.Core.Datastore;
 using NzbDrone.Core.IndexerEngine.Indexers.Definitions.Cardigann;
-using NzbDrone.Core.IndexerEngine.Profiles;
 using NzbDrone.Core.ThingiProvider;
 
 namespace NzbDrone.Core.IndexerEngine.Indexers
@@ -26,8 +24,7 @@ namespace NzbDrone.Core.IndexerEngine.Indexers
         public bool Redirect { get; set; }
         public int DownloadClientId { get; set; }
         public DateTime Added { get; set; }
-        public int AppProfileId { get; set; }
-        public LazyLoaded<AppSyncProfile> AppProfile { get; set; }
+        // EMBARR: Prowlarr's app-sync profile (AppProfileId, AppProfile) is not ported: Embarr has no app sync.
 
         public List<SettingsField> ExtraFields { get; set; } = new();
     }

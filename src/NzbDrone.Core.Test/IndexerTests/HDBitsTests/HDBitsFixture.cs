@@ -2,7 +2,6 @@ using System;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Moq;
@@ -13,7 +12,9 @@ using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Indexers.HDBits;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Test.Framework;
+using NzbDrone.Core.ThingiProvider;
 using NzbDrone.Test.Common;
+using IIndexerHttpClient = NzbDrone.Core.IndexerEngine.Indexers.IIndexerHttpClient;
 
 namespace NzbDrone.Core.Test.IndexerTests.HDBitsTests
 {
@@ -36,9 +37,9 @@ namespace NzbDrone.Core.Test.IndexerTests.HDBitsTests
         {
             var responseJson = ReadAllText(fileName);
 
-            Mocker.GetMock<IHttpClient>()
-                .Setup(o => o.ExecuteAsync(It.Is<HttpRequest>(v => v.Method == HttpMethod.Post)))
-                .ReturnsAsync((HttpRequest r, CancellationToken _) => new HttpResponse(r, new HttpHeader(), responseJson));
+            Mocker.GetMock<IIndexerHttpClient>()
+                .Setup(o => o.ExecuteProxiedAsync(It.Is<HttpRequest>(v => v.Method == HttpMethod.Post), It.IsAny<ProviderDefinition>()))
+                .ReturnsAsync((HttpRequest r, ProviderDefinition _) => new HttpResponse(r, new HttpHeader(), responseJson));
 
             var torrents = await Subject.FetchRecent();
 
@@ -65,9 +66,9 @@ namespace NzbDrone.Core.Test.IndexerTests.HDBitsTests
         {
             var responseJson = new { status = 5, message = "Invalid authentication credentials" }.ToJson();
 
-            Mocker.GetMock<IHttpClient>()
-                .Setup(v => v.ExecuteAsync(It.IsAny<HttpRequest>()))
-                .ReturnsAsync((HttpRequest r, CancellationToken _) => new HttpResponse(r, new HttpHeader(), Encoding.UTF8.GetBytes(responseJson)));
+            Mocker.GetMock<IIndexerHttpClient>()
+                .Setup(v => v.ExecuteProxiedAsync(It.IsAny<HttpRequest>(), It.IsAny<ProviderDefinition>()))
+                .ReturnsAsync((HttpRequest r, ProviderDefinition _) => new HttpResponse(r, new HttpHeader(), Encoding.UTF8.GetBytes(responseJson)));
 
             var torrents = await Subject.FetchRecent();
 

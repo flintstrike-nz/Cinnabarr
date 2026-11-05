@@ -3,18 +3,18 @@ using FluentValidation.Results;
 using NLog;
 using NLog.Config;
 using NLog.Targets;
-using NzbDrone.Common.Http;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Indexers.TorrentRss;
 using NzbDrone.Core.Localization;
 using NzbDrone.Core.Parser;
+using IIndexerHttpClient = NzbDrone.Core.IndexerEngine.Indexers.IIndexerHttpClient;
 
 namespace NzbDrone.Core.Test.IndexerTests.TorrentRssIndexerTests
 {
     public class TestTorrentRssIndexer : TorrentRssIndexer
     {
-        public TestTorrentRssIndexer(ITorrentRssParserFactory torrentRssParserFactory, IHttpClient httpClient, IIndexerStatusService indexerStatusService, IConfigService configService, IParsingService parsingService, Logger logger, ILocalizationService localizationService)
+        public TestTorrentRssIndexer(ITorrentRssParserFactory torrentRssParserFactory, IIndexerHttpClient httpClient, IIndexerStatusService indexerStatusService, IConfigService configService, IParsingService parsingService, Logger logger, ILocalizationService localizationService)
             : base(torrentRssParserFactory, httpClient, indexerStatusService, configService, parsingService, logger, localizationService)
         {
         }

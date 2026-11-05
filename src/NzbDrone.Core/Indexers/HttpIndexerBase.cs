@@ -10,6 +10,7 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Http.CloudFlare;
+using NzbDrone.Core.IndexerEngine.Indexers;
 using NzbDrone.Core.Indexers.Exceptions;
 using NzbDrone.Core.IndexerSearch.Definitions;
 using NzbDrone.Core.Localization;
@@ -23,7 +24,7 @@ namespace NzbDrone.Core.Indexers
     {
         protected const int MaxNumResultsPerQuery = 1000;
 
-        protected readonly IHttpClient _httpClient;
+        protected readonly IIndexerHttpClient _httpClient;
 
         public override bool SupportsRss => true;
         public override bool SupportsSearch => true;
@@ -35,7 +36,7 @@ namespace NzbDrone.Core.Indexers
         public abstract IIndexerRequestGenerator GetRequestGenerator();
         public abstract IParseIndexerResponse GetParser();
 
-        public HttpIndexerBase(IHttpClient httpClient, IIndexerStatusService indexerStatusService, IConfigService configService, IParsingService parsingService, Logger logger, ILocalizationService localizationService)
+        public HttpIndexerBase(IIndexerHttpClient httpClient, IIndexerStatusService indexerStatusService, IConfigService configService, IParsingService parsingService, Logger logger, ILocalizationService localizationService)
             : base(indexerStatusService, configService, parsingService, logger, localizationService)
         {
             _httpClient = httpClient;
@@ -357,7 +358,7 @@ namespace NzbDrone.Core.Indexers
 
             request.HttpRequest.RateLimitKey = Definition.Id.ToString();
 
-            var response = await _httpClient.ExecuteAsync(request.HttpRequest);
+            var response = await _httpClient.ExecuteProxiedAsync(request.HttpRequest, Definition);
 
             return new IndexerResponse(request, response);
         }

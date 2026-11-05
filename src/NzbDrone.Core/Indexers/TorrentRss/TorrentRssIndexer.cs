@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using NLog;
-using NzbDrone.Common.Http;
 using NzbDrone.Core.Configuration;
+using NzbDrone.Core.IndexerEngine.Indexers;
 using NzbDrone.Core.Localization;
 using NzbDrone.Core.Parser;
 
@@ -18,7 +18,7 @@ namespace NzbDrone.Core.Indexers.TorrentRss
 
         private readonly ITorrentRssParserFactory _torrentRssParserFactory;
 
-        public TorrentRssIndexer(ITorrentRssParserFactory torrentRssParserFactory, IHttpClient httpClient, IIndexerStatusService indexerStatusService, IConfigService configService, IParsingService parsingService, Logger logger, ILocalizationService localizationService)
+        public TorrentRssIndexer(ITorrentRssParserFactory torrentRssParserFactory, IIndexerHttpClient httpClient, IIndexerStatusService indexerStatusService, IConfigService configService, IParsingService parsingService, Logger logger, ILocalizationService localizationService)
             : base(httpClient, indexerStatusService, configService, parsingService, logger, localizationService)
         {
             _torrentRssParserFactory = torrentRssParserFactory;

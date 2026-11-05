@@ -538,8 +538,9 @@ Each phase ends in a working, shippable build.
 | --- | --- |
 | 3a-1 | Engine core under `IndexerEngine`: definitions table, status, limits, HTTP client, capabilities, search criteria, release models, and the Torznab indexer. Backend only, with tests. |
 | 3a-2 | Cardigann runtime, the definition version store, and the updater (fork plus bundled fallback). |
-| 3b | `EngineIndexer` adapter and a migration that replaces Sonarr's own indexers with engine indexers. Sonarr's native indexer classes are removed. |
-| 3c | Prowlarr's native torrent indexers. |
+| 3b-1 | Existing indexers run on the engine's HTTP stack (proxies, rate limits, Cloudflare handling); the proxies table; saved indexers Embarr can't run are kept, switched off and flagged. |
+| 3b-2 | Cardigann adapter: criteria and release mappers, definition-driven settings, start-up and daily definition update. |
+| 3c | Prowlarr's native torrent indexers; Sonarr's native indexer classes retire as each has an engine equivalent. |
 | 3d | Indexer proxies (FlareSolverr, HTTP, SOCKS). |
 | 3e | Indexer stats and query history. These show in Activity. |
 | 3f | Settings → Indexers on the engine: add from definitions, test, flags. |
@@ -802,3 +803,11 @@ It is a public URL even for one user.
 - Poll only, or add a push-style wake-up later? FCM is not a direct option for the home relay client (see B.6), so this would mean a supported bridge or a long-lived connection.
 - Should the home server ever push richer status (download progress), or only library and request state?
 - If multi-user support is wanted later, should it reuse Jellyfin identities (Addendum A) or have its own accounts?
+
+Built so far (3b-1):
+
+- **Engine HTTP for every saved indexer.** `HttpIndexerBase` now sends requests through the engine's `IIndexerHttpClient` (`ExecuteProxiedAsync`), so proxies chosen by tag, FlareSolverr and the engine's rate limiting apply to Torznab, IPTorrents, FileList, HDBits, BroadcastheNet, Nyaa, Torrentleech and TorrentRss. Their search tiers, parsing and settings are unchanged, so nothing needs migrating and nothing can be lost.
+- **One status store.** `EngineIndexerStatusService` gives the engine the status service it expects, backed by Embarr's own indexer status (back-off and Health). Session cookies live in memory only.
+- **Proxies table.** Migration 242 and a table mapping for the engine's proxy definitions. The Settings screen for them is 3d.
+- **Nothing is deleted.** `IndexerFactory` no longer removes saved indexers whose implementation is gone (for example old Usenet ones). It switches them off, the API still lists them, and a Health warning (`IndexerUnsupportedCheck`) names them.
+- **Decision.** The earlier idea of replacing Sonarr's request generators with the engine's would change Sonarr's tiered search (IDs first, then scene titles) for no gain, so those classes stay until 3c. The engine's own search is used for Cardigann and the native indexers, which Embarr doesn't have today.

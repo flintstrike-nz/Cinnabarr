@@ -15,6 +15,7 @@ using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Core.Test.IndexerTests;
 using NzbDrone.Core.Tv;
+using IIndexerHttpClient = NzbDrone.Core.IndexerEngine.Indexers.IIndexerHttpClient;
 
 namespace NzbDrone.Core.Test.Download.DownloadClientTests
 {
@@ -60,7 +61,7 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests
 
         protected virtual IIndexer CreateIndexer()
         {
-            return new TestIndexer(Mocker.Resolve<IHttpClient>(),
+            return new TestIndexer(Mocker.Resolve<IIndexerHttpClient>(),
                 Mocker.Resolve<IIndexerStatusService>(),
                 Mocker.Resolve<IConfigService>(),
                 Mocker.Resolve<IParsingService>(),

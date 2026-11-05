@@ -14,6 +14,7 @@ namespace NzbDrone.Core.Indexers
         List<IIndexer> RssEnabled(bool filterBlockedIndexers = true);
         List<IIndexer> AutomaticSearchEnabled(bool filterBlockedIndexers = true);
         List<IIndexer> InteractiveSearchEnabled(bool filterBlockedIndexers = true);
+        List<IndexerDefinition> Unsupported();
         IndexerDefinition FindByName(string name);
         IndexerDefinition ResolveIndexer(int? id, string name);
     }
@@ -39,7 +40,28 @@ namespace NzbDrone.Core.Indexers
 
         protected override List<IndexerDefinition> Active()
         {
-            return base.Active().Where(c => c.Enable).ToList();
+            return base.Active().Where(c => c.Enable && HasImplementation(c)).ToList();
+        }
+
+        public List<IndexerDefinition> Unsupported()
+        {
+            return All().Where(c => !HasImplementation(c)).ToList();
+        }
+
+        // Saved indexers whose implementation Embarr no longer has (for example Usenet ones) are kept,
+        // switched off and flagged in Health instead of being deleted.
+        protected override void RemoveMissingImplementations()
+        {
+            foreach (var definition in Unsupported().Where(c => c.Enable))
+            {
+                _logger.Warn("Indexer {0} uses unsupported implementation {1}; disabling it", definition.Name, definition.Implementation);
+
+                definition.EnableRss = false;
+                definition.EnableAutomaticSearch = false;
+                definition.EnableInteractiveSearch = false;
+
+                _indexerRepository.Update(definition);
+            }
         }
 
         public override IEnumerable<IndexerDefinition> GetDefaultDefinitions()
