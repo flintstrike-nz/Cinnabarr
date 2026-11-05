@@ -12,7 +12,7 @@ Embarr is built in phases. The plan, design decisions and open questions are in 
 - Keep each pull request focused on one roadmap step.
 - Describe what changed and how you tested it. Add screenshots for UI changes.
 - AI-assisted contributions are welcome. You are still responsible for the change working as described.
-- GitHub Copilot reviews every pull request. Respond to each finding, either with a fix or with a reason on the thread.
+- Every pull request is reviewed before it is merged. Respond to each finding, either with a fix or with a reason on the thread. (Automated Copilot reviews are no longer available.)
 
 ## Development setup
 
