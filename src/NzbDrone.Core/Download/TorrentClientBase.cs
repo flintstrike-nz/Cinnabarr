@@ -143,7 +143,17 @@ namespace NzbDrone.Core.Download
             {
                 if (indexer is IIndexerFileDownloader downloader)
                 {
-                    torrentFile = await downloader.DownloadTorrentFile(torrentUrl);
+                    try
+                    {
+                        torrentFile = await downloader.DownloadTorrentFile(torrentUrl);
+                    }
+                    catch (Exception ex) when (ex is not HttpException and not WebException and not ReleaseDownloadException)
+                    {
+                        // Errors raised by the indexer engine (login failed, limits, bad response) become ordinary release failures.
+                        _logger.Error(ex, "Downloading torrent file for episode '{0}' failed ({1})", remoteEpisode.Release.Title, torrentUrl);
+
+                        throw new ReleaseDownloadException(remoteEpisode.Release, "Downloading torrent failed", ex);
+                    }
 
                     // The engine hands a magnet link back as text; follow it as a magnet rather than as a torrent file.
                     if (torrentFile.Length > 7 && Encoding.ASCII.GetString(torrentFile, 0, 7).Equals("magnet:", StringComparison.OrdinalIgnoreCase))

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using NzbDrone.Common.Cache;
 using NzbDrone.Core.Indexers.Cardigann;
@@ -64,7 +65,7 @@ namespace NzbDrone.Core.Indexers.Engine
                 {
                     DefinitionFile = settings.DefinitionFile,
                     BaseUrl = settings.BaseUrl,
-                    ExtraFieldData = settings.ExtraFieldData ?? new Dictionary<string, object>(),
+                    ExtraFieldData = NormalizeExtraFields(settings.ExtraFieldData),
                     TorrentBaseSettings =
                     {
                         AppMinimumSeeders = settings.MinimumSeeders
@@ -82,6 +83,32 @@ namespace NzbDrone.Core.Indexers.Engine
                 SupportsPagination = template.SupportsPagination,
                 Capabilities = template.Capabilities,
                 ExtraFields = template.ExtraFields
+            };
+        }
+
+        // Saved settings come back from the database with JsonElement values; the engine expects plain strings, bools and numbers.
+        public static Dictionary<string, object> NormalizeExtraFields(Dictionary<string, object> data)
+        {
+            var result = new Dictionary<string, object>();
+
+            foreach (var (key, value) in data ?? new Dictionary<string, object>())
+            {
+                result[key] = value is JsonElement element ? FromJson(element) : value;
+            }
+
+            return result;
+        }
+
+        private static object FromJson(JsonElement element)
+        {
+            return element.ValueKind switch
+            {
+                JsonValueKind.String => element.GetString(),
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                JsonValueKind.Number => element.TryGetInt64(out var whole) ? whole : element.GetDouble(),
+                JsonValueKind.Null or JsonValueKind.Undefined => null,
+                _ => element.ToString()
             };
         }
 

@@ -174,6 +174,23 @@ namespace NzbDrone.Core.Test.IndexerTests.EngineTests
         }
 
         [Test]
+        public void no_title_query_is_sent_when_tv_search_has_no_text_parameter()
+        {
+            var tiers = EngineSearchCriteriaMapper.Map(Episode(), Caps(TvSearchParam.Season, TvSearchParam.Ep, TvSearchParam.TvdbId), _options);
+
+            tiers.Should().ContainSingle();
+            tiers[0].Cast<EngineTvCriteria>().Should().OnlyContain(c => c.SearchTerm == null);
+        }
+
+        [Test]
+        public void daily_season_needs_only_season_support()
+        {
+            var criteria = new DailySeasonSearchCriteria { Series = Series(), SceneTitles = new List<string> { "The Show" }, Year = 2024, SearchMode = SearchMode.SearchID };
+
+            EngineSearchCriteriaMapper.Map(criteria, Caps(TvSearchParam.Season, TvSearchParam.TvdbId), _options).Should().NotBeEmpty();
+        }
+
+        [Test]
         public void special_episode_searches_each_title()
         {
             var criteria = new SpecialEpisodeSearchCriteria

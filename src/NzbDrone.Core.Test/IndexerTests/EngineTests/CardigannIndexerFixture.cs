@@ -132,6 +132,23 @@ namespace NzbDrone.Core.Test.IndexerTests.EngineTests
         }
 
         [Test]
+        public void should_turn_saved_json_values_into_plain_values_for_the_engine()
+        {
+            var data = new Dictionary<string, object>
+            {
+                { "username", System.Text.Json.JsonDocument.Parse("\"me\"").RootElement },
+                { "remember", System.Text.Json.JsonDocument.Parse("true").RootElement },
+                { "limit", System.Text.Json.JsonDocument.Parse("5").RootElement }
+            };
+
+            var result = EngineIndexerProvider.NormalizeExtraFields(data);
+
+            result["username"].Should().Be("me");
+            result["remember"].Should().Be(true);
+            result["limit"].Should().Be(5L);
+        }
+
+        [Test]
         public void should_not_offer_itself_as_a_generic_default_indexer()
         {
             Subject.DefaultDefinitions.Should().BeEmpty();

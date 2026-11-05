@@ -63,7 +63,7 @@ namespace NzbDrone.Core.Indexers.Engine
 
         public static List<List<EngineCriteria>> Map(DailySeasonSearchCriteria criteria, IndexerCapabilities caps, EngineSearchOptions options)
         {
-            if (!caps.TvSearchSeasonAvailable || !caps.TvSearchEpAvailable)
+            if (!caps.TvSearchSeasonAvailable)
             {
                 return Tiers();
             }
@@ -94,7 +94,7 @@ namespace NzbDrone.Core.Indexers.Engine
                     first.Add(Basic($"{title} {criteria.AbsoluteEpisodeNumber:00}", options.AnimeCategories));
                 }
 
-                if (standard)
+                if (standard && HasTvText(caps))
                 {
                     first.Add(Tv(title, options.AnimeCategories, criteria.SeasonNumber, criteria.EpisodeNumber.ToString()));
                 }
@@ -132,7 +132,7 @@ namespace NzbDrone.Core.Indexers.Engine
                         first.Add(Basic(title, options.AnimeCategories));
                     }
                 }
-                else if (standard)
+                else if (standard && HasTvText(caps))
                 {
                     first.Add(Tv(title, options.AnimeCategories, criteria.SeasonNumber, null));
                 }
@@ -181,6 +181,11 @@ namespace NzbDrone.Core.Indexers.Engine
             }
 
             return Tiers(first, second);
+        }
+
+        private static bool HasTvText(IndexerCapabilities caps)
+        {
+            return caps.TvSearchParams.Contains(TvSearchParam.Q);
         }
 
         private static bool HasIds(IndexerCapabilities caps)
@@ -240,7 +245,7 @@ namespace NzbDrone.Core.Indexers.Engine
         private static void AddTitles(List<EngineCriteria> into, SearchCriteriaBase criteria, IndexerCapabilities caps, int[] categories, int season, string episode)
         {
             // A tv search needs a text field to put the title in; without one nothing sensible can be sent.
-            if (!caps.TvSearchAvailable)
+            if (!HasTvText(caps))
             {
                 return;
             }
