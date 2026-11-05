@@ -556,7 +556,7 @@ Each phase ends in a working, shippable build.
 | 3d | Indexer proxies (FlareSolverr, HTTP, SOCKS): API and a section on Settings > Indexers. |
 | 3e | Indexer stats and query history: a record of every RSS fetch and search per indexer, shown on an Indexer Queries page under Activity. |
 | 3f | Settings → Indexers on the engine: add from definitions, test, flags. |
-| 3g | Search page. |
+| 3g | Search page. Moved to Phase 4: results that do not belong to a series in the library can only be grabbed once releases can map to movies as well, so the page is built with the merged library. |
 
 Built so far (3a-1):
 - **Code.** Prowlarr's indexer core, Cardigann files, Torznab/Newznab base code, proxies, history, search criteria and parser helpers are in `NzbDrone.Core.IndexerEngine`. They compile, but nothing uses them yet.
@@ -949,3 +949,5 @@ Built so far (3e):
 - **API and page.** `/api/v5/indexerquery` (recent queries, optionally for one indexer) and `/api/v5/indexerquery/stats` (per indexer over the last 7 days: queries, failures, average response time, last query). The page is Activity > Indexer Queries.
 - **Checked on a running app.** The migration ran, an RSS sync was started, and the new Cardigann indexer's attempt (no network in the sandbox) was recorded as a failure.
 - **Still open in Phase 3.** 3g (Search page) and 3c (the native Prowlarr trackers). 3c is only worth doing for trackers the 580 definition files do not cover, so it is on hold until one is missed.
+
+Phase 3 status: 3a, 3b, 3d, 3e and 3f-1 are done. 3c is on hold (see above) and 3g moved to Phase 4. What now works end to end: the engine is in, about 580 sites can be added from Settings > Indexers with their own login fields, Cloudflare and proxy handling is available through Settings > Indexers > Proxies, and every query is recorded under Activity. Not yet exercised against a real site (the sandbox has no outside network), so the first real-site test is the next thing to do by hand: add a site, press Test, run an RSS sync, check Activity > Indexer Queries.
