@@ -539,7 +539,7 @@ Each phase ends in a working, shippable build.
 | 3a-1 | Engine core under `IndexerEngine`: definitions table, status, limits, HTTP client, capabilities, search criteria, release models, and the Torznab indexer. Backend only, with tests. |
 | 3a-2 | Cardigann runtime, the definition version store, and the updater (fork plus bundled fallback). |
 | 3b-1 | Existing indexers run on the engine's HTTP stack (proxies, rate limits, Cloudflare handling); the proxies table; saved indexers Embarr can't run are kept, switched off and flagged. |
-| 3b-2 | Cardigann adapter: criteria and release mappers, definition-driven settings, start-up and daily definition update. |
+| 3b-2 | Cardigann adapter: criteria and release mappers, file downloads through the engine, start-up and daily definition update. |
 | 3c | Prowlarr's native torrent indexers; Sonarr's native indexer classes retire as each has an engine equivalent. |
 | 3d | Indexer proxies (FlareSolverr, HTTP, SOCKS). |
 | 3e | Indexer stats and query history. These show in Activity. |
@@ -811,3 +811,12 @@ Built so far (3b-1):
 - **Proxies table.** Migration 242 and a table mapping for the engine's proxy definitions. The Settings screen for them is 3d.
 - **Nothing is deleted.** `IndexerFactory` no longer removes saved indexers whose implementation is gone (for example old Usenet ones). It switches them off, the API still lists them, and a Health warning (`IndexerUnsupportedCheck`) names them.
 - **Decision.** The earlier idea of replacing Sonarr's request generators with the engine's would change Sonarr's tiered search (IDs first, then scene titles) for no gain, so those classes stay until 3c. The engine's own search is used for Cardigann and the native indexers, which Embarr doesn't have today.
+
+Built so far (3b-2):
+
+- **`Cardigann` indexer.** A normal Embarr indexer (`Indexers/Cardigann`) whose search, login and parsing are done by the engine's Cardigann. Its settings hold the definition file name, the base URL, the login fields a definition asks for (`ExtraFieldData`) and the usual torrent settings (minimum seeders, seed criteria, fail-downloads, languages).
+- **Search mapping.** `EngineSearchCriteriaMapper` turns each Embarr search into tiers of engine queries and keeps Sonarr's rules: IDs first, scene titles only as a fallback, only IDs the site supports, daily shows as year plus month/day, anime by absolute number with the anime category, specials by episode title. The first tier that finds releases wins.
+- **Release mapping.** `EngineReleaseMapper` converts engine releases (and their free-leech, scene and similar flags) to Embarr's release model.
+- **Downloads.** Indexers that need a session to fetch a torrent implement `IIndexerFileDownloader`; `TorrentClientBase` then asks the engine for the file instead of making a plain web request.
+- **Definitions stay current.** The first start fetches them when the folder is empty, and a daily scheduled task refreshes them.
+- **Not yet reachable.** The generic "Cardigann" entry is hidden from the Add Indexer list. Adding an indexer from the 580 definitions, with its own login form, is 3f.

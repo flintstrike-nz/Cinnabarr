@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Text;
 using System.Threading.Tasks;
 using MonoTorrent;
 using NLog;
@@ -140,41 +141,66 @@ namespace NzbDrone.Core.Download
 
             try
             {
-                var request = indexer?.GetDownloadRequest(torrentUrl) ?? new HttpRequest(torrentUrl);
-                request.RateLimitKey = remoteEpisode?.Release?.IndexerId.ToString();
-                request.Headers.Accept = "application/x-bittorrent";
-                request.AllowAutoRedirect = false;
-
-                var response = await RetryStrategy
-                    .ExecuteAsync(static async (state, token) => await state._httpClient.GetAsync(state.request, token), (_httpClient, request))
-                    .ConfigureAwait(false);
-
-                if (response.StatusCode == HttpStatusCode.MovedPermanently ||
-                    response.StatusCode == HttpStatusCode.Found ||
-                    response.StatusCode == HttpStatusCode.SeeOther)
+                if (indexer is IIndexerFileDownloader downloader)
                 {
-                    var locationHeader = response.Headers.GetSingleValue("Location");
-
-                    _logger.Trace("Torrent request is being redirected to: {0}", locationHeader);
-
-                    if (locationHeader != null)
+                    try
                     {
-                        if (locationHeader.StartsWith("magnet:"))
-                        {
-                            return DownloadFromMagnetUrl(remoteEpisode, indexer, locationHeader);
-                        }
+                        torrentFile = await downloader.DownloadTorrentFile(torrentUrl);
+                    }
+                    catch (Exception ex) when (ex is not HttpException and not WebException and not ReleaseDownloadException)
+                    {
+                        // Errors raised by the indexer engine (login failed, limits, bad response) become ordinary release failures.
+                        _logger.Error(ex, "Downloading torrent file for episode '{0}' failed ({1})", remoteEpisode.Release.Title, torrentUrl);
 
-                        request.Url += new HttpUri(locationHeader);
-
-                        return await DownloadFromWebUrl(remoteEpisode, indexer, request.Url.ToString());
+                        throw new ReleaseDownloadException(remoteEpisode.Release, "Downloading torrent failed", ex);
                     }
 
-                    throw new WebException("Remote website tried to redirect without providing a location.");
+                    // The engine hands a magnet link back as text; follow it as a magnet rather than as a torrent file.
+                    if (torrentFile.Length > 7 && Encoding.ASCII.GetString(torrentFile, 0, 7).Equals("magnet:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return DownloadFromMagnetUrl(remoteEpisode, indexer, Encoding.UTF8.GetString(torrentFile).Trim());
+                    }
+
+                    _logger.Debug("Downloading torrent for episode '{0}' finished ({1} bytes from {2})", remoteEpisode.Release.Title, torrentFile.Length, torrentUrl);
                 }
+                else
+                {
+                    var request = indexer?.GetDownloadRequest(torrentUrl) ?? new HttpRequest(torrentUrl);
+                    request.RateLimitKey = remoteEpisode?.Release?.IndexerId.ToString();
+                    request.Headers.Accept = "application/x-bittorrent";
+                    request.AllowAutoRedirect = false;
 
-                torrentFile = response.ResponseData;
+                    var response = await RetryStrategy
+                        .ExecuteAsync(static async (state, token) => await state._httpClient.GetAsync(state.request, token), (_httpClient, request))
+                        .ConfigureAwait(false);
 
-                _logger.Debug("Downloading torrent for episode '{0}' finished ({1} bytes from {2})", remoteEpisode.Release.Title, torrentFile.Length, torrentUrl);
+                    if (response.StatusCode == HttpStatusCode.MovedPermanently ||
+                        response.StatusCode == HttpStatusCode.Found ||
+                        response.StatusCode == HttpStatusCode.SeeOther)
+                    {
+                        var locationHeader = response.Headers.GetSingleValue("Location");
+
+                        _logger.Trace("Torrent request is being redirected to: {0}", locationHeader);
+
+                        if (locationHeader != null)
+                        {
+                            if (locationHeader.StartsWith("magnet:"))
+                            {
+                                return DownloadFromMagnetUrl(remoteEpisode, indexer, locationHeader);
+                            }
+
+                            request.Url += new HttpUri(locationHeader);
+
+                            return await DownloadFromWebUrl(remoteEpisode, indexer, request.Url.ToString());
+                        }
+
+                        throw new WebException("Remote website tried to redirect without providing a location.");
+                    }
+
+                    torrentFile = response.ResponseData;
+
+                    _logger.Debug("Downloading torrent for episode '{0}' finished ({1} bytes from {2})", remoteEpisode.Release.Title, torrentFile.Length, torrentUrl);
+                }
             }
             catch (HttpException ex)
             {

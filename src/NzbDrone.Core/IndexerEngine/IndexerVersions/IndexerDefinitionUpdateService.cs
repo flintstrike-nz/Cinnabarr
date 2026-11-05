@@ -257,8 +257,13 @@ namespace NzbDrone.Core.IndexerEngine.IndexerVersions
 
         public void Handle(ApplicationStartedEvent message)
         {
-            // EMBARR: switched off until the engine is in use (roadmap Phase 3, step 3b), so Embarr doesn't download
-            // definitions at every start for nothing.
+            // EMBARR: only the first start fetches definitions; after that the daily scheduled task keeps them current.
+            var definitionsFolder = Path.Combine(_appFolderInfo.AppDataFolder, "Definitions");
+
+            if (!Directory.Exists(definitionsFolder) || !Directory.EnumerateFiles(definitionsFolder, "*.yml", SearchOption.TopDirectoryOnly).Any())
+            {
+                UpdateLocalDefinitions();
+            }
         }
 
         public void Execute(IndexerDefinitionUpdateCommand message)
