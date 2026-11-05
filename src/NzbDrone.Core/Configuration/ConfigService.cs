@@ -178,6 +178,15 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("HistoryCleanupDays", value); }
         }
 
+        // Where the indexer engine downloads its Cardigann definitions from: a zip of a repository laid out like
+        // Prowlarr/Indexers (definitions/v{n}/*.yml). Embarr's own fork by default; it never uses Prowlarr's servers.
+        public string IndexerDefinitionsUrl
+        {
+            get { return GetValue("IndexerDefinitionsUrl", "https://github.com/flintstrike-nz/Indexers/archive/refs/heads/master.zip"); }
+
+            set { SetValue("IndexerDefinitionsUrl", value); }
+        }
+
         // Logs the responses indexers send back, for troubleshooting an indexer.
         public bool LogIndexerResponse
         {
