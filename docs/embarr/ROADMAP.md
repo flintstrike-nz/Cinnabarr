@@ -561,6 +561,17 @@ Built so far (3a-1):
   - on `HttpRequestBuilder`: `SetHeaders`, `SetEncoding` and the cookie flags;
   - `CookieUtil`, `UrlEncode`/`UrlDecode` with an encoding, `IsAllDigits`, `IsValidDate`/`IsFutureDate`, `SelectOption.ParentValue`, the config settings `HistoryCleanupDays` and `LogIndexerResponse`, and overridable `ProviderFactory.All()`/`Get()`.
 - **Left out.** The Usenet indexer (Newznab) and its base class.
+
+Built so far (3a-2):
+- **Definitions are read from disk.** `IndexerDefinitionUpdateService` lists and loads Cardigann definitions from `<AppData>/Definitions` (plus `Definitions/Custom`). The two web lookups to `indexers.prowlarr.com` are gone, and an unknown definition now means it isn't on disk.
+- **Update.** The `IndexerDefinitionUpdateCommand` downloads one zip from `IndexerDefinitionsUrl` and extracts the definitions from it.
+  - The default source is the owner's fork, `https://github.com/flintstrike-nz/Indexers/archive/refs/heads/master.zip`. It can be changed in the config, and it never defaults to Prowlarr's servers.
+  - For each indexer it keeps the file from the highest `definitions/v{n}` up to `v12`, as Prowlarr's server does when it builds its package.
+  - Definitions that have become native C# indexers (the blocklist) are skipped.
+  - Only validated file names are used, never a path from the zip.
+  - A failed or empty download keeps what is on disk. With nothing on disk, a snapshot shipped in `<app>/Definitions` is used.
+- **Still off.** The start-up update and the daily schedule switch on in 3b, so Embarr doesn't download definitions for an engine nothing uses yet.
+- **Needs the fork.** The download fails (and is logged) until `flintstrike-nz/Indexers` exists. The release packaging step bundles the snapshot.
 - **Tests.** 103 of Prowlarr's tests for the parser, Cardigann templates, capabilities and Torznab, plus tests for the shared-code additions.
 
 ### Phase 4 — Movies and the merged library (EmbarrPre2 → Embarr)

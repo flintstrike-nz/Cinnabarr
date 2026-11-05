@@ -26,6 +26,7 @@ namespace NzbDrone.Core.Configuration
         double EngineSeedingRatio { get; set; }
         bool EngineOrphanCleanupApproved { get; set; }
         int HistoryCleanupDays { get; set; }
+        string IndexerDefinitionsUrl { get; set; }
         bool LogIndexerResponse { get; set; }
         int EngineOrphanGraceDays { get; set; }
         bool AutoRedownloadFailed { get; set; }

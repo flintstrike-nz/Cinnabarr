@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Net;
+using System.Text.RegularExpressions;
 using NLog;
 using NzbDrone.Common.Cache;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Http;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.IndexerEngine.Indexers.Definitions.Cardigann;
 using NzbDrone.Core.Lifecycle;
 using NzbDrone.Core.Messaging.Commands;
@@ -29,7 +30,6 @@ namespace NzbDrone.Core.IndexerEngine.IndexerVersions
     {
         /* Update Service will fall back if version # does not exist for an indexer  per Ta */
 
-        private const string DEFINITION_BRANCH = "master";
         private const int DEFINITION_VERSION = 12;
 
         // Used when moving yml to C#
@@ -55,7 +55,11 @@ namespace NzbDrone.Core.IndexerEngine.IndexerVersions
             "tellytorrent"
         };
 
+        // definitions/v{n}/{name}.yml inside the downloaded repository zip (the folder above it is the repository's own).
+        private static readonly Regex ZipEntryRegex = new(@"(?:^|/)definitions/v(?<version>\d+)/(?<file>[A-Za-z0-9._-]+\.yml)$", RegexOptions.Compiled);
+
         private readonly IHttpClient _httpClient;
+        private readonly IConfigService _configService;
         private readonly IAppFolderInfo _appFolderInfo;
         private readonly IDiskProvider _diskProvider;
         private readonly ICached<CardigannDefinition> _cache;
@@ -67,6 +71,7 @@ namespace NzbDrone.Core.IndexerEngine.IndexerVersions
             .Build();
 
         public IndexerDefinitionUpdateService(IHttpClient httpClient,
+                                          IConfigService configService,
                                           IAppFolderInfo appFolderInfo,
                                           IDiskProvider diskProvider,
                                           ICacheManager cacheManager,
@@ -75,6 +80,7 @@ namespace NzbDrone.Core.IndexerEngine.IndexerVersions
             _appFolderInfo = appFolderInfo;
             _diskProvider = diskProvider;
             _httpClient = httpClient;
+            _configService = configService;
             _logger = logger;
 
             _cache = cacheManager.GetCache<CardigannDefinition>(typeof(CardigannDefinition), "definitions");
@@ -86,21 +92,12 @@ namespace NzbDrone.Core.IndexerEngine.IndexerVersions
 
             try
             {
-                // Grab latest def list from server or fallback to disk
-                try
-                {
-                    var request = new HttpRequest($"https://indexers.prowlarr.com/{DEFINITION_BRANCH}/{DEFINITION_VERSION}");
-                    var response = _httpClient.Get<List<CardigannMetaDefinition>>(request);
-                    indexerList = response.Resource.Where(i => !_definitionBlocklist.Contains(i.File)).ToList();
-                }
-                catch (Exception ex)
-                {
-                    _logger.Warn(ex, "Error while getting indexer definitions, fallback to reading from disk.");
+                // EMBARR: definitions are read from disk (filled by UpdateLocalDefinitions), never from Prowlarr's servers.
+                var definitionFolder = Path.Combine(_appFolderInfo.AppDataFolder, "Definitions");
 
-                    var definitionFolder = Path.Combine(_appFolderInfo.AppDataFolder, "Definitions");
-
-                    indexerList = ReadDefinitionsFromDisk(indexerList, definitionFolder);
-                }
+                indexerList = ReadDefinitionsFromDisk(indexerList, definitionFolder)
+                    .Where(i => !_definitionBlocklist.Contains(i.File))
+                    .ToList();
 
                 //Check for custom definitions
                 var customDefinitionFolder = Path.Combine(_appFolderInfo.AppDataFolder, "Definitions", "Custom");
@@ -215,32 +212,8 @@ namespace NzbDrone.Core.IndexerEngine.IndexerVersions
                 throw new ArgumentNullException(nameof(fileKey));
             }
 
-            //No definition was returned locally, go to the web
-            return GetHttpDefinition(fileKey);
-        }
-
-        private CardigannDefinition GetHttpDefinition(string id)
-        {
-            if (string.IsNullOrWhiteSpace(id))
-            {
-                throw new ArgumentNullException(nameof(id));
-            }
-
-            CardigannDefinition definition;
-
-            try
-            {
-                var request = new HttpRequest($"https://indexers.prowlarr.com/{DEFINITION_BRANCH}/{DEFINITION_VERSION}/{id}");
-                var response = _httpClient.Get(request);
-
-                definition = _deserializer.Deserialize<CardigannDefinition>(response.Content);
-            }
-            catch (HttpException ex) when (ex.Response.StatusCode == HttpStatusCode.NotFound)
-            {
-                throw new Exception($"Indexer definition for '{id}' does not exist.", ex);
-            }
-
-            return CleanIndexerDefinition(definition);
+            // EMBARR: no web lookup; a definition that isn't on disk doesn't exist (update the definitions to fetch new ones).
+            throw new Exception($"Indexer definition for '{fileKey}' does not exist.");
         }
 
         private CardigannDefinition CleanIndexerDefinition(CardigannDefinition definition)
@@ -284,13 +257,13 @@ namespace NzbDrone.Core.IndexerEngine.IndexerVersions
 
         public void Handle(ApplicationStartedEvent message)
         {
-            // EMBARR: switched off until definitions come from Embarr's own source (roadmap Phase 3, step 3a-2). The
-            // engine never contacts Prowlarr's servers.
+            // EMBARR: switched off until the engine is in use (roadmap Phase 3, step 3b), so Embarr doesn't download
+            // definitions at every start for nothing.
         }
 
         public void Execute(IndexerDefinitionUpdateCommand message)
         {
-            // EMBARR: switched off until step 3a-2 (see Handle).
+            UpdateLocalDefinitions();
         }
 
         private void EnsureDefinitionsFolder()
@@ -300,33 +273,111 @@ namespace NzbDrone.Core.IndexerEngine.IndexerVersions
             _diskProvider.CreateFolder(definitionFolder);
         }
 
+        // Downloads the definitions zip from the configured source and keeps, for each indexer, its definition from the
+        // highest version up to DEFINITION_VERSION (what Prowlarr's server does when it builds its package). With no
+        // definitions on disk and no download, a snapshot shipped next to the app is used.
         private void UpdateLocalDefinitions()
         {
-            var startupFolder = _appFolderInfo.AppDataFolder;
+            var definitionsFolder = Path.Combine(_appFolderInfo.AppDataFolder, "Definitions");
 
             try
             {
                 EnsureDefinitionsFolder();
 
-                var definitionsFolder = Path.Combine(startupFolder, "Definitions");
                 var saveFile = Path.Combine(definitionsFolder, "indexers.zip");
 
-                _httpClient.DownloadFile($"https://indexers.prowlarr.com/{DEFINITION_BRANCH}/{DEFINITION_VERSION}/package.zip", saveFile);
-
-                using (var archive = ZipFile.OpenRead(saveFile))
+                try
                 {
-                    archive.ExtractToDirectory(definitionsFolder, true);
+                    _httpClient.DownloadFile(_configService.IndexerDefinitionsUrl, saveFile);
+
+                    var count = ExtractDefinitions(saveFile, definitionsFolder);
+
+                    _cache.Clear();
+
+                    _logger.Debug("Updated {0} indexer definitions", count);
                 }
-
-                _diskProvider.DeleteFile(saveFile);
-
-                _cache.Clear();
-
-                _logger.Debug("Updated indexer definitions");
+                finally
+                {
+                    if (_diskProvider.FileExists(saveFile))
+                    {
+                        _diskProvider.DeleteFile(saveFile);
+                    }
+                }
             }
             catch (Exception ex)
             {
                 _logger.Error(ex, "Definition update failed");
+
+                CopyBundledDefinitions(definitionsFolder);
+            }
+        }
+
+        private int ExtractDefinitions(string zipPath, string definitionsFolder)
+        {
+            using var archive = ZipFile.OpenRead(zipPath);
+
+            var best = new Dictionary<string, (int Version, ZipArchiveEntry Entry)>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var entry in archive.Entries)
+            {
+                var match = ZipEntryRegex.Match(entry.FullName);
+
+                if (!match.Success || !int.TryParse(match.Groups["version"].Value, out var version) || version > DEFINITION_VERSION)
+                {
+                    continue;
+                }
+
+                var file = match.Groups["file"].Value;
+
+                if (!best.TryGetValue(file, out var current) || version > current.Version)
+                {
+                    best[file] = (version, entry);
+                }
+            }
+
+            if (best.Count == 0)
+            {
+                throw new InvalidDataException("The definitions download has no definitions/v* folders.");
+            }
+
+            var written = 0;
+
+            foreach (var (file, (_, entry)) in best)
+            {
+                // Only the validated file name is used, never the entry's own path.
+                if (_definitionBlocklist.Contains(Path.GetFileNameWithoutExtension(file)))
+                {
+                    continue;
+                }
+
+                entry.ExtractToFile(Path.Combine(definitionsFolder, file), true);
+                written++;
+            }
+
+            return written;
+        }
+
+        private void CopyBundledDefinitions(string definitionsFolder)
+        {
+            try
+            {
+                var bundled = Path.Combine(_appFolderInfo.StartUpFolder, "Definitions");
+
+                if (!Directory.Exists(bundled) || new DirectoryInfo(definitionsFolder).GetFiles("*.yml").Any())
+                {
+                    return;
+                }
+
+                foreach (var file in new DirectoryInfo(bundled).GetFiles("*.yml"))
+                {
+                    file.CopyTo(Path.Combine(definitionsFolder, file.Name), true);
+                }
+
+                _logger.Info("Using the indexer definitions shipped with the app");
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "Unable to use the bundled indexer definitions");
             }
         }
     }
