@@ -554,7 +554,7 @@ Each phase ends in a working, shippable build.
 | 3f-1 | Add indexers from the definition list: one Add Indexer entry per definition file, its login fields in the form, a filter box, torrents only. Done before 3c and 3d because it makes the 580 Cardigann sites usable. |
 | 3c | Prowlarr's native torrent indexers; Sonarr's native indexer classes retire as each has an engine equivalent. |
 | 3d | Indexer proxies (FlareSolverr, HTTP, SOCKS): API and a section on Settings > Indexers. |
-| 3e | Indexer stats and query history. These show in Activity. |
+| 3e | Indexer stats and query history: a record of every RSS fetch and search per indexer, shown on an Indexer Queries page under Activity. |
 | 3f | Settings → Indexers on the engine: add from definitions, test, flags. |
 | 3g | Search page. |
 
@@ -941,3 +941,11 @@ Built so far (3d):
 - **Found by running the app.** Saved passwords from the database came back unmasked because they load as JSON values, which is fixed with a test. The list of definition-file indexers was also being remembered while empty; it is no longer.
 - **Checked on a running app.** The proxy schema lists the four proxy types; the indexer schema lists 580 definition-file entries; an indexer added from one keeps its login fields, and its password is shown as stars.
 - **Not covered.** The sandbox blocks the definition download (GitHub returns 403), so the first-start fetch could not be exercised here; the definitions were copied in by hand. Phase 7 ships a bundled snapshot as the offline fallback.
+
+Built so far (3e):
+
+- **A record of every query.** Each RSS fetch and each search on an indexer is recorded (when, what was asked, how many results, how long it took, and whether the indexer reported a problem). It is recorded in one place for all indexers, `IIndexerQueryService.Track`, so Torznab, the native trackers and Cardigann sites are covered alike. The description of the search is stored, never the request address, so API keys never reach the history. Records older than 30 days are removed by housekeeping, and an indexer's records go when it is deleted. Migration 243.
+- **How a failure is spotted.** Indexers log and swallow their own errors, so a query counts as failed when the indexer's status shows a newer failure than before the query (or an exception escapes). The history says "the indexer reported a problem, see the log"; the reason is in the log.
+- **API and page.** `/api/v5/indexerquery` (recent queries, optionally for one indexer) and `/api/v5/indexerquery/stats` (per indexer over the last 7 days: queries, failures, average response time, last query). The page is Activity > Indexer Queries.
+- **Checked on a running app.** The migration ran, an RSS sync was started, and the new Cardigann indexer's attempt (no network in the sandbox) was recorded as a failure.
+- **Still open in Phase 3.** 3g (Search page) and 3c (the native Prowlarr trackers). 3c is only worth doing for trackers the 580 definition files do not cover, so it is on hold until one is missed.

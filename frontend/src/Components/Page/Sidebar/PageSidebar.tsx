@@ -118,6 +118,10 @@ const GROUPS: SidebarGroup[] = [
             title: () => translate('Blocklist'),
             to: '/activity/blocklist',
           },
+          {
+            title: () => translate('IndexerQueries'),
+            to: '/activity/indexer-queries',
+          },
         ],
       },
     ],

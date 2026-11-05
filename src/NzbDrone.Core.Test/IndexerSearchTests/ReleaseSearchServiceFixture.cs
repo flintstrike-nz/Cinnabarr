@@ -11,6 +11,7 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Core.DataAugmentation.Scene;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Indexers;
+using NzbDrone.Core.Indexers.History;
 using NzbDrone.Core.IndexerSearch;
 using NzbDrone.Core.IndexerSearch.Definitions;
 using NzbDrone.Core.Test.Framework;
@@ -30,6 +31,10 @@ namespace NzbDrone.Core.Test.IndexerSearchTests
             _mockIndexer = Mocker.GetMock<IIndexer>();
             _mockIndexer.SetupGet(s => s.Definition).Returns(new IndexerDefinition { Id = 1 });
             _mockIndexer.SetupGet(s => s.SupportsSearch).Returns(true);
+
+            Mocker.GetMock<IIndexerQueryService>()
+                  .Setup(s => s.Track(It.IsAny<IIndexer>(), It.IsAny<IndexerQuerySource>(), It.IsAny<string>(), It.IsAny<Func<Task<IList<Parser.Model.ReleaseInfo>>>>()))
+                  .Returns<IIndexer, IndexerQuerySource, string, Func<Task<IList<Parser.Model.ReleaseInfo>>>>((_, _, _, fetch) => fetch());
 
             Mocker.GetMock<IIndexerFactory>()
                   .Setup(s => s.AutomaticSearchEnabled(true))

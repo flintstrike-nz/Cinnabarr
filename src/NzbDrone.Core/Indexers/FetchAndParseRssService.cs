@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using NLog;
+using NzbDrone.Core.Indexers.History;
 using NzbDrone.Core.Parser.Model;
+
 namespace NzbDrone.Core.Indexers
 {
     public interface IFetchAndParseRss
@@ -14,11 +16,13 @@ namespace NzbDrone.Core.Indexers
     public class FetchAndParseRssService : IFetchAndParseRss
     {
         private readonly IIndexerFactory _indexerFactory;
+        private readonly IIndexerQueryService _indexerQueryService;
         private readonly Logger _logger;
 
-        public FetchAndParseRssService(IIndexerFactory indexerFactory, Logger logger)
+        public FetchAndParseRssService(IIndexerFactory indexerFactory, IIndexerQueryService indexerQueryService, Logger logger)
         {
             _indexerFactory = indexerFactory;
+            _indexerQueryService = indexerQueryService;
             _logger = logger;
         }
 
@@ -50,7 +54,7 @@ namespace NzbDrone.Core.Indexers
         {
             try
             {
-                return await indexer.FetchRecent();
+                return await _indexerQueryService.Track(indexer, IndexerQuerySource.Rss, "RSS sync", indexer.FetchRecent);
             }
             catch (Exception ex)
             {
