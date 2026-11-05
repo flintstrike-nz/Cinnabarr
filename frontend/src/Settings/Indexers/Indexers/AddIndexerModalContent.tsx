@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import Alert from 'Components/Alert';
+import TextInput from 'Components/Form/TextInput';
 import Button from 'Components/Link/Button';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import ModalBody from 'Components/Modal/ModalBody';
@@ -25,26 +26,23 @@ function AddIndexerModalContent({
   const { isSchemaLoading, isSchemaFetched, schemaError, schema } =
     useIndexerSchema();
 
-  const { usenetIndexers, torrentIndexers } = useMemo(() => {
-    return schema.reduce<{
-      usenetIndexers: IndexerModel[];
-      torrentIndexers: IndexerModel[];
-    }>(
-      (acc, item) => {
-        if (item.protocol === 'usenet') {
-          acc.usenetIndexers.push(item);
-        } else if (item.protocol === 'torrent') {
-          acc.torrentIndexers.push(item);
-        }
+  const [filter, setFilter] = useState('');
 
-        return acc;
-      },
-      {
-        usenetIndexers: [],
-        torrentIndexers: [],
-      }
+  // Embarr only handles torrents.
+  const torrentIndexers = useMemo(() => {
+    const text = filter.trim().toLowerCase();
+
+    return schema.filter(
+      (item: IndexerModel) =>
+        item.protocol === 'torrent' &&
+        (!text || item.implementationName.toLowerCase().includes(text))
     );
-  }, [schema]);
+  }, [schema, filter]);
+
+  const handleFilterChange = useCallback(
+    ({ value }: { value: string }) => setFilter(value),
+    []
+  );
 
   return (
     <ModalContent onModalClose={onModalClose}>
@@ -59,17 +57,14 @@ function AddIndexerModalContent({
 
         {isSchemaFetched && !schemaError ? (
           <div className={styles.indexers}>
-            <div className={styles.group}>
-              <h3 className={styles.groupHeading}>{translate('Usenet')}</h3>
-
-              {usenetIndexers.map((indexer) => (
-                <AddIndexerItem
-                  key={indexer.implementation}
-                  {...indexer}
-                  implementation={indexer.implementation}
-                  onIndexerSelect={onIndexerSelect}
-                />
-              ))}
+            <div className={styles.filter}>
+              <TextInput
+                name="filter"
+                placeholder={translate('Filter')}
+                value={filter}
+                autoFocus={true}
+                onChange={handleFilterChange}
+              />
             </div>
 
             <div className={styles.group}>
@@ -77,7 +72,7 @@ function AddIndexerModalContent({
 
               {torrentIndexers.map((indexer) => (
                 <AddIndexerItem
-                  key={indexer.implementation}
+                  key={`${indexer.implementation}-${indexer.implementationName}`}
                   {...indexer}
                   implementation={indexer.implementation}
                   onIndexerSelect={onIndexerSelect}

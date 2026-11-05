@@ -16,3 +16,7 @@
   font-size: 12px;
   font-family: var(--defaultFontFamily);
 }
+
+.filter {
+  padding: 8px var(--modalBodyPadding);
+}

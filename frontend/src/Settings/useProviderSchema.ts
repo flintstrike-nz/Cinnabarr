@@ -43,9 +43,17 @@ export const useSelectedSchema = <T extends Provider>(
       return undefined;
     }
 
-    const selected = schema.find(
+    // Several entries can share one implementation (indexers added from a definition file),
+    // so prefer the one with the same name.
+    const sameImplementation = schema.filter(
       (s: T) => s.implementation === selectedSchema.implementation
     );
+    const selected =
+      sameImplementation.find(
+        (s: T) =>
+          'implementationName' in s &&
+          s.implementationName === selectedSchema.implementationName
+      ) ?? sameImplementation[0];
 
     if (!selected) {
       throw new Error(
