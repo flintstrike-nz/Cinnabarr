@@ -521,6 +521,30 @@ Each phase ends in a working, shippable build.
 - Search page; Settings → Indexers; indexer queries in Activity.
 - **Exit:** every Prowlarr torrent indexer can be added in Embarr and used by RSS sync, automatic search and manual search.
 
+**Plan (decided with the owner).** Build the engine first, then the UI. Each step is one PR that builds and passes tests.
+
+- **Namespace.** Prowlarr's code goes under `NzbDrone.Core.IndexerEngine.*` (`Embarr:src/NzbDrone.Core/IndexerEngine`), with only the namespace changed. Its `Indexers`, `IndexerSearch` and `Parser` names otherwise collide with Sonarr's (36 files overlap), and keeping the code unchanged lets Prowlarr fixes still be cherry-picked.
+- **Adapter (§4.3).** One Sonarr-side indexer, `EngineIndexer`, wraps each engine indexer. It:
+  - maps Sonarr's season, episode, daily and anime criteria to Prowlarr's `TvSearchCriteria`;
+  - maps results back to Sonarr's `ReleaseInfo` and `TorrentInfo`.
+
+  RSS sync, search, decisions, indexer status and the release API keep using Sonarr's `IIndexerFactory` unchanged.
+- **Definitions.**
+  - Cardigann definitions come from the owner's fork of Prowlarr/Indexers on GitHub (`flintstrike-nz/Indexers`, `definitions/v12`), read from its raw files.
+  - A snapshot is bundled with each release as the fallback, used offline or when the fork can't be reached.
+  - Nothing is fetched from Prowlarr's own servers.
+
+| Step | What |
+| --- | --- |
+| 3a-1 | Engine core under `IndexerEngine`: definitions table, status, limits, HTTP client, capabilities, search criteria, release models, and the Torznab indexer. Backend only, with tests. |
+| 3a-2 | Cardigann runtime, the definition version store, and the updater (fork plus bundled fallback). |
+| 3b | `EngineIndexer` adapter and a migration that replaces Sonarr's own indexers with engine indexers. Sonarr's native indexer classes are removed. |
+| 3c | Prowlarr's native torrent indexers. |
+| 3d | Indexer proxies (FlareSolverr, HTTP, SOCKS). |
+| 3e | Indexer stats and query history. These show in Activity. |
+| 3f | Settings → Indexers on the engine: add from definitions, test, flags. |
+| 3g | Search page. |
+
 ### Phase 4 — Movies and the merged library (EmbarrPre2 → Embarr)
 
 - Port the movie domain, movie metadata, parser, decisions, naming, import and import lists.
