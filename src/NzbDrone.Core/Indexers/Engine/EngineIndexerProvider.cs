@@ -63,7 +63,15 @@ namespace NzbDrone.Core.Indexers.Engine
 
         private Dictionary<string, EngineDefinition> LoadedTemplates()
         {
-            return _templates.Get("all", LoadTemplates, TimeSpan.FromMinutes(10));
+            var templates = _templates.Get("all", LoadTemplates, TimeSpan.FromMinutes(10));
+
+            // No definitions yet (the first download hasn't happened): don't remember the empty list.
+            if (templates.Count == 0)
+            {
+                _templates.Remove("all");
+            }
+
+            return templates;
         }
 
         public static EngineDefinition Build(IndexerDefinition definition, CardigannSettings settings, EngineDefinition template)

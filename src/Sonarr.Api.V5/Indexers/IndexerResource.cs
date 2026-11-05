@@ -90,7 +90,7 @@ public class IndexerResourceMapper : ProviderResourceMapper<IndexerResource, Ind
 
             var isPassword = extra.Type == "password";
             var isCheckbox = extra.Type == "checkbox";
-            var stored = settings.ExtraFieldData?.GetValueOrDefault(extra.Name);
+            var stored = EngineIndexerProvider.NormalizeExtraFields(settings.ExtraFieldData).GetValueOrDefault(extra.Name);
             var value = stored ?? (isCheckbox ? string.Equals(extra.Default, "true", StringComparison.OrdinalIgnoreCase) : extra.Default);
 
             if (isPassword && value is string { Length: > 0 })

@@ -553,7 +553,7 @@ Each phase ends in a working, shippable build.
 | 3b-2 | Cardigann adapter: criteria and release mappers, file downloads through the engine, start-up and daily definition update. |
 | 3f-1 | Add indexers from the definition list: one Add Indexer entry per definition file, its login fields in the form, a filter box, torrents only. Done before 3c and 3d because it makes the 580 Cardigann sites usable. |
 | 3c | Prowlarr's native torrent indexers; Sonarr's native indexer classes retire as each has an engine equivalent. |
-| 3d | Indexer proxies (FlareSolverr, HTTP, SOCKS). |
+| 3d | Indexer proxies (FlareSolverr, HTTP, SOCKS): API and a section on Settings > Indexers. |
 | 3e | Indexer stats and query history. These show in Activity. |
 | 3f | Settings → Indexers on the engine: add from definitions, test, flags. |
 | 3g | Search page. |
@@ -933,3 +933,11 @@ A second download engine sits beside the torrent engine, and both feed the same 
 - Bundle yt-dlp in the packages, or download it on first run?
 - Where does this live in the settings tree (§6.3): its own page, or beside Indexers?
 - Per-source legal opt-in wording, for YouTube in particular.
+
+Built so far (3d):
+
+- **Proxies API.** `/api/v5/indexerproxy` (list, schema, add, edit, delete, test) for FlareSolverr, HTTP, SOCKS4 and SOCKS5 proxies. A proxy serves the indexers that share one of its tags; with no tag it does nothing.
+- **Proxies screen.** A section on Settings > Indexers with cards, an add dialog and an edit dialog (name, tags, the proxy's own fields, Test, Delete).
+- **Found by running the app.** Saved passwords from the database came back unmasked because they load as JSON values, which is fixed with a test. The list of definition-file indexers was also being remembered while empty; it is no longer.
+- **Checked on a running app.** The proxy schema lists the four proxy types; the indexer schema lists 580 definition-file entries; an indexer added from one keeps its login fields, and its password is shown as stars.
+- **Not covered.** The sandbox blocks the definition download (GitHub returns 403), so the first-start fetch could not be exercised here; the definitions were copied in by hand. Phase 7 ships a bundled snapshot as the offline fallback.
