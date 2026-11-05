@@ -17,6 +17,7 @@ import translate from 'Utilities/String/translate';
 import Indexers from './Indexers/Indexers';
 import ManageIndexersModal from './Indexers/Manage/ManageIndexersModal';
 import IndexerOptions from './Options/IndexerOptions';
+import IndexerProxies from './Proxies/IndexerProxies';
 import { useTestAllIndexers } from './useIndexers';
 
 function IndexerSettings() {
@@ -129,6 +130,15 @@ function IndexerSettings() {
             />
 
             <Indexers testResults={testAllResults} />
+          </div>
+
+          <div className={settingsStyles.pageSection}>
+            <SectionHeading
+              title={translate('IndexerProxies')}
+              description={translate('IndexerProxiesSectionDescription')}
+            />
+
+            <IndexerProxies />
           </div>
 
           <IndexerOptions

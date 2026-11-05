@@ -77,6 +77,19 @@ namespace NzbDrone.Api.Test.IndexerTests
         }
 
         [Test]
+        public void should_hide_passwords_that_were_loaded_from_the_database_as_json()
+        {
+            var saved = Saved();
+            saved.Settings = new Settings
+            {
+                DefinitionFile = "mytracker",
+                ExtraFieldData = new Dictionary<string, object> { { "password", JsonDocument.Parse("\"hunter2\"").RootElement } }
+            };
+
+            _mapper.ToResource(saved).Fields.Single(f => f.Name == "extra_password").Value.Should().Be("********");
+        }
+
+        [Test]
         public void should_keep_the_saved_password_when_the_form_sends_the_hidden_value_back()
         {
             var saved = Saved();
