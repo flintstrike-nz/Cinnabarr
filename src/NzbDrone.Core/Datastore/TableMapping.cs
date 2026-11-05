@@ -29,6 +29,10 @@ using NzbDrone.Core.Jobs;
 using NzbDrone.Core.Languages;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Messaging.Commands;
+using NzbDrone.Core.Movies;
+using NzbDrone.Core.Movies.AlternativeTitles;
+using NzbDrone.Core.Movies.Credits;
+using NzbDrone.Core.Movies.Translations;
 using NzbDrone.Core.Notifications;
 using NzbDrone.Core.Organizer;
 using NzbDrone.Core.Parser.Model;
@@ -172,6 +176,15 @@ namespace NzbDrone.Core.Datastore
             Mapper.Entity<IndexerStatus>("IndexerStatus").RegisterModel();
 
             Mapper.Entity<IndexerQuery>("IndexerQueries").RegisterModel();
+
+            Mapper.Entity<MovieMetadata>("MovieMetadata").RegisterModel()
+                  .Ignore(s => s.Translations);
+
+            Mapper.Entity<AlternativeTitle>("AlternativeTitles").RegisterModel();
+
+            Mapper.Entity<MovieTranslation>("MovieTranslations").RegisterModel();
+
+            Mapper.Entity<Credit>("Credits").RegisterModel();
             Mapper.Entity<DownloadClientStatus>("DownloadClientStatus").RegisterModel();
             Mapper.Entity<ImportListStatus>("ImportListStatus").RegisterModel();
             Mapper.Entity<NotificationStatus>("NotificationStatus").RegisterModel();

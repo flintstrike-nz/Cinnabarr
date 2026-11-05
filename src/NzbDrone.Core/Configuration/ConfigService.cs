@@ -11,6 +11,7 @@ using NzbDrone.Core.Languages;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.EpisodeImport;
 using NzbDrone.Core.Messaging.Events;
+using NzbDrone.Core.MetadataSource.RadarrMetadata.Resource;
 using NzbDrone.Core.Qualities;
 using NzbDrone.Core.Security;
 
@@ -180,6 +181,22 @@ namespace NzbDrone.Core.Configuration
 
         // Where the indexer engine downloads its Cardigann definitions from: a zip of a repository laid out like
         // Prowlarr/Indexers (definitions/v{n}/*.yml). Embarr's own fork by default; it never uses Prowlarr's servers.
+        // Where movie information comes from. The Radarr project's metadata service by default (it reads TMDb for us,
+        // so Cinnabarr needs no key); point this at another service with the same routes to change it.
+        public string MovieMetadataUrl
+        {
+            get { return GetValue("MovieMetadataUrl", "https://api.radarr.video/v1/{route}"); }
+
+            set { SetValue("MovieMetadataUrl", value); }
+        }
+
+        public TMDbCountryCode CertificationCountry
+        {
+            get { return GetValueEnum("CertificationCountry", TMDbCountryCode.US); }
+
+            set { SetValue("CertificationCountry", value); }
+        }
+
         public string IndexerDefinitionsUrl
         {
             get { return GetValue("IndexerDefinitionsUrl", "https://github.com/flintstrike-nz/Indexers/archive/refs/heads/master.zip"); }

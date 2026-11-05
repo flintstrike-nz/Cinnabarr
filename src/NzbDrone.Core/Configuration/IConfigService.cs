@@ -3,6 +3,7 @@ using NzbDrone.Common.Http.Proxy;
 using NzbDrone.Core.ImportLists;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.EpisodeImport;
+using NzbDrone.Core.MetadataSource.RadarrMetadata.Resource;
 using NzbDrone.Core.Qualities;
 using NzbDrone.Core.Security;
 
@@ -27,6 +28,8 @@ namespace NzbDrone.Core.Configuration
         bool EngineOrphanCleanupApproved { get; set; }
         int HistoryCleanupDays { get; set; }
         string IndexerDefinitionsUrl { get; set; }
+        string MovieMetadataUrl { get; set; }
+        TMDbCountryCode CertificationCountry { get; set; }
         bool LogIndexerResponse { get; set; }
         int EngineOrphanGraceDays { get; set; }
         bool AutoRedownloadFailed { get; set; }
