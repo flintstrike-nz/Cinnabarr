@@ -540,6 +540,7 @@ Each phase ends in a working, shippable build.
 | 3a-2 | Cardigann runtime, the definition version store, and the updater (fork plus bundled fallback). |
 | 3b-1 | Existing indexers run on the engine's HTTP stack (proxies, rate limits, Cloudflare handling); the proxies table; saved indexers Embarr can't run are kept, switched off and flagged. |
 | 3b-2 | Cardigann adapter: criteria and release mappers, file downloads through the engine, start-up and daily definition update. |
+| 3f-1 | Add indexers from the definition list: one Add Indexer entry per definition file, its login fields in the form, a filter box, torrents only. Done before 3c and 3d because it makes the 580 Cardigann sites usable. |
 | 3c | Prowlarr's native torrent indexers; Sonarr's native indexer classes retire as each has an engine equivalent. |
 | 3d | Indexer proxies (FlareSolverr, HTTP, SOCKS). |
 | 3e | Indexer stats and query history. These show in Activity. |
@@ -820,3 +821,10 @@ Built so far (3b-2):
 - **Downloads.** Indexers that need a session to fetch a torrent implement `IIndexerFileDownloader`; `TorrentClientBase` then asks the engine for the file instead of making a plain web request.
 - **Definitions stay current.** The first start fetches them when the folder is empty, and a daily scheduled task refreshes them.
 - **Not yet reachable.** The generic "Cardigann" entry is hidden from the Add Indexer list. Adding an indexer from the 580 definitions, with its own login form, is 3f.
+
+Built so far (3f-1):
+
+- **One entry per site.** The Add Indexer schema now lists every definition file by its name (`IEngineIndexerProvider.Templates()`), instead of one blank Cardigann entry. Choosing one fills in its address and the usual torrent settings.
+- **The site's own login fields.** The V5 indexer API adds the fields a definition asks for (username, password, cookie and so on) to the form as `extra_<name>` and reads them back into the settings. Passwords are shown as stars and a saved one is kept when the form sends the stars back.
+- **Add Indexer screen.** Torrents only, a filter box (there are about 580 sites), and the chosen entry is matched by name as well as type, because many entries share the Cardigann type.
+- **Known gaps.** Fields of type `select` show as text with the allowed values in the help text; CAPTCHA logins and the "info" notes in a definition are not shown yet. Proxies (3d) still have no screen, so sites behind Cloudflare need a FlareSolverr proxy added through the API for now.

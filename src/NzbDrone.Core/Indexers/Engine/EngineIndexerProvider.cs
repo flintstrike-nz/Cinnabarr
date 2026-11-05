@@ -16,6 +16,11 @@ namespace NzbDrone.Core.Indexers.Engine
     {
         /// <summary>The engine indexer that runs a saved Embarr indexer.</summary>
         EngineIndexer Get(IndexerDefinition definition);
+
+        /// <summary>Every indexer Embarr can add from a definition file.</summary>
+        IReadOnlyList<EngineDefinition> Templates();
+
+        EngineDefinition FindTemplate(string definitionFile);
     }
 
     public class EngineIndexerProvider : IEngineIndexerProvider
@@ -36,18 +41,29 @@ namespace NzbDrone.Core.Indexers.Engine
                 throw new NotSupportedException($"Indexer {definition.Name} has no engine equivalent");
             }
 
-            var templates = _templates.Get("all", LoadTemplates, TimeSpan.FromMinutes(10));
-
-            if (!templates.TryGetValue(settings.DefinitionFile, out var template))
-            {
-                throw new NotSupportedException($"Indexer definition '{settings.DefinitionFile}' is not available; update the indexer definitions");
-            }
+            var template = FindTemplate(settings.DefinitionFile)
+                           ?? throw new NotSupportedException($"Indexer definition '{settings.DefinitionFile}' is not available; update the indexer definitions");
 
             var indexer = _services.GetRequiredService<EngineCardigann>();
 
             indexer.Definition = Build(definition, settings, template);
 
             return indexer;
+        }
+
+        public IReadOnlyList<EngineDefinition> Templates()
+        {
+            return LoadedTemplates().Values.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        public EngineDefinition FindTemplate(string definitionFile)
+        {
+            return definitionFile != null && LoadedTemplates().TryGetValue(definitionFile, out var template) ? template : null;
+        }
+
+        private Dictionary<string, EngineDefinition> LoadedTemplates()
+        {
+            return _templates.Get("all", LoadTemplates, TimeSpan.FromMinutes(10));
         }
 
         public static EngineDefinition Build(IndexerDefinition definition, CardigannSettings settings, EngineDefinition template)

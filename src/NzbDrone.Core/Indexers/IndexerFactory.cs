@@ -4,8 +4,12 @@ using System.Linq;
 using FluentValidation.Results;
 using NLog;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Indexers.Cardigann;
+using NzbDrone.Core.Indexers.Engine;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.ThingiProvider;
+using CardigannIndexer = NzbDrone.Core.Indexers.Cardigann.Cardigann;
+using EngineCardigannSettings = NzbDrone.Core.IndexerEngine.Indexers.Definitions.Cardigann.CardigannSettings;
 
 namespace NzbDrone.Core.Indexers
 {
@@ -23,9 +27,11 @@ namespace NzbDrone.Core.Indexers
     {
         private readonly IIndexerRepository _indexerRepository;
         private readonly IIndexerStatusService _indexerStatusService;
+        private readonly IEngineIndexerProvider _engineIndexerProvider;
         private readonly Logger _logger;
 
         public IndexerFactory(IIndexerStatusService indexerStatusService,
+                              IEngineIndexerProvider engineIndexerProvider,
                               IIndexerRepository providerRepository,
                               IEnumerable<IIndexer> providers,
                               IServiceProvider container,
@@ -35,6 +41,7 @@ namespace NzbDrone.Core.Indexers
         {
             _indexerRepository = providerRepository;
             _indexerStatusService = indexerStatusService;
+            _engineIndexerProvider = engineIndexerProvider;
             _logger = logger;
         }
 
@@ -66,10 +73,47 @@ namespace NzbDrone.Core.Indexers
 
         public override IEnumerable<IndexerDefinition> GetDefaultDefinitions()
         {
-            // The generic Cardigann entry is blank; indexers are added from the definition list instead (roadmap 3f).
+            // The blank generic Cardigann entry is replaced by one entry per definition file.
             return base.GetDefaultDefinitions()
                 .Where(d => d.Implementation != "Cardigann")
-                .Select(SetDefaultFailDownloads);
+                .Select(SetDefaultFailDownloads)
+                .Concat(CardigannDefinitions());
+        }
+
+        private IEnumerable<IndexerDefinition> CardigannDefinitions()
+        {
+            var provider = _providers.OfType<CardigannIndexer>().FirstOrDefault();
+
+            if (provider == null)
+            {
+                yield break;
+            }
+
+            foreach (var template in _engineIndexerProvider.Templates())
+            {
+                var settings = (CardigannSettings)new CardigannSettings();
+                settings.DefinitionFile = ((EngineCardigannSettings)template.Settings).DefinitionFile;
+                settings.BaseUrl = template.IndexerUrls?.FirstOrDefault();
+                settings.FailDownloads = provider.DefaultFailDownloads.Select(f => (int)f).ToArray();
+
+                var definition = new IndexerDefinition
+                {
+                    Name = template.Name,
+                    Implementation = "Cardigann",
+                    ConfigContract = nameof(CardigannSettings),
+                    Settings = settings,
+                    EnableRss = true,
+                    EnableAutomaticSearch = true,
+                    EnableInteractiveSearch = true
+                };
+
+                SetProviderCharacteristics(provider, definition);
+
+                // Shown in the Add Indexer list.
+                definition.ImplementationName = template.Name;
+
+                yield return definition;
+            }
         }
 
         public override IEnumerable<IndexerDefinition> GetPresetDefinitions(IndexerDefinition providerDefinition)
