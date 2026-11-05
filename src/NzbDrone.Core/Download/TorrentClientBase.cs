@@ -140,41 +140,50 @@ namespace NzbDrone.Core.Download
 
             try
             {
-                var request = indexer?.GetDownloadRequest(torrentUrl) ?? new HttpRequest(torrentUrl);
-                request.RateLimitKey = remoteEpisode?.Release?.IndexerId.ToString();
-                request.Headers.Accept = "application/x-bittorrent";
-                request.AllowAutoRedirect = false;
-
-                var response = await RetryStrategy
-                    .ExecuteAsync(static async (state, token) => await state._httpClient.GetAsync(state.request, token), (_httpClient, request))
-                    .ConfigureAwait(false);
-
-                if (response.StatusCode == HttpStatusCode.MovedPermanently ||
-                    response.StatusCode == HttpStatusCode.Found ||
-                    response.StatusCode == HttpStatusCode.SeeOther)
+                if (indexer is IIndexerFileDownloader downloader)
                 {
-                    var locationHeader = response.Headers.GetSingleValue("Location");
+                    torrentFile = await downloader.DownloadTorrentFile(torrentUrl);
 
-                    _logger.Trace("Torrent request is being redirected to: {0}", locationHeader);
+                    _logger.Debug("Downloading torrent for episode '{0}' finished ({1} bytes from {2})", remoteEpisode.Release.Title, torrentFile.Length, torrentUrl);
+                }
+                else
+                {
+                    var request = indexer?.GetDownloadRequest(torrentUrl) ?? new HttpRequest(torrentUrl);
+                    request.RateLimitKey = remoteEpisode?.Release?.IndexerId.ToString();
+                    request.Headers.Accept = "application/x-bittorrent";
+                    request.AllowAutoRedirect = false;
 
-                    if (locationHeader != null)
+                    var response = await RetryStrategy
+                        .ExecuteAsync(static async (state, token) => await state._httpClient.GetAsync(state.request, token), (_httpClient, request))
+                        .ConfigureAwait(false);
+
+                    if (response.StatusCode == HttpStatusCode.MovedPermanently ||
+                        response.StatusCode == HttpStatusCode.Found ||
+                        response.StatusCode == HttpStatusCode.SeeOther)
                     {
-                        if (locationHeader.StartsWith("magnet:"))
+                        var locationHeader = response.Headers.GetSingleValue("Location");
+
+                        _logger.Trace("Torrent request is being redirected to: {0}", locationHeader);
+
+                        if (locationHeader != null)
                         {
-                            return DownloadFromMagnetUrl(remoteEpisode, indexer, locationHeader);
+                            if (locationHeader.StartsWith("magnet:"))
+                            {
+                                return DownloadFromMagnetUrl(remoteEpisode, indexer, locationHeader);
+                            }
+
+                            request.Url += new HttpUri(locationHeader);
+
+                            return await DownloadFromWebUrl(remoteEpisode, indexer, request.Url.ToString());
                         }
 
-                        request.Url += new HttpUri(locationHeader);
-
-                        return await DownloadFromWebUrl(remoteEpisode, indexer, request.Url.ToString());
+                        throw new WebException("Remote website tried to redirect without providing a location.");
                     }
 
-                    throw new WebException("Remote website tried to redirect without providing a location.");
+                    torrentFile = response.ResponseData;
+
+                    _logger.Debug("Downloading torrent for episode '{0}' finished ({1} bytes from {2})", remoteEpisode.Release.Title, torrentFile.Length, torrentUrl);
                 }
-
-                torrentFile = response.ResponseData;
-
-                _logger.Debug("Downloading torrent for episode '{0}' finished ({1} bytes from {2})", remoteEpisode.Release.Title, torrentFile.Length, torrentUrl);
             }
             catch (HttpException ex)
             {

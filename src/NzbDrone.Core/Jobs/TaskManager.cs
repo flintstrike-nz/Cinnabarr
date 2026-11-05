@@ -13,6 +13,7 @@ using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.HealthCheck;
 using NzbDrone.Core.Housekeeping;
 using NzbDrone.Core.ImportLists;
+using NzbDrone.Core.IndexerEngine.IndexerVersions;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Lifecycle;
 using NzbDrone.Core.MediaFiles.Commands;
@@ -120,6 +121,12 @@ namespace NzbDrone.Core.Jobs
                     {
                         Interval = 24 * 60,
                         TypeName = typeof(EngineOrphanCleanupCommand).FullName
+                    },
+
+                    new ScheduledTask
+                    {
+                        Interval = 24 * 60,
+                        TypeName = typeof(IndexerDefinitionUpdateCommand).FullName
                     },
 
                     new ScheduledTask
