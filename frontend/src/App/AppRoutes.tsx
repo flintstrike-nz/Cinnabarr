@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate, Route } from 'react-router-dom';
 import Blocklist from 'Activity/Blocklist/Blocklist';
 import History from 'Activity/History/History';
+import IndexerQueries from 'Activity/IndexerQueries/IndexerQueries';
 import Queue from 'Activity/Queue/Queue';
 import AddNewSeries from 'AddSeries/AddNewSeries/AddNewSeries';
 import ImportSeries from 'AddSeries/ImportSeries/Import/ImportSeries';
@@ -101,6 +102,7 @@ export function appRouteElements() {
       />
 
       <Route path="/activity/blocklist" element={<Blocklist />} />
+      <Route path="/activity/indexer-queries" element={<IndexerQueries />} />
 
       {/*
         Wanted

@@ -10,6 +10,7 @@ using NzbDrone.Core.DataAugmentation.Scene;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.Indexers;
+using NzbDrone.Core.Indexers.History;
 using NzbDrone.Core.IndexerSearch.Definitions;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
@@ -32,6 +33,7 @@ namespace NzbDrone.Core.IndexerSearch
         private readonly ISeriesService _seriesService;
         private readonly IEpisodeService _episodeService;
         private readonly IMakeDownloadDecision _makeDownloadDecision;
+        private readonly IIndexerQueryService _indexerQueryService;
         private readonly Logger _logger;
 
         public ReleaseSearchService(IIndexerFactory indexerFactory,
@@ -39,9 +41,11 @@ namespace NzbDrone.Core.IndexerSearch
                                 ISeriesService seriesService,
                                 IEpisodeService episodeService,
                                 IMakeDownloadDecision makeDownloadDecision,
+                                IIndexerQueryService indexerQueryService,
                                 Logger logger)
         {
             _indexerFactory = indexerFactory;
+            _indexerQueryService = indexerQueryService;
             _sceneMapping = sceneMapping;
             _seriesService = seriesService;
             _episodeService = episodeService;
@@ -584,7 +588,7 @@ namespace NzbDrone.Core.IndexerSearch
         {
             try
             {
-                return await searchAction(indexer);
+                return await _indexerQueryService.Track(indexer, IndexerQuerySource.Search, criteriaBase.ToString(), () => searchAction(indexer));
             }
             catch (Exception ex)
             {

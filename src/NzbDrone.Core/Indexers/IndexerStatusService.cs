@@ -1,3 +1,4 @@
+using System;
 using NLog;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Core.Messaging.Events;
@@ -11,6 +12,7 @@ namespace NzbDrone.Core.Indexers
         ReleaseInfo GetLastRssSyncReleaseInfo(int indexerId);
 
         void UpdateRssSyncStatus(int indexerId, ReleaseInfo releaseInfo);
+        DateTime? GetMostRecentFailure(int indexerId);
     }
 
     public class IndexerStatusService : ProviderStatusServiceBase<IIndexer, IndexerStatus>, IIndexerStatusService
@@ -23,6 +25,11 @@ namespace NzbDrone.Core.Indexers
         public ReleaseInfo GetLastRssSyncReleaseInfo(int indexerId)
         {
             return GetProviderStatus(indexerId).LastRssSyncReleaseInfo;
+        }
+
+        public DateTime? GetMostRecentFailure(int indexerId)
+        {
+            return GetProviderStatus(indexerId).MostRecentFailure;
         }
 
         public void UpdateRssSyncStatus(int indexerId, ReleaseInfo releaseInfo)
