@@ -823,3 +823,105 @@ Built so far (3b-2):
 - **Downloads.** Indexers that need a session to fetch a torrent implement `IIndexerFileDownloader`; `TorrentClientBase` then asks the engine for the file instead of making a plain web request.
 - **Definitions stay current.** The first start fetches them when the folder is empty, and a daily scheduled task refreshes them.
 - **Not yet reachable.** The generic "Cardigann" entry is hidden from the Add Indexer list. Adding an indexer from the 580 definitions, with its own login form, is 3f.
+
+---
+
+## Addendum C — Web sources and a yt-dlp download engine (future, not part of the current plan)
+
+> Status: **idea, not scheduled.** Nothing in Phases 1–7 depends on this. **Personal use.** NHK World Japan is the first target, and YouTube is factored in from the start so the design doesn't hard-code one site.
+
+### C.1 Goal
+
+Follow a show on a website and have new episodes fetched, named and imported like any other series in Cinnabarr, without torrents or usenet. NHK World Japan shows are the first use. YouTube channels and playlists are the second.
+
+### C.2 Prior work: NHKollector
+
+`flintstrike-nz/NHKollector` (archived Node.js tool, Apache-2.0, the owner's own code) already did this for NHK World. It last ran in mid-2025 and worked then, but has not been re-run since a PC reset, so its selectors must be re-checked against the live site before anything is built on them.
+
+What it showed:
+
+- **Discovery** used Puppeteer with CSS selectors hard-coded to NHK's page layout, clicking "See More" up to 10 times. Selectors break whenever the site is redesigned.
+- **Download** ran `yt-dlp -f best --write-sub --sub-lang en --embed-subs` per episode and judged success by exit code only.
+- **Episode numbers** came from scraping TVDB with Puppeteer. Cinnabarr's own metadata layer (§4.14) replaces this.
+- **History** was keyed by the numeric NHK ID at the end of the episode URL.
+- **Its own TODO list** names the weak spots: download paths ignored, an unexplained yt-dlp exit code 1, `[Best]` in file names.
+
+It is a source of knowledge for the first NHK definition, not code to port.
+
+### C.3 Approach
+
+Cinnabarr is .NET, so the orchestration is written in C# and **yt-dlp runs as a subprocess**. No Node runtime is shipped. Finding a show's episodes uses the most reliable method available, in this order:
+
+1. **yt-dlp lists the episodes.** `yt-dlp --flat-playlist -J <url>` returns IDs, titles and dates for any site with a yt-dlp extractor, including YouTube channels and playlists, with no scraping code. Whether this covers NHK World's current `/shows/` pages has not been checked and must be verified first.
+2. **Feeds.** RSS, Atom, sitemaps or JSON APIs are more stable than page layouts. YouTube channels and playlists publish Atom feeds, which are a cheap way to poll for new videos before calling yt-dlp.
+3. **Declarative definitions.** Per-site data files (list URL, item selectors, field mapping, pagination style), tried against static HTML first. A headless browser (Playwright for .NET) is an optional extra for pages that need JavaScript, not a requirement.
+4. **Paste an episode or show URL** as the manual fallback.
+
+### C.4 Site definitions live in a separate private repository
+
+The definitions are kept out of the Cinnabarr repository.
+
+- **Repository:** a separate **private** repository owned by `flintstrike-nz`. Suggested name: `cinnabarr-definitions`. It does not exist yet and has to be created by the owner (it can then be attached to a session with push access).
+- **Contents:** one definition file per site (NHK World and YouTube first), a published schema with a version number, and test fixtures (saved HTML or JSON snapshots) with a check that each definition still parses its fixtures.
+- **How Cinnabarr uses it:** it fetches definitions from a pinned tag or commit, using a read-only token the owner configures in settings. It caches them locally, supports a local override folder, and never applies unpinned changes automatically.
+- **Why separate and private:** broadcaster-specific scrapers are the part most likely to draw takedown notices (NHKollector's README already commits to a takedown policy), and they change on the site's schedule, not the app's. This follows the same pattern as the Cardigann indexer definitions in §8, and the loader could be shared.
+
+### C.5 Matching and naming
+
+Web episodes don't come with season and episode numbers.
+
+- **NHK World shows** exist on TVDB, so match by air date first, then fuzzy title, with a manual override.
+- **YouTube and other date-based sources** have no TVDB entry. Use Sonarr's existing daily series type for date-based shows, with seasons by year.
+- **Library layout and naming** follow §4.11. Version slots (§4.9) can choose a format, for example HD or 4K, when yt-dlp offers more than one.
+
+### C.6 The download engine
+
+A second download engine sits beside the torrent engine, and both feed the same queue and Downloads page (§6.2).
+
+- **Progress and errors:** use yt-dlp's JSON output (`--dump-json`) and a progress template, and capture stderr, so a failure has a reason and not just an exit code.
+- **Output:** write straight to the final location (§4.8), embed subtitles, and verify the result (for example, duration compared with the listing, using ffprobe) before importing. Clean up partial files.
+- **Seeding rules** (§4.10) don't apply.
+- **yt-dlp management:** pin a version, allow a controlled update, and keep the previous version for rollback. yt-dlp breaks often, especially for YouTube. ffmpeg is required; don't bundle it at first.
+
+### C.7 Reliability rules
+
+- **Zero episodes found is an error,** not a result. Alert and don't mark episodes as removed.
+- **Use a stable ID from the source** (an NHK ID, a YouTube video ID), never the title, as the history key, and make history idempotent.
+- **Retries with backoff,** and rate limiting per site.
+- **Poll often enough to catch expiring content,** since NHK removes shows without warning.
+- **No DRM circumvention.** If yt-dlp reports a protected stream, mark the source unsupported.
+
+### C.8 YouTube specifics
+
+- A channel or playlist is a series. Live streams, Shorts and premieres need filters.
+- Members-only and age-gated videos need a user-supplied cookies file, stored securely.
+- YouTube's terms restrict downloading outside the ways it provides, which is a personal-use risk to accept per source. Make each YouTube source opt-in.
+
+### C.9 Constraints and risks
+
+| Item | Detail |
+| --- | --- |
+| **Site changes** | Definitions break when a site is redesigned. The definitions repository, fixtures and the zero-results alert exist to catch this quickly. |
+| **Legal** | Personal archiving and time-shifting only, as NHKollector's README already states. Not legal advice. Broadcaster-specific definitions stay in the private repository. |
+| **yt-dlp upkeep** | Extractors, especially YouTube's, need frequent updates. |
+| **Licences** | yt-dlp is called as a separate process. Check ffmpeg's licence before ever bundling it. |
+| **Where it runs** | The home server only. Vercel can't run long yt-dlp or headless-browser jobs. |
+| **Scope** | This adds a second download engine and a definitions system, which is large. Don't start it before Phases 2–4 are stable. |
+
+### C.10 Suggested order, once scheduled
+
+1. Re-run NHKollector against the live NHK site and test what yt-dlp can list for it.
+2. Introduce a download-engine interface so the torrent engine and yt-dlp share the queue (after Phase 4).
+3. Build the yt-dlp wrapper, with a YouTube channel as the first source because it needs no definitions.
+4. Create the definitions repository and the loader.
+5. Add the NHK World definition.
+6. Add matching and naming, including the daily series type for date-based sources.
+7. Add a "follow this show URL" command to Addendum B's remote requests.
+
+### C.11 Open questions
+
+- Does yt-dlp list NHK World's current show pages, or does NHK need a definition?
+- Definition format: YAML like Cardigann, or JSON? Who validates it?
+- Bundle yt-dlp in the packages, or download it on first run?
+- Where does this live in the settings tree (§6.3): its own page, or beside Indexers?
+- Per-source legal opt-in wording, for YouTube in particular.
