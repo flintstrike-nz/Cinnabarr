@@ -1,7 +1,6 @@
 using System;
 using System.Linq;
 using System.Net.Http;
-using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Moq;
@@ -11,6 +10,8 @@ using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Indexers.Torrentleech;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Test.Framework;
+using NzbDrone.Core.ThingiProvider;
+using IIndexerHttpClient = NzbDrone.Core.IndexerEngine.Indexers.IIndexerHttpClient;
 
 namespace NzbDrone.Core.Test.IndexerTests.TorrentleechTests
 {
@@ -32,9 +33,9 @@ namespace NzbDrone.Core.Test.IndexerTests.TorrentleechTests
         {
             var recentFeed = ReadAllText(@"Files/Indexers/Torrentleech/Torrentleech.xml");
 
-            Mocker.GetMock<IHttpClient>()
-                .Setup(o => o.ExecuteAsync(It.Is<HttpRequest>(v => v.Method == HttpMethod.Get)))
-                .ReturnsAsync((HttpRequest r, CancellationToken _) => new HttpResponse(r, new HttpHeader(), recentFeed));
+            Mocker.GetMock<IIndexerHttpClient>()
+                .Setup(o => o.ExecuteProxiedAsync(It.Is<HttpRequest>(v => v.Method == HttpMethod.Get), It.IsAny<ProviderDefinition>()))
+                .ReturnsAsync((HttpRequest r, ProviderDefinition _) => new HttpResponse(r, new HttpHeader(), recentFeed));
 
             var releases = await Subject.FetchRecent();
 

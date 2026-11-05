@@ -75,6 +75,7 @@ namespace NzbDrone.Core.HealthCheck
         ImportMechanismEnableCompletedDownloadHandlingIfPossibleMultiComputer,
         ImportMechanismHandlingDisabled,
         IndexerDownloadClient,
+        IndexerUnsupported,
         IndexerJackettAll,
         IndexerLongTermStatusAllUnavailable,
         IndexerLongTermStatusUnavailable,

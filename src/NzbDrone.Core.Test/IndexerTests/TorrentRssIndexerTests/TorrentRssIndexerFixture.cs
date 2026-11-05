@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Moq;
@@ -10,7 +9,9 @@ using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Indexers.TorrentRss;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Test.Framework;
+using NzbDrone.Core.ThingiProvider;
 using NzbDrone.Test.Common;
+using IIndexerHttpClient = NzbDrone.Core.IndexerEngine.Indexers.IIndexerHttpClient;
 
 namespace NzbDrone.Core.Test.IndexerTests.TorrentRssIndexerTests
 {
@@ -36,9 +37,9 @@ namespace NzbDrone.Core.Test.IndexerTests.TorrentRssIndexerTests
         {
             var recentFeed = ReadAllText(@"Files/Indexers/" + rssXmlFile);
 
-            Mocker.GetMock<IHttpClient>()
-                .Setup(o => o.ExecuteAsync(It.IsAny<HttpRequest>()))
-                .ReturnsAsync((HttpRequest r, CancellationToken _) => new HttpResponse(r, new HttpHeader(), recentFeed));
+            Mocker.GetMock<IIndexerHttpClient>()
+                .Setup(o => o.ExecuteProxiedAsync(It.IsAny<HttpRequest>(), It.IsAny<ProviderDefinition>()))
+                .ReturnsAsync((HttpRequest r, ProviderDefinition _) => new HttpResponse(r, new HttpHeader(), recentFeed));
 
             Mocker.GetMock<IHttpClient>()
                 .Setup(o => o.Execute(It.IsAny<HttpRequest>()))

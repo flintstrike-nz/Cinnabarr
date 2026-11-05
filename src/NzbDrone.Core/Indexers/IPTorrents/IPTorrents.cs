@@ -1,6 +1,6 @@
 using NLog;
-using NzbDrone.Common.Http;
 using NzbDrone.Core.Configuration;
+using NzbDrone.Core.IndexerEngine.Indexers;
 using NzbDrone.Core.Localization;
 using NzbDrone.Core.Parser;
 
@@ -14,7 +14,7 @@ namespace NzbDrone.Core.Indexers.IPTorrents
         public override bool SupportsSearch => false;
         public override int PageSize => 0;
 
-        public IPTorrents(IHttpClient httpClient, IIndexerStatusService indexerStatusService, IConfigService configService, IParsingService parsingService, Logger logger, ILocalizationService localizationService)
+        public IPTorrents(IIndexerHttpClient httpClient, IIndexerStatusService indexerStatusService, IConfigService configService, IParsingService parsingService, Logger logger, ILocalizationService localizationService)
             : base(httpClient, indexerStatusService, configService, parsingService, logger, localizationService)
         {
         }

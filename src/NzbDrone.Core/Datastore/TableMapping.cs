@@ -21,6 +21,7 @@ using NzbDrone.Core.Extras.Subtitles;
 using NzbDrone.Core.History;
 using NzbDrone.Core.ImportLists;
 using NzbDrone.Core.ImportLists.Exclusions;
+using NzbDrone.Core.IndexerEngine.IndexerProxies;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Instrumentation;
 using NzbDrone.Core.Jobs;
@@ -108,6 +109,10 @@ namespace NzbDrone.Core.Datastore
             Mapper.Entity<DownloadClientDefinition>("DownloadClients").RegisterModel()
                   .Ignore(x => x.ImplementationName)
                   .Ignore(d => d.Protocol);
+
+            Mapper.Entity<IndexerProxyDefinition>("IndexerProxies").RegisterModel()
+                  .Ignore(x => x.ImplementationName)
+                  .Ignore(x => x.Enable);
 
             Mapper.Entity<SceneMapping>("SceneMappings").RegisterModel();
 

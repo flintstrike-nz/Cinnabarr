@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Net.Http;
-using System.Threading;
 using FizzWare.NBuilder;
 using Moq;
 using NUnit.Framework;
@@ -8,8 +7,10 @@ using NzbDrone.Common.Http;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.IndexerSearch.Definitions;
 using NzbDrone.Core.Parser.Model;
+using NzbDrone.Core.ThingiProvider;
 using NzbDrone.Core.Tv;
 using NzbDrone.Test.Common;
+using IIndexerHttpClient = NzbDrone.Core.IndexerEngine.Indexers.IIndexerHttpClient;
 
 namespace NzbDrone.Core.Test.IndexerTests
 {
@@ -23,9 +24,9 @@ namespace NzbDrone.Core.Test.IndexerTests
         {
             _series = Builder<Series>.CreateNew().Build();
 
-            Mocker.GetMock<IHttpClient>()
-                .Setup(o => o.ExecuteAsync(It.Is<HttpRequest>(v => v.Method == HttpMethod.Get)))
-                .ReturnsAsync((HttpRequest r, CancellationToken _) => new HttpResponse(r, new HttpHeader(), "<xml></xml>"));
+            Mocker.GetMock<IIndexerHttpClient>()
+                .Setup(o => o.ExecuteProxiedAsync(It.Is<HttpRequest>(v => v.Method == HttpMethod.Get), It.IsAny<ProviderDefinition>()))
+                .ReturnsAsync((HttpRequest r, ProviderDefinition _) => new HttpResponse(r, new HttpHeader(), "<xml></xml>"));
         }
 
         private void WithIndexer(bool paging, int resultCount)
@@ -68,7 +69,7 @@ namespace NzbDrone.Core.Test.IndexerTests
 
             Subject.Fetch(new SeasonSearchCriteria { Series = _series, SceneTitles = new List<string> { _series.Title } });
 
-            Mocker.GetMock<IHttpClient>().Verify(v => v.ExecuteAsync(It.IsAny<HttpRequest>()), Times.Once());
+            Mocker.GetMock<IIndexerHttpClient>().Verify(v => v.ExecuteProxiedAsync(It.IsAny<HttpRequest>(), It.IsAny<ProviderDefinition>()), Times.Once());
         }
 
         [Test]
@@ -78,7 +79,7 @@ namespace NzbDrone.Core.Test.IndexerTests
 
             Subject.Fetch(new SeasonSearchCriteria { Series = _series, SceneTitles = new List<string> { _series.Title } });
 
-            Mocker.GetMock<IHttpClient>().Verify(v => v.ExecuteAsync(It.IsAny<HttpRequest>()), Times.Once());
+            Mocker.GetMock<IIndexerHttpClient>().Verify(v => v.ExecuteProxiedAsync(It.IsAny<HttpRequest>(), It.IsAny<ProviderDefinition>()), Times.Once());
         }
 
         [Test]
@@ -88,7 +89,7 @@ namespace NzbDrone.Core.Test.IndexerTests
 
             Subject.Fetch(new SeasonSearchCriteria { Series = _series, SceneTitles = new List<string> { _series.Title } });
 
-            Mocker.GetMock<IHttpClient>().Verify(v => v.ExecuteAsync(It.IsAny<HttpRequest>()), Times.Exactly(10));
+            Mocker.GetMock<IIndexerHttpClient>().Verify(v => v.ExecuteProxiedAsync(It.IsAny<HttpRequest>(), It.IsAny<ProviderDefinition>()), Times.Exactly(10));
         }
     }
 }

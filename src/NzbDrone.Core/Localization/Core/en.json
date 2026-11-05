@@ -1259,6 +1259,7 @@
   "IncludeUnmonitored": "Include Unmonitored",
   "Indexer": "Indexer",
   "IndexerDownloadClientHealthCheckMessage": "Indexers with invalid download clients: {indexerNames}.",
+  "IndexerUnsupportedHealthCheckMessage": "These indexers use a type Embarr no longer supports and have been switched off (they are kept, not deleted): {indexerNames}.",
   "IndexerDownloadClientHelpText": "Specify which download client is used for grabs from this indexer",
   "IndexerFlags": "Indexer Flags",
   "IndexerHDBitsSettingsCategories": "Categories",

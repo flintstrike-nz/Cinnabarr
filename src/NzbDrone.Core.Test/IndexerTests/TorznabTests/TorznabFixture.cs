@@ -1,7 +1,6 @@
 using System;
 using System.Linq;
 using System.Net.Http;
-using System.Threading;
 using System.Threading.Tasks;
 using FizzWare.NBuilder;
 using FluentAssertions;
@@ -13,7 +12,9 @@ using NzbDrone.Core.Indexers.Newznab;
 using NzbDrone.Core.Indexers.Torznab;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Test.Framework;
+using NzbDrone.Core.ThingiProvider;
 using NzbDrone.Core.Validation;
+using IIndexerHttpClient = NzbDrone.Core.IndexerEngine.Indexers.IIndexerHttpClient;
 
 namespace NzbDrone.Core.Test.IndexerTests.TorznabTests
 {
@@ -50,9 +51,9 @@ namespace NzbDrone.Core.Test.IndexerTests.TorznabTests
         {
             var recentFeed = ReadAllText(@"Files/Indexers/Torznab/torznab_hdaccess_net.xml");
 
-            Mocker.GetMock<IHttpClient>()
-                .Setup(o => o.ExecuteAsync(It.Is<HttpRequest>(v => v.Method == HttpMethod.Get)))
-                .ReturnsAsync((HttpRequest r, CancellationToken _) => new HttpResponse(r, new HttpHeader(), recentFeed));
+            Mocker.GetMock<IIndexerHttpClient>()
+                .Setup(o => o.ExecuteProxiedAsync(It.Is<HttpRequest>(v => v.Method == HttpMethod.Get), It.IsAny<ProviderDefinition>()))
+                .ReturnsAsync((HttpRequest r, ProviderDefinition _) => new HttpResponse(r, new HttpHeader(), recentFeed));
 
             var releases = await Subject.FetchRecent();
 
@@ -81,9 +82,9 @@ namespace NzbDrone.Core.Test.IndexerTests.TorznabTests
         {
             var recentFeed = ReadAllText(@"Files/Indexers/Torznab/torznab_tpb.xml");
 
-            Mocker.GetMock<IHttpClient>()
-                .Setup(o => o.ExecuteAsync(It.Is<HttpRequest>(v => v.Method == HttpMethod.Get)))
-                .ReturnsAsync((HttpRequest r, CancellationToken _) => new HttpResponse(r, new HttpHeader(), recentFeed));
+            Mocker.GetMock<IIndexerHttpClient>()
+                .Setup(o => o.ExecuteProxiedAsync(It.Is<HttpRequest>(v => v.Method == HttpMethod.Get), It.IsAny<ProviderDefinition>()))
+                .ReturnsAsync((HttpRequest r, ProviderDefinition _) => new HttpResponse(r, new HttpHeader(), recentFeed));
 
             var releases = await Subject.FetchRecent();
 
@@ -111,9 +112,9 @@ namespace NzbDrone.Core.Test.IndexerTests.TorznabTests
         {
             var recentFeed = ReadAllText(@"Files/Indexers/Torznab/torznab_animetosho.xml");
 
-            Mocker.GetMock<IHttpClient>()
-                .Setup(o => o.ExecuteAsync(It.Is<HttpRequest>(v => v.Method == HttpMethod.Get)))
-                .ReturnsAsync((HttpRequest r, CancellationToken _) => new HttpResponse(r, new HttpHeader(), recentFeed));
+            Mocker.GetMock<IIndexerHttpClient>()
+                .Setup(o => o.ExecuteProxiedAsync(It.Is<HttpRequest>(v => v.Method == HttpMethod.Get), It.IsAny<ProviderDefinition>()))
+                .ReturnsAsync((HttpRequest r, ProviderDefinition _) => new HttpResponse(r, new HttpHeader(), recentFeed));
 
             var releases = await Subject.FetchRecent();
 
@@ -183,9 +184,9 @@ namespace NzbDrone.Core.Test.IndexerTests.TorznabTests
             var recentFeed = ReadAllText(@"Files/Indexers/Torznab/torznab_tpb.xml");
             (Subject.Definition.Settings as TorznabSettings).BaseUrl = baseUrl;
 
-            Mocker.GetMock<IHttpClient>()
-                .Setup(o => o.ExecuteAsync(It.Is<HttpRequest>(v => v.Method == HttpMethod.Get)))
-                .ReturnsAsync((HttpRequest r, CancellationToken _) => new HttpResponse(r, new HttpHeader(), recentFeed));
+            Mocker.GetMock<IIndexerHttpClient>()
+                .Setup(o => o.ExecuteProxiedAsync(It.Is<HttpRequest>(v => v.Method == HttpMethod.Get), It.IsAny<ProviderDefinition>()))
+                .ReturnsAsync((HttpRequest r, ProviderDefinition _) => new HttpResponse(r, new HttpHeader(), recentFeed));
 
             var result = new NzbDroneValidationResult(Subject.Test());
             result.IsValid.Should().BeTrue();
@@ -198,9 +199,9 @@ namespace NzbDrone.Core.Test.IndexerTests.TorznabTests
         {
             var recentFeed = ReadAllText(@"Files/Indexers/Torznab/torznab_tpb.xml");
 
-            Mocker.GetMock<IHttpClient>()
-                  .Setup(o => o.ExecuteAsync(It.Is<HttpRequest>(v => v.Method == HttpMethod.Get)))
-                  .ReturnsAsync((HttpRequest r, CancellationToken _) => new HttpResponse(r, new HttpHeader(), recentFeed));
+            Mocker.GetMock<IIndexerHttpClient>()
+                  .Setup(o => o.ExecuteProxiedAsync(It.Is<HttpRequest>(v => v.Method == HttpMethod.Get), It.IsAny<ProviderDefinition>()))
+                  .ReturnsAsync((HttpRequest r, ProviderDefinition _) => new HttpResponse(r, new HttpHeader(), recentFeed));
 
             (Subject.Definition.Settings as TorznabSettings).ApiPath = apiPath;
 

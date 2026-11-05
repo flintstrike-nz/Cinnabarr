@@ -187,7 +187,20 @@ namespace NzbDrone.Core.ThingiProvider
 
         public void SetProviderCharacteristics(TProviderDefinition definition)
         {
+            if (!HasImplementation(definition))
+            {
+                // Kept on purpose by factories that flag unsupported definitions instead of deleting them.
+                definition.ImplementationName ??= definition.Implementation;
+
+                return;
+            }
+
             GetInstance(definition);
+        }
+
+        protected bool HasImplementation(TProviderDefinition definition)
+        {
+            return GetImplementation(definition) != null;
         }
 
         public virtual void SetProviderCharacteristics(TProvider provider, TProviderDefinition definition)
@@ -196,7 +209,7 @@ namespace NzbDrone.Core.ThingiProvider
             definition.Message = provider.Message;
         }
 
-        private void RemoveMissingImplementations()
+        protected virtual void RemoveMissingImplementations()
         {
             var storedProvider = _providerRepository.All();
 
