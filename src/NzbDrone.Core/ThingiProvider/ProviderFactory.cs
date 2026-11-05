@@ -34,7 +34,7 @@ namespace NzbDrone.Core.ThingiProvider
             _logger = logger;
         }
 
-        public List<TProviderDefinition> All()
+        public virtual List<TProviderDefinition> All()
         {
             return _providerRepository.All().ToList();
         }
@@ -96,7 +96,7 @@ namespace NzbDrone.Core.ThingiProvider
             return _providerRepository.Find(id) != null;
         }
 
-        public TProviderDefinition Get(int id)
+        public virtual TProviderDefinition Get(int id)
         {
             return _providerRepository.Get(id);
         }

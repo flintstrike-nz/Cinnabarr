@@ -127,6 +127,42 @@ namespace NzbDrone.Common.Http
             }
         }
 
+        public string ContentEncoding
+        {
+            get
+            {
+                return GetSingleValue("Content-Encoding");
+            }
+            set
+            {
+                SetSingleValue("Content-Encoding", value);
+            }
+        }
+
+        public string Vary
+        {
+            get
+            {
+                return GetSingleValue("Vary");
+            }
+            set
+            {
+                SetSingleValue("Vary", value);
+            }
+        }
+
+        public string UserAgent
+        {
+            get
+            {
+                return GetSingleValue("User-Agent");
+            }
+            set
+            {
+                SetSingleValue("User-Agent", value);
+            }
+        }
+
         public string Accept
         {
             get

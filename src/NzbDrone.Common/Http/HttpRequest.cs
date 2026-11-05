@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Text;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Common.Http.Proxy;
 
 namespace NzbDrone.Common.Http
 {
@@ -48,6 +49,8 @@ namespace NzbDrone.Common.Http
         public bool LogHttpError { get; set; }
         public Dictionary<string, string> Cookies { get; private set; }
         public bool StoreRequestCookie { get; set; }
+        public Encoding Encoding { get; set; }
+        public HttpProxySettings ProxySettings { get; set; }
         public bool StoreResponseCookie { get; set; }
         public TimeSpan RequestTimeout { get; set; }
         public TimeSpan RateLimit { get; set; }
@@ -86,8 +89,14 @@ namespace NzbDrone.Common.Http
 
         public void SetContent(string data)
         {
-            var encoding = HttpHeader.GetEncodingFromContentType(Headers.ContentType);
+            var encoding = Encoding ?? HttpHeader.GetEncodingFromContentType(Headers.ContentType);
             ContentData = encoding.GetBytes(data);
+        }
+
+        public string GetContent()
+        {
+            var encoding = Encoding ?? HttpHeader.GetEncodingFromContentType(Headers.ContentType);
+            return encoding.GetString(ContentData);
         }
     }
 }

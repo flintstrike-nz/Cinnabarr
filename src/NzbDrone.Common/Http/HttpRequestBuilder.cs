@@ -29,6 +29,8 @@ namespace NzbDrone.Common.Http
         public bool LogResponseContent { get; set; }
         public ICredentials NetworkCredential { get; set; }
         public bool StoreRequestCookie { get; set; }
+        public bool StoreResponseCookie { get; set; }
+        public Encoding Encoding { get; set; }
         public Dictionary<string, string> Cookies { get; private set; }
         public List<HttpFormData> FormData { get; private set; }
         public Action<HttpRequest> PostProcess { get; set; }
@@ -114,6 +116,8 @@ namespace NzbDrone.Common.Http
             request.LogResponseContent = LogResponseContent;
             request.Credentials = NetworkCredential;
             request.StoreRequestCookie = StoreRequestCookie;
+            request.StoreResponseCookie = StoreResponseCookie;
+            request.Encoding = Encoding;
 
             foreach (var header in Headers)
             {
@@ -390,6 +394,37 @@ namespace NzbDrone.Common.Http
                 ContentData = data,
                 ContentType = contentType
             });
+
+            return this;
+        }
+
+        public virtual HttpRequestBuilder SetHeaders(Dictionary<string, string> headers)
+        {
+            foreach (var header in headers)
+            {
+                Headers.Set(header.Key, header.Value);
+            }
+
+            return this;
+        }
+
+        public virtual HttpRequestBuilder SetEncoding(Encoding encoding)
+        {
+            Encoding = encoding;
+
+            return this;
+        }
+
+        public virtual HttpRequestBuilder StoreRequestCookies(bool val = true)
+        {
+            StoreRequestCookie = val;
+
+            return this;
+        }
+
+        public virtual HttpRequestBuilder StoreResponseCookies(bool val = true)
+        {
+            StoreResponseCookie = val;
 
             return this;
         }

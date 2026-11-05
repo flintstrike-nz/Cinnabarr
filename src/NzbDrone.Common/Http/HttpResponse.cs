@@ -9,6 +9,7 @@ namespace NzbDrone.Common.Http
 {
     public class HttpResponse
     {
+        private static readonly Regex RegexRefresh = new("^(.*?url)=(.*?)(?:;|$)", RegexOptions.Compiled);
         private static readonly Regex RegexSetCookie = new("^(.*?)=(.*?)(?:;|$)", RegexOptions.Compiled);
 
         public HttpResponse(HttpRequest request, HttpHeader headers, byte[] binaryData, HttpStatusCode statusCode = HttpStatusCode.OK, Version version = null)
@@ -54,6 +55,29 @@ namespace NzbDrone.Common.Http
         public bool HasHttpError => (int)StatusCode >= 400;
 
         public bool HasHttpServerError => (int)StatusCode >= 500;
+
+        // How long the request took, in milliseconds, when the client measured it.
+        public long ElapsedTime { get; set; }
+
+        // Where a redirect response points (its Location header, or its Refresh header's url), as a full URL; empty if
+        // there is none.
+        public string RedirectUrl
+        {
+            get
+            {
+                var newUrl = Headers["Location"];
+
+                if (newUrl == null)
+                {
+                    var refresh = Headers["Refresh"];
+                    var match = refresh == null ? null : RegexRefresh.Match(refresh);
+
+                    return match is { Success: true } ? (Request.Url + new HttpUri(match.Groups[2].Value)).FullUri : string.Empty;
+                }
+
+                return (Request.Url + new HttpUri(newUrl)).FullUri;
+            }
+        }
 
         public bool HasHttpRedirect => StatusCode == HttpStatusCode.Moved ||
                                        StatusCode == HttpStatusCode.MovedPermanently ||
