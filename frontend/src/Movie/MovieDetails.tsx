@@ -12,6 +12,7 @@ import { useQualityProfilesData } from 'Settings/Profiles/Quality/useQualityProf
 import formatBytes from 'Utilities/Number/formatBytes';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
+import MovieHistory from './MovieHistory';
 import MovieOrganizeModal from './MovieOrganizeModal';
 import MoviePoster from './MoviePoster';
 import {
@@ -231,6 +232,8 @@ function MovieDetails() {
         </div>
 
         {showSearch ? <InteractiveSearch movieId={movie.id} /> : null}
+
+        <MovieHistory movieId={movie.id} />
 
         <MovieOrganizeModal
           isOpen={isOrganizeOpen}

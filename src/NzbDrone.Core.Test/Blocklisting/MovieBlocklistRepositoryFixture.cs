@@ -49,6 +49,18 @@ namespace NzbDrone.Core.Test.Blocklisting
         }
 
         [Test]
+        public void should_list_a_movies_blocklist_newest_first()
+        {
+            var older = Blocked(5, "older");
+            older.Date = DateTime.UtcNow.AddDays(-2);
+            Subject.Insert(older);
+            Subject.Insert(Blocked(5, "newer"));
+            Subject.Insert(Blocked(6, "other movie"));
+
+            Subject.GetByMovieId(5).Select(b => b.SourceTitle).Should().Equal("newer", "older");
+        }
+
+        [Test]
         public void should_delete_for_movies()
         {
             Subject.Insert(Blocked(5, "a"));

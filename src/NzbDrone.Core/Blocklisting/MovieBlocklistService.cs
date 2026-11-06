@@ -16,6 +16,8 @@ namespace NzbDrone.Core.Blocklisting
         bool Blocklisted(int movieId, ReleaseInfo release);
         bool BlocklistedTorrentHash(int movieId, string hash);
         void Block(RemoteMovie remoteMovie, string message);
+        List<MovieBlocklist> GetByMovieId(int movieId);
+        void Delete(int id);
         void Clear();
     }
 
@@ -45,6 +47,16 @@ namespace NzbDrone.Core.Blocklisting
             return _repository.BlocklistedByTitle(movieId, release.Title)
                 .Where(b => b.Protocol == DownloadProtocol.Torrent)
                 .Any(b => SameTorrent(b, torrent));
+        }
+
+        public List<MovieBlocklist> GetByMovieId(int movieId)
+        {
+            return _repository.GetByMovieId(movieId);
+        }
+
+        public void Delete(int id)
+        {
+            _repository.Delete(id);
         }
 
         public bool BlocklistedTorrentHash(int movieId, string hash)
