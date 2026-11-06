@@ -5,6 +5,7 @@ using NLog;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Download;
+using NzbDrone.Core.Extras.MovieExtras;
 using NzbDrone.Core.History;
 using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Events;
@@ -25,6 +26,7 @@ namespace NzbDrone.Core.MediaFiles.MovieImport
         private readonly IDiskProvider _diskProvider;
         private readonly IMovieHistoryService _historyService;
         private readonly IEventAggregator _eventAggregator;
+        private readonly IMovieExtraService _extraService;
         private readonly Logger _logger;
 
         public ImportApprovedMovie(IUpgradeMovieFiles movieFileUpgrader,
@@ -32,6 +34,7 @@ namespace NzbDrone.Core.MediaFiles.MovieImport
                                    IDiskProvider diskProvider,
                                    IMovieHistoryService historyService,
                                    IEventAggregator eventAggregator,
+                                   IMovieExtraService extraService,
                                    Logger logger)
         {
             _movieFileUpgrader = movieFileUpgrader;
@@ -39,6 +42,7 @@ namespace NzbDrone.Core.MediaFiles.MovieImport
             _diskProvider = diskProvider;
             _historyService = historyService;
             _eventAggregator = eventAggregator;
+            _extraService = extraService;
             _logger = logger;
         }
 
@@ -135,7 +139,10 @@ namespace NzbDrone.Core.MediaFiles.MovieImport
 
                     localMovie.Movie.MovieFile = movieFile;
 
-                    // Extra files (subtitles and the like) come with the movie extras step.
+                    if (!localMovie.ScriptImported || localMovie.ShouldImportExtras)
+                    {
+                        _extraService.ImportMovie(localMovie, movieFile, copyOnly);
+                    }
 
                     _eventAggregator.PublishEvent(new MovieFileImportedEvent(localMovie, movieFile, oldFiles, newDownload, downloadClientItem));
                 }
