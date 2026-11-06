@@ -1228,3 +1228,9 @@ Checked in a browser (after 4g-5): the app was run against a stand-in metadata s
 Fixed after a runtime pass: the series *Library Import* and root-folder "unmapped folders" lists counted only series folders, so a root folder holding movies listed every movie folder as an unmapped series. A folder a movie uses is now left out too (`RootFolderService`, with a test). Also run end to end on the stand-in server: enabling *Rename Movies* gave a preview and the rename command renamed the file; deleting a movie file, rescanning, and deleting a movie with its files all behaved as expected.
 
 Release push for movies (checked end to end): `POST /api/v5/release/push` (used by tools such as autobrr) was series-only. A pushed release now goes through both decision makers and the one that finds its title in the library is used (the same rule as the Search page); movie releases return the movie release resource. Run against the stand-in metadata server with the built-in engine: a pushed `Heat.1995.1080p.BluRay.x264-GRP` magnet was matched to the movie, sent to the engine (history shows *Grabbed*), a repeat push was rejected as a recent grab, and the movie shows in the Downloads queue linked to it ("downloading metadata", since no peers exist here). Not run: a download that completes and is imported (needs a seed).
+
+Built so far (4g-6, bulk actions on the movie list):
+
+- *Movies* now has a checkbox per row and a select-all box. With movies ticked, a bar offers *Search*, *Monitored*, *Unmonitored*, a quality profile picker and *Delete Movie* (asks first, keeps the files). Each applies the ordinary single-movie calls to every ticked movie, so no new API was needed.
+- Checked in a browser against the stand-in server: selecting both movies, unmonitoring them and changing their quality profile worked, with no console errors.
+- **Not done:** the same bar on the merged *Library* grid, bulk tags, and sort or filter on the list.
