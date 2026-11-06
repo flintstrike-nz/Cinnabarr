@@ -13,6 +13,9 @@ namespace NzbDrone.Core.Download.Engine
         public int Version { get; set; } = CurrentVersion;
         public string MediaType { get; set; }
         public int TvdbId { get; set; }
+
+        // For a movie link (MediaType "movie"); TvdbId and Episodes are then empty.
+        public int TmdbId { get; set; }
         public List<EngineLinkEpisode> Episodes { get; set; } = new();
         public string SourceTitle { get; set; }
         public string Indexer { get; set; }

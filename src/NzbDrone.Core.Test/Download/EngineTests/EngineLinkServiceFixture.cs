@@ -9,6 +9,7 @@ using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Download.History;
 using NzbDrone.Core.History;
+using NzbDrone.Core.Movies;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
 using NzbDrone.Core.Test.Framework;
@@ -94,6 +95,36 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             link.Episodes[1].EpisodeNumber.Should().Be(3);
             link.SourceTitle.Should().Be("Series.S01E02E03.1080p.WEB-DL-Group");
             link.Indexer.Should().Be("Indexer");
+        }
+
+        [Test]
+        public void should_write_a_movie_link_with_the_tmdb_id()
+        {
+            var remoteMovie = new RemoteMovie
+            {
+                Movie = new Movie { Id = 4, MovieMetadata = new MovieMetadata { TmdbId = 603 } },
+                Release = new ReleaseInfo { Title = "The.Matrix.1999.1080p.BluRay.x264-GRP", Indexer = "Indexer" },
+                ParsedMovieInfo = new ParsedMovieInfo { Quality = new QualityModel(Quality.Bluray1080p) }
+            };
+
+            Subject.Handle(new MovieGrabbedEvent(remoteMovie) { DownloadClientId = EngineClientId, DownloadId = Hash });
+
+            var link = Json.Deserialize<EngineLink>(_files[LinkPath]);
+
+            link.MediaType.Should().Be(EngineLinkService.MovieMediaType);
+            link.TmdbId.Should().Be(603);
+            link.TvdbId.Should().Be(0);
+            link.Episodes.Should().BeEmpty();
+            link.SourceTitle.Should().Be("The.Matrix.1999.1080p.BluRay.x264-GRP");
+            link.Quality.Id.Should().Be(Quality.Bluray1080p.Id);
+        }
+
+        [Test]
+        public void should_not_write_a_movie_link_for_other_clients()
+        {
+            Subject.Handle(new MovieGrabbedEvent(new RemoteMovie { Movie = new Movie(), Release = new ReleaseInfo() }) { DownloadClientId = 4, DownloadId = Hash });
+
+            _files.Should().BeEmpty();
         }
 
         [Test]
