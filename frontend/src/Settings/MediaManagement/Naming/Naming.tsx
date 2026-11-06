@@ -165,6 +165,10 @@ function Naming({ setChildSave, onChildStateChange }: NamingProps) {
   const seasonFolderFormatErrors = [];
   const specialsFolderFormatHelpTexts = [];
   const specialsFolderFormatErrors = [];
+  const movieFormatHelpTexts = [];
+  const movieFormatErrors = [];
+  const movieFolderFormatHelpTexts = [];
+  const movieFolderFormatErrors = [];
 
   if (examplesPopulated) {
     if (examples.singleEpisodeExample) {
@@ -229,6 +233,22 @@ function Naming({ setChildSave, onChildStateChange }: NamingProps) {
       );
     } else {
       seasonFolderFormatErrors.push({ message: translate('InvalidFormat') });
+    }
+
+    if (examples.movieExample) {
+      movieFormatHelpTexts.push(
+        `${translate('Example')}: ${examples.movieExample}`
+      );
+    } else {
+      movieFormatErrors.push({ message: translate('InvalidFormat') });
+    }
+
+    if (examples.movieFolderExample) {
+      movieFolderFormatHelpTexts.push(
+        `${translate('Example')}: ${examples.movieFolderExample}`
+      );
+    } else {
+      movieFolderFormatErrors.push({ message: translate('InvalidFormat') });
     }
 
     if (examples.specialsFolderExample) {
@@ -505,6 +525,59 @@ function Naming({ setChildSave, onChildStateChange }: NamingProps) {
               onModalClose={setNamingModalClosed}
             />
           ) : null}
+
+          <FormRow size={sizes.MEDIUM}>
+            <FormLabel>{translate('RenameMovies')}</FormLabel>
+            <FormInputHelpText text={translate('RenameMoviesHelpText')} />
+            <FormInput
+              type={inputTypes.CHECK}
+              name="renameMovies"
+              onChange={handleInputChange}
+              {...settings.renameMovies}
+            />
+          </FormRow>
+
+          <FormRow size={sizes.MEDIUM}>
+            <FormLabel>{translate('StandardMovieFormat')}</FormLabel>
+
+            <FormInputHelpText text={translate('MovieFormatHelpText')} />
+
+            {movieFormatHelpTexts.map((text, index) => (
+              <FormInputHelpText key={index} text={text} />
+            ))}
+
+            <FormInput
+              inputClassName={styles.namingInput}
+              type={inputTypes.TEXT}
+              name="standardMovieFormat"
+              onChange={handleInputChange}
+              {...settings.standardMovieFormat}
+              errors={[
+                ...movieFormatErrors,
+                ...settings.standardMovieFormat.errors,
+              ]}
+            />
+          </FormRow>
+
+          <FormRow size={sizes.MEDIUM}>
+            <FormLabel>{translate('MovieFolderFormat')}</FormLabel>
+
+            {movieFolderFormatHelpTexts.map((text, index) => (
+              <FormInputHelpText key={index} text={text} />
+            ))}
+
+            <FormInput
+              inputClassName={styles.namingInput}
+              type={inputTypes.TEXT}
+              name="movieFolderFormat"
+              onChange={handleInputChange}
+              {...settings.movieFolderFormat}
+              errors={[
+                ...movieFolderFormatErrors,
+                ...settings.movieFolderFormat.errors,
+              ]}
+            />
+          </FormRow>
         </Form>
       ) : null}
     </FieldSet>

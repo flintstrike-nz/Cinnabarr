@@ -1155,3 +1155,9 @@ Built so far (4h-2, one Library for series and movies):
 - **Series management** (the full filters, sorting, overview and edit tools) moves to `/series` (Library menu → Series), unchanged. Movies keep their list at `/movies`.
 - **Checked.** In a browser against the running app: the grid shows the movie with its badge, the filters work, and `/series` is the old series page. Lint, type check, stylelint and the build pass. (There was no series in the test library: adding one needs the TVDB metadata service, which the sandbox can't reach.)
 - **Still to do in 4h:** a single Calendar and a single Wanted page for both kinds (they are separate pages for now), the Search page, and the sort, filter and detail richness the series index has.
+
+Built so far (4e-5b, movie naming settings):
+
+- **Settings → Media Management → Naming** now has the movie settings: *Rename Movies* (off keeps the existing file name), *Standard Movie Format* and *Movie Folder Format*, each with a live example built from a sample movie (the file example is shown even while renaming is off, as that is what turning it on gives). A format must contain the movie title token or it is refused (the API answers 400 with the reason).
+- **Checked.** Against the running app: the defaults are there on an existing database, examples are built for a format being edited, an invalid format is refused and a valid one saved. Lint, type check and the build pass.
+- **Not done:** the token picker dialog the series formats have, and renaming files that are already in the library when the format changes (the movie rename preview and command are the next piece of 4e-5).
