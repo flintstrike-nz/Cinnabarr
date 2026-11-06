@@ -137,6 +137,10 @@ const GROUPS: SidebarGroup[] = [
             to: '/activity/history',
           },
           {
+            title: () => translate('MovieActivity'),
+            to: '/activity/movies',
+          },
+          {
             title: () => translate('Blocklist'),
             to: '/activity/blocklist',
           },

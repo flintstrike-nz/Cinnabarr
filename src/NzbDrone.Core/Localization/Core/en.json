@@ -1638,6 +1638,7 @@
   "MoveSeriesFoldersToNewPath": "Would you like to move the series files from '{originalPath}' to '{destinationPath}'?",
   "MoveSeriesFoldersToRootFolder": "Would you like to move the series folders to '{destinationRootFolder}'?",
   "Movie": "Movie",
+  "MovieActivity": "Movie Activity",
   "MovieAlreadyAdded": "Already in the library",
   "MovieCalendar": "Movie Calendar",
   "MovieFileDeleted": "Movie File Deleted",
