@@ -1148,3 +1148,10 @@ Built so far (4h-1, Wanted and Calendar for movies):
 - **Screens.** Wanted → Movies (`/wanted/movies`) shows both lists with a "search all" button for each (it runs the missing or cutoff-unmet movie search); Calendar → Movies (`/calendar/movies`) lists the next 90 days of releases.
 - **Checked.** Run against the app (all four calls, including sorting by `movies.added`) and driven in a browser; lint, type check, stylelint and the build pass.
 - **Still to do in 4h:** the merged views themselves: one Library grid, one Calendar and one Wanted page that show series and movies together (these first pages keep the two kinds apart), and the Search page.
+
+Built so far (4h-2, one Library for series and movies):
+
+- **Library** (`/library`, the home page) is now a poster grid of series and movies together, sorted by title, each tile marked Series or Movie and linking to its own page, with All / Series / Movies filter buttons and Add New / Add Movie buttons.
+- **Series management** (the full filters, sorting, overview and edit tools) moves to `/series` (Library menu → Series), unchanged. Movies keep their list at `/movies`.
+- **Checked.** In a browser against the running app: the grid shows the movie with its badge, the filters work, and `/series` is the old series page. Lint, type check, stylelint and the build pass. (There was no series in the test library: adding one needs the TVDB metadata service, which the sandbox can't reach.)
+- **Still to do in 4h:** a single Calendar and a single Wanted page for both kinds (they are separate pages for now), the Search page, and the sort, filter and detail richness the series index has.

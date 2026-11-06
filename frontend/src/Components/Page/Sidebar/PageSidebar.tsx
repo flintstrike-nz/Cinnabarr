@@ -69,6 +69,10 @@ const GROUPS: SidebarGroup[] = [
         alias: '/series',
         children: [
           {
+            title: () => translate('Series'),
+            to: '/series',
+          },
+          {
             title: () => translate('Movies'),
             to: '/movies',
           },

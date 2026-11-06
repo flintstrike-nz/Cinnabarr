@@ -9,6 +9,7 @@ import ImportSeries from 'AddSeries/ImportSeries/Import/ImportSeries';
 import ImportSeriesSelectFolder from 'AddSeries/ImportSeries/SelectFolder/ImportSeriesSelectFolder';
 import CalendarPage from 'Calendar/CalendarPage';
 import NotFound from 'Components/NotFound';
+import LibraryIndex from 'Library/LibraryIndex';
 import AddNewMovie from 'Movie/AddNewMovie';
 import MovieCalendar from 'Movie/MovieCalendar';
 import MovieDetails from 'Movie/MovieDetails';
@@ -46,7 +47,7 @@ export function appRouteElements() {
     <>
       {/*
         Home (v5) — TODO: swap to <HomePage /> when the homepage redesign lands.
-        Until then, "/" redirects to the Library (SeriesIndex) and the sidebar's "Home" nav is hidden.
+        Until then, "/" redirects to the Library (series and movies together) and the sidebar's "Home" nav is hidden.
       */}
 
       <Route path="/" element={<Navigate to="/library" replace={true} />} />
@@ -55,12 +56,9 @@ export function appRouteElements() {
         Series
       */}
 
-      <Route path="/library" element={<SeriesIndex />} />
+      <Route path="/library" element={<LibraryIndex />} />
 
-      <Route
-        path="/series"
-        element={<Navigate to="/library" replace={true} />}
-      />
+      <Route path="/series" element={<SeriesIndex />} />
 
       <Route path="/add/new" element={<AddNewSeries />} />
 
