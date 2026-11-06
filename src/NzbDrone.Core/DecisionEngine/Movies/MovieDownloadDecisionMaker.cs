@@ -53,7 +53,7 @@ namespace NzbDrone.Core.DecisionEngine.Movies
             _logger.ProgressInfo(reports.Any() ? "Processing {0} releases" : "No results found", reports.Count);
 
             var source = GetReleaseSource(pushedRelease, searchedMovie, userInvokedSearch, interactiveSearch);
-            var information = new MovieReleaseDecisionInformation(pushedRelease, searchedMovie);
+            var information = new MovieReleaseDecisionInformation(pushedRelease, searchedMovie, userInvokedSearch);
             var reportNumber = 1;
 
             foreach (var report in reports)

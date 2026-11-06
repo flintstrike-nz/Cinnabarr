@@ -47,6 +47,9 @@ namespace NzbDrone.Core.Configuration
         bool SkipFreeSpaceCheckWhenGrabbing { get; set; }
         bool SkipFreeSpaceCheckWhenImporting { get; set; }
         int MinimumFreeSpaceWhenImporting { get; set; }
+
+        // Days after the movie's minimum availability before it is looked for automatically.
+        int AvailabilityDelay { get; set; }
         bool CopyUsingHardlinks { get; set; }
         bool EnableMediaInfo { get; set; }
         bool UseScriptImport { get; set; }

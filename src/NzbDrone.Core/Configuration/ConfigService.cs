@@ -301,6 +301,13 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("SkipFreeSpaceCheckWhenImporting", value); }
         }
 
+        public int AvailabilityDelay
+        {
+            get { return GetValueInt("AvailabilityDelay", 0); }
+
+            set { SetValue("AvailabilityDelay", value); }
+        }
+
         public int MinimumFreeSpaceWhenImporting
         {
             get { return GetValueInt("MinimumFreeSpaceWhenImporting", 100); }
