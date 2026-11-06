@@ -11,6 +11,12 @@ export const useMovies = () => {
   return { ...result, data: result.data ?? DEFAULT_MOVIES };
 };
 
+export const useHasMovies = () => {
+  const { data } = useMovies();
+
+  return data.length > 0;
+};
+
 export const useMovie = (id: number) => {
   return useApiQuery<Movie>({
     path: `/movie/${id}`,
