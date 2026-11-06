@@ -123,6 +123,8 @@ namespace NzbDrone.Core.Datastore
 
             Mapper.Entity<EpisodeHistory>("History").RegisterModel();
 
+            Mapper.Entity<MovieHistory>("MovieHistory").RegisterModel();
+
             Mapper.Entity<Series>("Series").RegisterModel()
                   .Ignore(s => s.RootFolderPath)
                   .Ignore(s => s.Translations)
@@ -158,6 +160,7 @@ namespace NzbDrone.Core.Datastore
             Mapper.Entity<Log>("Logs").RegisterModel();
             Mapper.Entity<NamingConfig>("NamingConfig").RegisterModel();
             Mapper.Entity<Blocklist>("Blocklist").RegisterModel();
+            Mapper.Entity<MovieBlocklist>("MovieBlocklist").RegisterModel();
             Mapper.Entity<MetadataFile>("MetadataFiles").RegisterModel();
             Mapper.Entity<SubtitleFile>("SubtitleFiles").RegisterModel();
             Mapper.Entity<OtherExtraFile>("ExtraFiles").RegisterModel();

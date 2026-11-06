@@ -43,12 +43,13 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                            ICacheManager cacheManager,
                            ILocalizationService localizationService,
                            IBlocklistService blocklistService,
+                           IMovieBlocklistService movieBlocklistService,
                            ITagRepository tagRepository,
                            IEngineClientRegistry engineClientRegistry,
                            IEngineLinkService engineLinkService,
                            IEngineAddGate engineAddGate,
                            Logger logger)
-            : base(torrentFileInfoReader, httpClient, configService, diskProvider, localizationService, blocklistService, logger)
+            : base(torrentFileInfoReader, httpClient, configService, diskProvider, localizationService, blocklistService, movieBlocklistService, logger)
         {
             _proxySelector = proxySelector;
 
@@ -84,7 +85,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             }
         }
 
-        protected override string AddFromMagnetLink(RemoteEpisode remoteEpisode, string hash, string magnetLink)
+        protected override string AddFromMagnetLink(RemoteMedia remote, string hash, string magnetLink)
         {
             if (!Proxy.GetConfig(Settings).DhtEnabled && !magnetLink.Contains("&tr="))
             {
@@ -93,9 +94,9 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
 
             // The built-in engine's seeding goals are applied once the files are in the library (EngineSeedingService):
             // a limit set now could stop the torrent before they are met.
-            var setShareLimits = !HoldNewTorrents && remoteEpisode.SeedConfiguration != null && (remoteEpisode.SeedConfiguration.Ratio.HasValue || remoteEpisode.SeedConfiguration.SeedTime.HasValue);
+            var setShareLimits = !HoldNewTorrents && remote.SeedConfiguration != null && (remote.SeedConfiguration.Ratio.HasValue || remote.SeedConfiguration.SeedTime.HasValue);
             var addHasSetShareLimits = setShareLimits && ProxyApiVersion >= new Version(2, 8, 1);
-            var isRecentEpisode = remoteEpisode.IsRecentEpisode();
+            var isRecentEpisode = remote.IsRecent;
             var moveToTop = (isRecentEpisode && Settings.RecentTvPriority == (int)QBittorrentPriority.First) || (!isRecentEpisode && Settings.OlderTvPriority == (int)QBittorrentPriority.First);
 
             // A held torrent is force-started by preparation, once its file whitelist is applied (roadmap §4.8).
@@ -106,14 +107,14 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             {
                 using var gate = HoldNewTorrents ? _engineAddGate.BeginAdd() : null;
 
-                Proxy.AddTorrentFromUrl(magnetLink, addHasSetShareLimits && setShareLimits ? remoteEpisode.SeedConfiguration : null, Settings, HoldNewTorrents);
+                Proxy.AddTorrentFromUrl(magnetLink, addHasSetShareLimits && setShareLimits ? remote.SeedConfiguration : null, Settings, HoldNewTorrents);
             }
             catch (DownloadClientException ex) when (ex.InnerException is HttpException httpException && httpException.Response.StatusCode is HttpStatusCode.Conflict)
             {
-                throw new DownloadClientRejectedReleaseException(remoteEpisode.Release, "QBittorrent rejected the magnet link due to a conflict", ex);
+                throw new DownloadClientRejectedReleaseException(remote.Release, "QBittorrent rejected the magnet link due to a conflict", ex);
             }
 
-            if ((!addHasSetShareLimits && setShareLimits) || moveToTop || forceStart || (Settings.AddSeriesTags && remoteEpisode.Series.Tags.Count > 0))
+            if ((!addHasSetShareLimits && setShareLimits) || moveToTop || forceStart || (Settings.AddSeriesTags && remote.Tags.Count > 0))
             {
                 if (!WaitForTorrent(hash))
                 {
@@ -124,7 +125,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                 {
                     try
                     {
-                        Proxy.SetTorrentSeedingConfiguration(hash.ToLower(), remoteEpisode.SeedConfiguration, Settings);
+                        Proxy.SetTorrentSeedingConfiguration(hash.ToLower(), remote.SeedConfiguration, Settings);
                     }
                     catch (Exception ex)
                     {
@@ -156,11 +157,11 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                     }
                 }
 
-                if (Settings.AddSeriesTags && remoteEpisode.Series.Tags.Count > 0)
+                if (Settings.AddSeriesTags && remote.Tags.Count > 0)
                 {
                     try
                     {
-                        Proxy.AddTags(hash.ToLower(), GetSeriesTagLabels(remoteEpisode), Settings);
+                        Proxy.AddTags(hash.ToLower(), GetSeriesTagLabels(remote), Settings);
                     }
                     catch (Exception ex)
                     {
@@ -172,13 +173,13 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             return hash;
         }
 
-        protected override string AddFromTorrentFile(RemoteEpisode remoteEpisode, string hash, string filename, byte[] fileContent)
+        protected override string AddFromTorrentFile(RemoteMedia remote, string hash, string filename, byte[] fileContent)
         {
             // The built-in engine's seeding goals are applied once the files are in the library (EngineSeedingService):
             // a limit set now could stop the torrent before they are met.
-            var setShareLimits = !HoldNewTorrents && remoteEpisode.SeedConfiguration != null && (remoteEpisode.SeedConfiguration.Ratio.HasValue || remoteEpisode.SeedConfiguration.SeedTime.HasValue);
+            var setShareLimits = !HoldNewTorrents && remote.SeedConfiguration != null && (remote.SeedConfiguration.Ratio.HasValue || remote.SeedConfiguration.SeedTime.HasValue);
             var addHasSetShareLimits = setShareLimits && ProxyApiVersion >= new Version(2, 8, 1);
-            var isRecentEpisode = remoteEpisode.IsRecentEpisode();
+            var isRecentEpisode = remote.IsRecent;
             var moveToTop = (isRecentEpisode && Settings.RecentTvPriority == (int)QBittorrentPriority.First) || (!isRecentEpisode && Settings.OlderTvPriority == (int)QBittorrentPriority.First);
 
             // A held torrent is force-started by preparation, once its file whitelist is applied (roadmap §4.8).
@@ -189,14 +190,14 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             {
                 using var gate = HoldNewTorrents ? _engineAddGate.BeginAdd() : null;
 
-                Proxy.AddTorrentFromFile(filename, fileContent, addHasSetShareLimits ? remoteEpisode.SeedConfiguration : null, Settings, HoldNewTorrents);
+                Proxy.AddTorrentFromFile(filename, fileContent, addHasSetShareLimits ? remote.SeedConfiguration : null, Settings, HoldNewTorrents);
             }
             catch (DownloadClientException ex) when (ex.InnerException is HttpException httpException && httpException.Response.StatusCode is HttpStatusCode.Conflict)
             {
-                throw new DownloadClientRejectedReleaseException(remoteEpisode.Release, "QBittorrent rejected the torrent file due to a conflict", ex);
+                throw new DownloadClientRejectedReleaseException(remote.Release, "QBittorrent rejected the torrent file due to a conflict", ex);
             }
 
-            if ((!addHasSetShareLimits && setShareLimits) || moveToTop || forceStart || (Settings.AddSeriesTags && remoteEpisode.Series.Tags.Count > 0))
+            if ((!addHasSetShareLimits && setShareLimits) || moveToTop || forceStart || (Settings.AddSeriesTags && remote.Tags.Count > 0))
             {
                 if (!WaitForTorrent(hash))
                 {
@@ -207,7 +208,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                 {
                     try
                     {
-                        Proxy.SetTorrentSeedingConfiguration(hash.ToLower(), remoteEpisode.SeedConfiguration, Settings);
+                        Proxy.SetTorrentSeedingConfiguration(hash.ToLower(), remote.SeedConfiguration, Settings);
                     }
                     catch (Exception ex)
                     {
@@ -239,11 +240,11 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                     }
                 }
 
-                if (Settings.AddSeriesTags && remoteEpisode.Series.Tags.Count > 0)
+                if (Settings.AddSeriesTags && remote.Tags.Count > 0)
                 {
                     try
                     {
-                        Proxy.AddTags(hash.ToLower(), GetSeriesTagLabels(remoteEpisode), Settings);
+                        Proxy.AddTags(hash.ToLower(), GetSeriesTagLabels(remote), Settings);
                     }
                     catch (Exception ex)
                     {
@@ -284,9 +285,9 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         public override string Name => "qBittorrent";
 
         // "embarr-" tags are reserved for the engine's own markers.
-        private IEnumerable<string> GetSeriesTagLabels(RemoteEpisode remoteEpisode)
+        private IEnumerable<string> GetSeriesTagLabels(RemoteMedia remote)
         {
-            return _tagRepository.GetTags(remoteEpisode.Series.Tags)
+            return _tagRepository.GetTags(remote.Tags)
                 .Select(tag => tag.Label)
                 .Where(label => !EngineTorrentTags.IsReserved(label));
         }

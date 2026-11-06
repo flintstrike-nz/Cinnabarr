@@ -29,10 +29,12 @@ namespace NzbDrone.Core.Blocklisting
                                     IHandleAsync<SeriesDeletedEvent>
     {
         private readonly IBlocklistRepository _blocklistRepository;
+        private readonly IMovieBlocklistService _movieBlocklistService;
 
-        public BlocklistService(IBlocklistRepository blocklistRepository)
+        public BlocklistService(IBlocklistRepository blocklistRepository, IMovieBlocklistService movieBlocklistService)
         {
             _blocklistRepository = blocklistRepository;
+            _movieBlocklistService = movieBlocklistService;
         }
 
         public bool Blocklisted(int seriesId, ReleaseInfo release)
@@ -121,6 +123,7 @@ namespace NzbDrone.Core.Blocklisting
         public void Execute(ClearBlocklistCommand message)
         {
             _blocklistRepository.Purge();
+            _movieBlocklistService.Clear();
         }
 
         public void Handle(DownloadFailedEvent message)

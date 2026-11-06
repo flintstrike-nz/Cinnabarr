@@ -22,6 +22,15 @@ public class ReleaseComparerModel
         Size = blocklist.Size ?? 0;
     }
 
+    public ReleaseComparerModel(MovieBlocklist blocklist)
+    {
+        Title = blocklist.SourceTitle;
+        TorrentInfoHash = blocklist.TorrentInfoHash;
+        PublishedDate = blocklist.PublishedDate;
+        Indexer = blocklist.Indexer;
+        Size = blocklist.Size ?? 0;
+    }
+
     public ReleaseComparerModel(EpisodeHistory history)
     {
         Title = history.SourceTitle;

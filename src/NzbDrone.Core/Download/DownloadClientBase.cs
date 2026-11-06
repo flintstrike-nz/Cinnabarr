@@ -92,7 +92,7 @@ namespace NzbDrone.Core.Download
 
         public abstract DownloadProtocol Protocol { get; }
 
-        public abstract Task<string> Download(RemoteEpisode remoteEpisode, IIndexer indexer);
+        public abstract Task<string> Download(RemoteMedia remote, IIndexer indexer);
         public abstract IEnumerable<DownloadClientItem> GetItems();
 
         public virtual IEnumerable<DownloadClientFile> GetFiles(DownloadClientItem item)
