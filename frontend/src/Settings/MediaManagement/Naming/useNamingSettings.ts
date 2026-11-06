@@ -20,6 +20,9 @@ export interface NamingSettingsModel {
   seriesFolderFormat: string;
   seasonFolderFormat: string;
   specialsFolderFormat: string;
+  renameMovies: boolean;
+  standardMovieFormat: string;
+  movieFolderFormat: string;
 }
 
 export interface NamingExamples {
@@ -31,6 +34,8 @@ export interface NamingExamples {
   seriesFolderExample: string;
   seasonFolderExample: string;
   specialsFolderExample: string;
+  movieExample: string;
+  movieFolderExample: string;
 }
 
 export const useNamingSettings = () => {

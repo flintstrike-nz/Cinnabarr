@@ -4,7 +4,10 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.MediaFiles;
+using NzbDrone.Core.Movies;
 using NzbDrone.Core.Organizer;
+using NzbDrone.Core.Qualities;
 using Sonarr.Http;
 using Sonarr.Http.REST;
 using Sonarr.Http.REST.Attributes;
@@ -17,11 +20,14 @@ public class NamingSettingsController : RestController<NamingSettingsResource>
     private readonly INamingConfigService _namingConfigService;
     private readonly IFilenameSampleService _filenameSampleService;
     private readonly IFilenameValidationService _filenameValidationService;
+    private readonly IBuildMovieFileNames _movieFileNameBuilder;
 
     public NamingSettingsController(INamingConfigService namingConfigService,
                               IFilenameSampleService filenameSampleService,
-                              IFilenameValidationService filenameValidationService)
+                              IFilenameValidationService filenameValidationService,
+                              IBuildMovieFileNames movieFileNameBuilder)
     {
+        _movieFileNameBuilder = movieFileNameBuilder;
         _namingConfigService = namingConfigService;
         _filenameSampleService = filenameSampleService;
         _filenameValidationService = filenameValidationService;
@@ -33,6 +39,11 @@ public class NamingSettingsController : RestController<NamingSettingsResource>
         SharedValidator.RuleFor(c => c.SeriesFolderFormat).ValidSeriesFolderFormat();
         SharedValidator.RuleFor(c => c.SeasonFolderFormat).ValidSeasonFolderFormat();
         SharedValidator.RuleFor(c => c.SpecialsFolderFormat).ValidSpecialsFolderFormat();
+        SharedValidator.RuleFor(c => c.StandardMovieFormat).Must(IsValidMovieFileFormat)
+            .WithMessage("Movie format must be set and include the movie title, for example {Movie Title} ({Release Year}) {Quality Full}")
+            .When(c => c.RenameMovies);
+        SharedValidator.RuleFor(c => c.MovieFolderFormat).Must(IsValidMovieFolderFormat)
+            .WithMessage("Movie folder format must be set and include the movie title, for example {Movie Title} ({Release Year})");
         SharedValidator.RuleFor(c => c.CustomColonReplacementFormat).ValidCustomColonReplacement().When(c => c.ColonReplacementFormat == (int)ColonReplacementFormat.Custom);
     }
 
@@ -98,6 +109,11 @@ public class NamingSettingsController : RestController<NamingSettingsResource>
                 ? null
                 : animeMultiEpisodeSampleResult.FileName;
 
+        sampleResource.MovieExample = BuildMovieExample(nameSpec);
+        sampleResource.MovieFolderExample = nameSpec.MovieFolderFormat.IsNullOrWhiteSpace()
+            ? null
+            : _movieFileNameBuilder.GetMovieFolder(SampleMovie(), nameSpec);
+
         sampleResource.SeriesFolderExample = nameSpec.SeriesFolderFormat.IsNullOrWhiteSpace()
             ? null
             : _filenameSampleService.GetSeriesFolderSample(nameSpec);
@@ -111,6 +127,69 @@ public class NamingSettingsController : RestController<NamingSettingsResource>
             : _filenameSampleService.GetSpecialsFolderSample(nameSpec);
 
         return TypedResults.Ok(sampleResource);
+    }
+
+    private static bool IsValidMovieFileFormat(string? format)
+    {
+        return format.IsNotNullOrWhiteSpace() && FileNameBuilder.MovieTitleRegex.IsMatch(format);
+    }
+
+    private static bool IsValidMovieFolderFormat(string? format)
+    {
+        return format.IsNotNullOrWhiteSpace() && FileNameBuilder.MovieTitleRegex.IsMatch(format);
+    }
+
+    private static Movie SampleMovie()
+    {
+        return new Movie
+        {
+            Path = "/movies/The Matrix (1999)",
+            MovieMetadata = new MovieMetadata
+            {
+                Title = "The Matrix",
+                OriginalTitle = "The Matrix",
+                Year = 1999,
+                ImdbId = "tt0133093",
+                TmdbId = 603
+            }
+        };
+    }
+
+    // The renamed example is shown even while renaming is off, as that is what turning it on would give.
+    private string? BuildMovieExample(NamingConfig nameSpec)
+    {
+        if (!IsValidMovieFileFormat(nameSpec.StandardMovieFormat))
+        {
+            return null;
+        }
+
+        var movie = SampleMovie();
+        var file = new MovieFile
+        {
+            Quality = new QualityModel(Quality.Bluray1080p),
+            ReleaseGroup = "RlsGrp",
+            SceneName = "The.Matrix.1999.1080p.BluRay.x264-RlsGrp",
+            RelativePath = "The.Matrix.1999.1080p.BluRay.x264-RlsGrp.mkv"
+        };
+
+        var sample = new NamingConfig
+        {
+            RenameMovies = true,
+            ReplaceIllegalCharacters = nameSpec.ReplaceIllegalCharacters,
+            ColonReplacementFormat = nameSpec.ColonReplacementFormat,
+            CustomColonReplacementFormat = nameSpec.CustomColonReplacementFormat,
+            StandardMovieFormat = nameSpec.StandardMovieFormat,
+            MovieFolderFormat = nameSpec.MovieFolderFormat
+        };
+
+        try
+        {
+            return _movieFileNameBuilder.BuildFileName(movie, file, sample, new List<NzbDrone.Core.CustomFormats.CustomFormat>());
+        }
+        catch (NamingFormatException)
+        {
+            return null;
+        }
     }
 
     private void ValidateFormatResult(NamingConfig nameSpec)

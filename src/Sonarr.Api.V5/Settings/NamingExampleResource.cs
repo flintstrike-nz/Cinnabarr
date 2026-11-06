@@ -12,6 +12,8 @@ public class NamingExampleResource
     public string? SeriesFolderExample { get; set; }
     public string? SeasonFolderExample { get; set; }
     public string? SpecialsFolderExample { get; set; }
+    public string? MovieExample { get; set; }
+    public string? MovieFolderExample { get; set; }
 }
 
 public static class NamingConfigResourceMapper
@@ -32,7 +34,10 @@ public static class NamingConfigResourceMapper
             AnimeEpisodeFormat = model.AnimeEpisodeFormat,
             SeriesFolderFormat = model.SeriesFolderFormat,
             SeasonFolderFormat = model.SeasonFolderFormat,
-            SpecialsFolderFormat = model.SpecialsFolderFormat
+            SpecialsFolderFormat = model.SpecialsFolderFormat,
+            RenameMovies = model.RenameMovies,
+            StandardMovieFormat = model.StandardMovieFormat,
+            MovieFolderFormat = model.MovieFolderFormat
         };
     }
 
@@ -52,7 +57,10 @@ public static class NamingConfigResourceMapper
             AnimeEpisodeFormat = resource.AnimeEpisodeFormat,
             SeriesFolderFormat = resource.SeriesFolderFormat,
             SeasonFolderFormat = resource.SeasonFolderFormat,
-            SpecialsFolderFormat = resource.SpecialsFolderFormat
+            SpecialsFolderFormat = resource.SpecialsFolderFormat,
+            RenameMovies = resource.RenameMovies,
+            StandardMovieFormat = resource.StandardMovieFormat ?? string.Empty,
+            MovieFolderFormat = resource.MovieFolderFormat ?? string.Empty
         };
     }
 }

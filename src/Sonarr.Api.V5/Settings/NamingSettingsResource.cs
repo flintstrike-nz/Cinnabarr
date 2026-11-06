@@ -15,4 +15,7 @@ public class NamingSettingsResource : RestResource
     public string? SeriesFolderFormat { get; set; }
     public string? SeasonFolderFormat { get; set; }
     public string? SpecialsFolderFormat { get; set; }
+    public bool RenameMovies { get; set; }
+    public string? StandardMovieFormat { get; set; }
+    public string? MovieFolderFormat { get; set; }
 }
