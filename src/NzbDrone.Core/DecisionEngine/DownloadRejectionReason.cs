@@ -76,5 +76,10 @@ public enum DownloadRejectionReason
     DiskCustomFormatScoreIncrement,
     DiskUpgradesNotAllowed,
     DiskNotUpgrade,
-    BeforeAirDate
+    BeforeAirDate,
+
+    // Movies, added after the series reasons so the existing numbers do not move.
+    UnknownMovie,
+    MovieNotMonitored,
+    WrongMovie
 }

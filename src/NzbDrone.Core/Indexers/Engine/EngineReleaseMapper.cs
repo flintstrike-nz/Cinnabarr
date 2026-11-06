@@ -38,6 +38,7 @@ namespace NzbDrone.Core.Indexers.Engine
             release.PublishDate = source.PublishDate.ToUniversalTime();
             release.TvdbId = source.TvdbId;
             release.TvRageId = source.TvRageId;
+            release.TmdbId = source.TmdbId;
             release.ImdbId = source.ImdbId > 0 ? $"tt{source.ImdbId:D7}" : null;
             release.Origin = source.Origin;
             release.Source = source.Source;
