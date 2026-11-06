@@ -599,7 +599,7 @@ Built so far (3a-2):
 | Step | What |
 | --- | --- |
 | 4a | Movie metadata layer: the metadata tables, models and stores, and a client for the Radarr project's metadata service. **Done.** |
-| 4b | The movie itself: `Movie`, `MovieFile`, their stores and services, add-movie, root folders and monitoring. |
+| 4b | The movie itself: `Movie`, `MovieFile`, their stores and services, add-movie, root folders and monitoring. **Done.** |
 | 4c | Movie parser, quality and custom-format matching, and the decision engine for movie releases. |
 | 4d | Movie search and RSS: movie criteria for the indexers, release grabbing, and the media-type-aware download pipeline (§4.4). |
 | 4e | Movie import, naming and renaming; extras. |
@@ -974,3 +974,12 @@ Built so far (4a):
 - **Code.** `NzbDrone.Core.Movies` holds the models, stores and services (credits, alternative titles, translations, metadata upsert), `RadarrMetadataProxy` does the lookups (movie by TMDb id, by IMDb id, bulk, trending, popular, changed since), and `CleanMovieTitle` gives titles a comparable form. The Radarr response types live in `MetadataSource/RadarrMetadata/Resource`, separate from Sonarr's.
 - **Left for later steps.** Searching for a movie by name and collections need the `Movie` itself (4b, 4g). The check that nothing still uses a metadata row before it is deleted arrives with `Movie`.
 - **Checked.** The proxy was tested against a canned response (mapping, certification by country, the 404 case); the stores against a real test database. It has not talked to the live service, which the sandbox cannot reach.
+
+Built so far (4b):
+
+- **Movie and its file.** `Movie` (monitored, minimum availability, quality profile, path, tags, added, last search, its one file) points at its TMDb information; `MovieFile` holds the file's path, size, quality, languages, release group, scene name, edition and media info. Migration 245 creates both tables. A movie still has exactly one file; version slots (§4.1) arrive in Phase 5.
+- **Stores and services.** `MovieRepository`/`MovieService` (find by TMDb id, IMDb id, title, path; movies without files; movies between dates; delete with files; keeping a movie's file link in step), `MovieFileRepository`/`MovieFileService`, `AddMovieService` and its validator (path must be valid, in a root folder, not the recycle bin, not another movie's or an ancestor of one). The Radarr names `MediaFileService` and `MediaFileRepository` became `MovieFile…` because Embarr's episode files already use those names.
+- **Folder naming for now.** New movies go in a folder named `Title (Year)`. The configurable movie naming (and the file naming) is step 4e.
+- **Left out on purpose.** Auto-tagging rules for movies (the hook exists and does nothing yet), collection handling, and the movie refresh job (4d/4g).
+- **Also ported.** The roman-numeral helper used to find titles written with numerals, the setting that unmonitors a movie when its file is deleted (`AutoUnmonitorPreviouslyDownloadedMovies`), and the movie-deleted handlers that clean up credits, alternative titles and translations.
+- **Checked.** 10 new tests: the movie store against a real test database (loads metadata and profile, finds by id/path, files), and the add flow with mocked metadata (fills in from the lookup, sets the folder, refuses unknown ids and invalid paths, skips bad entries when errors are ignored). The real app starts and applies migration 245.

@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.Linq;
 using NLog;
 using NzbDrone.Core.Languages;
+using NzbDrone.Core.Messaging.Events;
+using NzbDrone.Core.Movies.Events;
 
 namespace NzbDrone.Core.Movies.Translations
 {
@@ -12,7 +14,7 @@ namespace NzbDrone.Core.Movies.Translations
         List<MovieTranslation> UpdateTranslations(List<MovieTranslation> titles, MovieMetadata movie);
     }
 
-    public class MovieTranslationService : IMovieTranslationService
+    public class MovieTranslationService : IMovieTranslationService, IHandleAsync<MoviesDeletedEvent>
     {
         private readonly IMovieTranslationRepository _translationRepo;
         private readonly Logger _logger;
@@ -91,6 +93,11 @@ namespace NzbDrone.Core.Movies.Translations
             _logger.Debug("[{0}] {1} translations up to date; Updating {2}, Adding {3}, Deleting {4} entries.", movieMetadata.Title, upToDateCount, updateList.Count, addList.Count, existingTranslations.Count);
 
             return translations;
+        }
+
+        public void HandleAsync(MoviesDeletedEvent message)
+        {
+            _translationRepo.DeleteForMovies(message.Movies.Select(m => m.MovieMetadataId).ToList());
         }
     }
 }
