@@ -4,6 +4,7 @@ using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Languages;
+using NzbDrone.Core.Movies;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
 using NzbDrone.Core.Tv;
@@ -18,6 +19,9 @@ namespace NzbDrone.Core.Queue
         public Episode Episode { get; set; }
 
         public List<Episode> Episodes { get; set; }
+
+        // For a movie download; Series and Episodes are then empty.
+        public Movie Movie { get; set; }
         public List<Language> Languages { get; set; }
         public QualityModel Quality { get; set; }
         public decimal Size { get; set; }
@@ -36,6 +40,7 @@ namespace NzbDrone.Core.Queue
         public List<TrackedDownloadStatusMessage> StatusMessages { get; set; }
         public string DownloadId { get; set; }
         public RemoteEpisode RemoteEpisode { get; set; }
+        public RemoteMovie RemoteMovie { get; set; }
         public DownloadProtocol Protocol { get; set; }
         public string DownloadClient { get; set; }
         public bool DownloadClientHasPostImportCategory { get; set; }

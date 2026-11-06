@@ -83,6 +83,12 @@ namespace NzbDrone.Core.Download
                 return;
             }
 
+            // A movie download is listed and seeded like any other; importing it comes with the movie import.
+            if (trackedDownload.RemoteMovie != null)
+            {
+                return;
+            }
+
             SetImportItem(trackedDownload);
 
             // Only process tracked downloads that are still downloading or have been blocked for importing due to an issue with matching

@@ -13,6 +13,8 @@ namespace Sonarr.Api.V5.Queue
     public class QueueResource : RestResource
     {
         public int? SeriesId { get; set; }
+        public int? MovieId { get; set; }
+        public string? MovieTitle { get; set; }
         public IEnumerable<int> EpisodeIds { get; set; } = [];
         public List<QueueSeasonResource> Seasons { get; set; } = [];
         public SeriesResource? Series { get; set; }
@@ -56,6 +58,8 @@ namespace Sonarr.Api.V5.Queue
             {
                 Id = model.Id,
                 SeriesId = model.Series?.Id,
+                MovieId = model.Movie?.Id,
+                MovieTitle = model.Movie?.Title,
                 EpisodeIds = model.Episodes?.Select(e => e.Id).ToList() ?? [],
                 Seasons = model.Episodes?
                     .GroupBy(e => e.SeasonNumber)

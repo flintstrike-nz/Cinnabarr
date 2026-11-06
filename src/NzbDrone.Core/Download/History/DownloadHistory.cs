@@ -10,6 +10,9 @@ namespace NzbDrone.Core.Download.History
     {
         public DownloadHistoryEventType EventType { get; set; }
         public int SeriesId { get; set; }
+
+        // Set instead of SeriesId when the download is for a movie.
+        public int MovieId { get; set; }
         public string DownloadId { get; set; }
         public string SourceTitle { get; set; }
         public DateTime Date { get; set; }

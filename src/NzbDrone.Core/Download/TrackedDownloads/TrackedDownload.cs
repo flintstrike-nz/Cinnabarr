@@ -16,6 +16,9 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         public TrackedDownloadState State { get; set; }
         public TrackedDownloadStatus Status { get; private set; }
         public RemoteEpisode RemoteEpisode { get; set; }
+
+        // Set instead of RemoteEpisode when the download is for a movie.
+        public RemoteMovie RemoteMovie { get; set; }
         public TrackedDownloadStatusMessage[] StatusMessages { get; private set; }
         public DownloadProtocol Protocol { get; set; }
         public string Indexer { get; set; }

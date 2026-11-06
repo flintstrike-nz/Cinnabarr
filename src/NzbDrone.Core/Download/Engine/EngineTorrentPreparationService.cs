@@ -28,6 +28,7 @@ namespace NzbDrone.Core.Download.Engine
 
         private readonly IQBittorrentProxySelector _proxySelector;
         private readonly IHistoryService _historyService;
+        private readonly IMovieHistoryService _movieHistoryService;
         private readonly IFailedDownloadService _failedDownloadService;
         private readonly IDownloadHistoryService _downloadHistoryService;
         private readonly IEngineLinkService _engineLinkService;
@@ -38,6 +39,7 @@ namespace NzbDrone.Core.Download.Engine
 
         public EngineTorrentPreparationService(IQBittorrentProxySelector proxySelector,
                                                IHistoryService historyService,
+                                               IMovieHistoryService movieHistoryService,
                                                IFailedDownloadService failedDownloadService,
                                                IDownloadHistoryService downloadHistoryService,
                                                IEngineLinkService engineLinkService,
@@ -48,6 +50,7 @@ namespace NzbDrone.Core.Download.Engine
         {
             _proxySelector = proxySelector;
             _historyService = historyService;
+            _movieHistoryService = movieHistoryService;
             _failedDownloadService = failedDownloadService;
             _downloadHistoryService = downloadHistoryService;
             _engineLinkService = engineLinkService;
@@ -104,7 +107,11 @@ namespace NzbDrone.Core.Download.Engine
             // else in the engine is left alone.
             if (grab == null)
             {
-                if (EngineTorrentTags.HasTag(torrent.Tags, EngineTorrentTags.Manual))
+                // A movie's grab is in its own history. Its files are not mapped into the library yet (that comes with the
+                // movie import), so it is prepared like one added by hand: only video and subtitles, into the engine's folder.
+                var isMovieGrab = _movieHistoryService.FindByDownloadId(torrent.Hash.ToUpperInvariant()).Any(h => h.EventType == MovieHistoryEventType.Grabbed);
+
+                if (isMovieGrab || EngineTorrentTags.HasTag(torrent.Tags, EngineTorrentTags.Manual))
                 {
                     PrepareManualTorrent(proxy, settings, torrent, hash);
                 }

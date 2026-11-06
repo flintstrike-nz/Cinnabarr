@@ -6,6 +6,7 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Core.History;
 using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Events;
+using NzbDrone.Core.Movies.Events;
 using NzbDrone.Core.Tv.Events;
 
 namespace NzbDrone.Core.Download.History
@@ -22,6 +23,8 @@ namespace NzbDrone.Core.Download.History
 
     public class DownloadHistoryService : IDownloadHistoryService,
                                           IHandle<EpisodeGrabbedEvent>,
+                                          IHandle<MovieGrabbedEvent>,
+                                          IHandle<MoviesDeletedEvent>,
                                           IHandle<EpisodeImportedEvent>,
                                           IHandle<DownloadCompletedEvent>,
                                           IHandle<DownloadFailedEvent>,
@@ -131,6 +134,40 @@ namespace NzbDrone.Core.Download.History
             history.Data.Add("CustomFormatScore", message.Episode.CustomFormatScore.ToString());
 
             _repository.Insert(history);
+        }
+
+        public void Handle(MovieGrabbedEvent message)
+        {
+            // Don't store grabbed events for clients that don't download IDs
+            if (message.DownloadId.IsNullOrWhiteSpace())
+            {
+                return;
+            }
+
+            var history = new DownloadHistory
+            {
+                EventType = DownloadHistoryEventType.DownloadGrabbed,
+                MovieId = message.Movie.Movie.Id,
+                DownloadId = message.DownloadId,
+                SourceTitle = message.Movie.Release.Title,
+                Date = DateTime.UtcNow,
+                Protocol = message.Movie.Release.DownloadProtocol,
+                IndexerId = message.Movie.Release.IndexerId,
+                DownloadClientId = message.DownloadClientId,
+                Release = message.Movie.Release
+            };
+
+            history.Data.Add("Indexer", message.Movie.Release.Indexer);
+            history.Data.Add("DownloadClient", message.DownloadClient);
+            history.Data.Add("DownloadClientName", message.DownloadClientName);
+            history.Data.Add("CustomFormatScore", message.Movie.CustomFormatScore.ToString());
+
+            _repository.Insert(history);
+        }
+
+        public void Handle(MoviesDeletedEvent message)
+        {
+            _repository.DeleteByMovieIds(message.Movies.Select(m => m.Id).ToList());
         }
 
         public void Handle(EpisodeImportedEvent message)

@@ -11,6 +11,7 @@ using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Download.History;
 using NzbDrone.Core.History;
 using NzbDrone.Core.Messaging.Events;
+using NzbDrone.Core.Movies.Events;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Tv;
@@ -38,9 +39,12 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                                           IHandle<SeriesAddedEvent>,
                                           IHandle<SeriesEditedEvent>,
                                           IHandle<SeriesBulkEditedEvent>,
-                                          IHandle<SeriesDeletedEvent>
+                                          IHandle<SeriesDeletedEvent>,
+                                          IHandle<MoviesDeletedEvent>
     {
         private readonly IParsingService _parsingService;
+        private readonly IMovieParsingService _movieParsingService;
+        private readonly IMovieHistoryService _movieHistoryService;
         private readonly IHistoryService _historyService;
         private readonly ISeriesService _seriesService;
         private readonly IEpisodeService _episodeService;
@@ -55,6 +59,8 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         private readonly ICached<TrackedDownload> _cache;
 
         public TrackedDownloadService(IParsingService parsingService,
+                                      IMovieParsingService movieParsingService,
+                                      IMovieHistoryService movieHistoryService,
                                       IHistoryService historyService,
                                       ISeriesService seriesService,
                                       IEpisodeService episodeService,
@@ -68,6 +74,8 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                                       Logger logger)
         {
             _parsingService = parsingService;
+            _movieParsingService = movieParsingService;
+            _movieHistoryService = movieHistoryService;
             _historyService = historyService;
             _seriesService = seriesService;
             _episodeService = episodeService;
@@ -148,7 +156,11 @@ namespace NzbDrone.Core.Download.TrackedDownloads
 
                 // The info-hash is the only key for the built-in engine (roadmap §4.4 rule 1): a torrent
                 // Embarr has no record of is listed as Unlinked and is never matched to a series by name.
-                var isUnlinked = isEngine && historyItems.Empty();
+                // A movie's grab is kept in its own history.
+                var movieHistory = historyItems.Empty() ? FindMovieHistory(downloadItem.DownloadId) : new List<MovieHistory>();
+                var isMovie = movieHistory.Any();
+
+                var isUnlinked = isEngine && historyItems.Empty() && !isMovie;
 
                 var downloadHistory = _downloadHistoryService.GetLatestDownloadHistoryItem(downloadItem.DownloadId);
 
@@ -159,7 +171,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                 }
 
                 // Built-in engine downloads take their series and episodes from the info-hash history below.
-                var parsedEpisodeInfo = isEngine ? null : Parser.Parser.ParseTitle(trackedDownload.DownloadItem.Title);
+                var parsedEpisodeInfo = isEngine || isMovie ? null : Parser.Parser.ParseTitle(trackedDownload.DownloadItem.Title);
 
                 if (parsedEpisodeInfo != null)
                 {
@@ -216,6 +228,11 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                     }
                 }
 
+                if (isMovie)
+                {
+                    MapFromMovieHistory(trackedDownload, movieHistory, downloadHistory, downloadItem.TotalSize);
+                }
+
                 if (isUnlinked)
                 {
                     MarkUnlinked(trackedDownload);
@@ -230,7 +247,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                 }
 
                 // Track it so it can be displayed in the queue even though we can't determine which series it is for
-                if (trackedDownload.RemoteEpisode == null)
+                if (trackedDownload.RemoteEpisode == null && trackedDownload.RemoteMovie == null)
                 {
                     _logger.Trace("No Episode found for download '{0}'", trackedDownload.DownloadItem.Title);
                 }
@@ -304,6 +321,15 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                 {
                     MapFromLinkHistory(trackedDownload, historyItems);
                 }
+                else
+                {
+                    var movieHistory = FindMovieHistory(grab.DownloadId);
+
+                    if (movieHistory.Any())
+                    {
+                        MapFromMovieHistory(trackedDownload, movieHistory, grab, size);
+                    }
+                }
 
                 // Same release details as any other row (indexer, languages, custom formats, ...), so queue
                 // filters and scores treat it alike.
@@ -369,6 +395,70 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             return _historyService.FindByDownloadId(downloadId)
                 .OrderByDescending(h => h.Date)
                 .ToList();
+        }
+
+        private List<MovieHistory> FindMovieHistory(string downloadId)
+        {
+            return _movieHistoryService.FindByDownloadId(downloadId)
+                .OrderByDescending(h => h.Date)
+                .ToList();
+        }
+
+        // Builds the movie a grab was for from its history. The movie can be gone (deleted since), which leaves the
+        // download listed without one.
+        private void MapFromMovieHistory(TrackedDownload trackedDownload, List<MovieHistory> history, DownloadHistory downloadHistory, long size)
+        {
+            var grabbed = history.FirstOrDefault(h => h.EventType == MovieHistoryEventType.Grabbed) ?? history.First();
+
+            trackedDownload.Indexer = grabbed.Data?.GetValueOrDefault("indexer");
+            trackedDownload.Added = grabbed.Date;
+
+            var parsed = MovieParser.ParseMovieTitle(grabbed.SourceTitle) ?? new ParsedMovieInfo { MovieTitles = new List<string> { grabbed.SourceTitle } };
+
+            if (grabbed.Quality != null)
+            {
+                parsed.Quality = grabbed.Quality;
+            }
+
+            RemoteMovie remoteMovie;
+
+            try
+            {
+                remoteMovie = _movieParsingService.Map(parsed, grabbed.MovieId);
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug(ex, "Unable to find the movie for download '{0}'", grabbed.SourceTitle);
+                remoteMovie = null;
+            }
+
+            if (remoteMovie?.Movie == null)
+            {
+                return;
+            }
+
+            remoteMovie.Release ??= new ReleaseInfo();
+            remoteMovie.Release.Indexer = trackedDownload.Indexer;
+            remoteMovie.Release.Title = grabbed.SourceTitle;
+
+            if (grabbed.Languages is { Count: > 0 })
+            {
+                remoteMovie.Languages = grabbed.Languages;
+            }
+
+            if (Enum.TryParse(grabbed.Data?.GetValueOrDefault("indexerFlags"), true, out IndexerFlags flags))
+            {
+                remoteMovie.Release.IndexerFlags = flags;
+            }
+
+            if (downloadHistory != null)
+            {
+                remoteMovie.Release.IndexerId = downloadHistory.IndexerId;
+            }
+
+            remoteMovie.CustomFormats = _formatCalculator.ParseCustomFormat(remoteMovie, size);
+
+            trackedDownload.RemoteMovie = remoteMovie;
         }
 
         private void LogItemChange(TrackedDownload trackedDownload, DownloadClientItem existingItem, DownloadClientItem downloadItem)
@@ -483,6 +573,27 @@ namespace NzbDrone.Core.Download.TrackedDownloads
 
         private void UpdateCachedItem(TrackedDownload trackedDownload)
         {
+            // A movie download is mapped from its history again (the movie may have been edited or deleted).
+            if (trackedDownload.RemoteMovie != null)
+            {
+                var movieHistory = FindMovieHistory(trackedDownload.DownloadItem.DownloadId);
+
+                trackedDownload.RemoteMovie = null;
+
+                if (movieHistory.Any())
+                {
+                    MapFromMovieHistory(trackedDownload, movieHistory, _downloadHistoryService.GetLatestGrab(trackedDownload.DownloadItem.DownloadId), trackedDownload.DownloadItem.TotalSize);
+                }
+
+                if (trackedDownload.RemoteMovie == null && _engineClientRegistry.IsEngineClient(trackedDownload.DownloadClient))
+                {
+                    MarkUnlinked(trackedDownload);
+                    KeepMissingFromEngineWarning(trackedDownload);
+                }
+
+                return;
+            }
+
             if (_engineClientRegistry.IsEngineClient(trackedDownload.DownloadClient))
             {
                 if (trackedDownload.IsUnlinked)
@@ -646,6 +757,26 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                     {
                         UpdateCachedItem(trackedDownload);
                     }
+                }
+
+                _eventAggregator.PublishEvent(new TrackedDownloadRefreshedEvent(GetTrackedDownloads()));
+            }
+        }
+
+        public void Handle(MoviesDeletedEvent message)
+        {
+            var movieIds = message.Movies.Select(m => m.Id).ToHashSet();
+
+            var cachedItems = _cache.Values
+                .Where(t => t.RemoteMovie?.Movie != null && movieIds.Contains(t.RemoteMovie.Movie.Id))
+                .ToList();
+
+            if (cachedItems.Any())
+            {
+                // The movie's history is deleted with it, so a built-in engine torrent loses its link.
+                foreach (var trackedDownload in cachedItems)
+                {
+                    UpdateCachedItem(trackedDownload);
                 }
 
                 _eventAggregator.PublishEvent(new TrackedDownloadRefreshedEvent(GetTrackedDownloads()));
