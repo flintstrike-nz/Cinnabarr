@@ -600,7 +600,7 @@ Built so far (3a-2):
 | --- | --- |
 | 4a | Movie metadata layer: the metadata tables, models and stores, and a client for the Radarr project's metadata service. **Done.** |
 | 4b | The movie itself: `Movie`, `MovieFile`, their stores and services, add-movie, root folders and monitoring. **Done.** |
-| 4c | Movie parser, quality and custom-format matching, and the decision engine for movie releases. Split: **4c-1 qualities (done)**, **4c-2 movie release parser (done)**, **4c-3 languages (done)**, 4c-4 movie custom formats and decision specifications. |
+| 4c | Movie parser, quality and custom-format matching, and the decision engine for movie releases. Split: **4c-1 qualities (done)**, **4c-2 movie release parser (done)**, **4c-3 languages (done)**, **4c-4a matching a release to a movie (done)**, 4c-4b movie custom formats, 4c-4c movie decision specifications. |
 | 4d | Movie search and RSS: movie criteria for the indexers, release grabbing, and the media-type-aware download pipeline (§4.4). |
 | 4e | Movie import, naming and renaming; extras. |
 | 4f | Movie import lists. |
@@ -1004,3 +1004,8 @@ Built so far (4c-3, languages):
 
 - **Eight languages added** at new numbers 54 to 61: Bengali, Telugu, Kannada, Albanian, Afrikaans, Marathi, Tagalog and Mongolian, with their ISO codes. Existing language numbers are unchanged (they are saved in profiles, files and releases). Radarr numbers these differently from 26 onward, so an import from a Radarr database must translate them.
 - **Movie language parser.** Radarr's language parser is ported as `MovieLanguageParser`, and `MovieParser` uses it. Radarr's 170 language tests were ported and pass, so the gap noted in 4c-2 is closed.
+
+Built so far (4c-4a, matching a release to a movie):
+
+- **`MovieParsingService`** turns a parsed release into a `RemoteMovie`: it finds the movie by IMDb id, then TMDb id (the year must agree within the secondary year), then by title and year using the movie's alternative titles, translations and roman-numeral spellings; for a search it first tries the movie that was searched for. `RemoteMovie`, `FindMovieResult` and `MovieMatchType` (title, alias, id) come with it. Radarr's matching tests were ported (a movie is searched for directly instead of through search criteria, which arrive in 4d).
+- **Still to do in 4c-4:** custom formats evaluated on movies (4c-4b) and the movie decision specifications and decision maker (4c-4c).
