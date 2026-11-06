@@ -1093,3 +1093,11 @@ Built so far (4e-1, naming movie files and folders):
 - **Media info** for a movie file is read again when a naming token needs newer information, as for episodes. The `{MediaInfo 3D}` token is not carried over (our media info reader has no multi-view count).
 - **Checked.** Radarr's naming tests were ported (341); Core suite shows only the 18 known failures.
 - **Next, 4e-2:** the movie import decision (what a finished file is, whether it may be imported) and the import itself.
+
+Built so far (4e-2, deciding whether a movie file may be imported):
+
+- **`LocalMovie`** describes a file on disk for a movie (its path and size, what the file name, the folder and the download say it is, the movie, quality, languages, release group, edition, media info, custom formats, the grab it came from).
+- **Aggregation** fills it in from several sources and picks the most trusted answer for each part: quality (from the download client's title, the folder, the file name, the release name in history, and the media info's resolution), language (same sources plus the audio tracks), release group, edition, subtitle information, the grabbed release and the movie. The quality code has no "modifier" (our remux, BR-DISK and similar are sources of their own), so that part of Radarr's code is dropped.
+- **Decision.** `ImportDecisionMaker` (movie) runs a file through the specifications: not a sample, has an audio track, not still unpacking, not part of a multi-part movie, matches the folder and the grab, not already imported, enough free space, the grabbed release's quality, and whether it is an upgrade of the file the movie has.
+- **Checked.** Radarr's tests for all of this were ported (148); Core suite shows only the 18 known failures. Nothing imports a file yet.
+- **Next, 4e-3:** the import itself (moving or copying the file into the movie folder, replacing an older file, history and events) and importing a finished download.

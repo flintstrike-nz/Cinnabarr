@@ -21,6 +21,7 @@ namespace NzbDrone.Core.CustomFormats
         List<CustomFormat> ParseCustomFormat(RemoteMovie remoteMovie, long size);
         List<CustomFormat> ParseCustomFormat(MovieFile movieFile);
         List<CustomFormat> ParseCustomFormat(MovieHistory history, Movie movie);
+        List<CustomFormat> ParseCustomFormat(LocalMovie localMovie, string fileName);
         List<CustomFormat> ParseCustomFormat(EpisodeFile episodeFile, Series series);
         List<CustomFormat> ParseCustomFormat(EpisodeFile episodeFile);
         List<CustomFormat> ParseCustomFormat(Blocklist blocklist, Series series);
@@ -122,6 +123,33 @@ namespace NzbDrone.Core.CustomFormats
                 Size = size,
                 Languages = movieInfo.Languages,
                 IndexerFlags = indexerFlags
+            };
+
+            return ParseCustomFormat(input);
+        }
+
+        public List<CustomFormat> ParseCustomFormat(LocalMovie localMovie, string fileName)
+        {
+            var movieInfo = new ParsedMovieInfo
+            {
+                MovieTitles = new List<string> { localMovie.Movie.Title },
+                SimpleReleaseTitle = localMovie.SceneName.IsNotNullOrWhiteSpace() ? localMovie.SceneName.SimplifyReleaseTitle() : Path.GetFileName(localMovie.Path).SimplifyReleaseTitle(),
+                ReleaseTitle = localMovie.SceneName,
+                Year = localMovie.Movie.Year,
+                Quality = localMovie.Quality,
+                Edition = localMovie.Edition,
+                Languages = localMovie.Languages,
+                ReleaseGroup = localMovie.ReleaseGroup
+            };
+
+            var input = new CustomFormatInput
+            {
+                MovieInfo = movieInfo,
+                Movie = localMovie.Movie,
+                Size = localMovie.Size,
+                Languages = localMovie.Languages,
+                IndexerFlags = localMovie.IndexerFlags,
+                Filename = fileName
             };
 
             return ParseCustomFormat(input);
