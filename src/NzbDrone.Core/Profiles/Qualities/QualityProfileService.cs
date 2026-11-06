@@ -7,6 +7,7 @@ using NzbDrone.Core.CustomFormats.Events;
 using NzbDrone.Core.ImportLists;
 using NzbDrone.Core.Lifecycle;
 using NzbDrone.Core.Messaging.Events;
+using NzbDrone.Core.Movies;
 using NzbDrone.Core.Qualities;
 using NzbDrone.Core.Tv;
 
@@ -33,6 +34,7 @@ namespace NzbDrone.Core.Profiles.Qualities
         private readonly IImportListFactory _importListFactory;
         private readonly ICustomFormatService _formatService;
         private readonly ISeriesService _seriesService;
+        private readonly IMovieService _movieService;
         private readonly IQualityProfileRankService _rankService;
         private readonly IEventAggregator _eventAggregator;
         private readonly Logger _logger;
@@ -41,6 +43,7 @@ namespace NzbDrone.Core.Profiles.Qualities
                                      IImportListFactory importListFactory,
                                      ICustomFormatService formatService,
                                      ISeriesService seriesService,
+                                     IMovieService movieService,
                                      IQualityProfileRankService rankService,
                                      IEventAggregator eventAggregator,
                                      Logger logger)
@@ -49,6 +52,7 @@ namespace NzbDrone.Core.Profiles.Qualities
             _importListFactory = importListFactory;
             _formatService = formatService;
             _seriesService = seriesService;
+            _movieService = movieService;
             _rankService = rankService;
             _eventAggregator = eventAggregator;
             _logger = logger;
@@ -70,7 +74,7 @@ namespace NzbDrone.Core.Profiles.Qualities
 
         public void Delete(int id)
         {
-            if (_seriesService.GetAllSeries().Any(c => c.QualityProfileId == id) || _importListFactory.All().Any(c => c.QualityProfileId == id))
+            if (_seriesService.GetAllSeries().Any(c => c.QualityProfileId == id) || _movieService.GetAllMovies().Any(c => c.QualityProfileId == id) || _importListFactory.All().Any(c => c.QualityProfileId == id))
             {
                 var profile = _qualityProfileRepository.Get(id);
                 throw new QualityProfileInUseException(profile.Name);
@@ -101,6 +105,14 @@ namespace NzbDrone.Core.Profiles.Qualities
 
             if (profiles.Any())
             {
+                // Profiles saved before a quality existed do not list it; add it (not allowed) so it can be chosen.
+                foreach (var profile in profiles.Where(p => p.AddMissingQualities()))
+                {
+                    _logger.Debug("Added missing qualities to profile {0}", profile.Name);
+
+                    Update(profile);
+                }
+
                 _rankService.SeedAll(profiles);
 
                 return;
