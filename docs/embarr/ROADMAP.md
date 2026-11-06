@@ -1025,3 +1025,12 @@ Built so far (4c-4c, movie decision specifications and decision maker):
 - **Left out:** Radarr's hardcoded-subs, language and required-indexer-flag specifications (we have no equivalent settings).
 - **Deferred to 4d**, because they need the movie queue, history, search criteria and download pipeline: queue, history, pending-release, delay, already-imported, blocklist, free-space, monitored, availability and search-criteria specifications, plus release prioritisation.
 - **Checked.** 9 decision-maker tests; Core suite shows only the 18 known failures.
+
+Built so far (4d-1, movie search against the indexers):
+
+- **Indexer side.** Indexers gain `Fetch(MovieSearchCriteria)` and `FetchRecentMovies()`. By default they return nothing; only the Cardigann (definition-driven) indexers search for movies, using the standard movie category (2000). Older Newznab/Torznab entries stay TV-only and go away when the engine replaces them.
+- **Search plan.** `EngineSearchCriteriaMapper` turns a movie into engine queries: first the IMDb and TMDb ids the site supports, then the title plus year (a movie search where the site has a text field, a generic search otherwise). As with TV, the first tier that finds releases wins, and the search mode (ids only, titles only, both) is honoured.
+- **`MovieReleaseSearchService`** (`MovieSearch(id | movie, userInvoked, interactive)`) searches every enabled indexer whose tags match the movie, records the query in the indexer history, sets the movie's last search time, runs the releases through the movie decision maker against that movie and keeps the best decision per release.
+- **RSS.** `FetchAndParseRssService.FetchMovies()` reads each indexer's movie feed. It is not wired into the RSS sync yet: grabbing a movie is 4d-2.
+- **Checked.** 15 new tests; Core suite shows only the 18 known failures.
+- **Next:** 4d-2 grabbing (download service, history, tracked downloads and the queue for movies, RSS sync for movies, the deferred specifications); 4d-3 search commands (missing, cutoff unmet, per movie).

@@ -14,6 +14,7 @@ using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.ThingiProvider;
 using EngineBasicCriteria = NzbDrone.Core.IndexerEngine.IndexerSearch.Definitions.BasicSearchCriteria;
 using EngineCriteria = NzbDrone.Core.IndexerEngine.IndexerSearch.Definitions.SearchCriteriaBase;
+using EngineMovieCriteria = NzbDrone.Core.IndexerEngine.IndexerSearch.Definitions.MovieSearchCriteria;
 using EngineTvCriteria = NzbDrone.Core.IndexerEngine.IndexerSearch.Definitions.TvSearchCriteria;
 
 namespace NzbDrone.Core.Indexers.Cardigann
@@ -27,6 +28,7 @@ namespace NzbDrone.Core.Indexers.Cardigann
         // 5000 is the standard TV category and 5070 is anime; the definition maps them to the site's own.
         private static readonly int[] TvCategories = { 5000 };
         private static readonly int[] AnimeCategories = { 5070 };
+        private static readonly int[] MovieCategories = { 2000 };
 
         private readonly IEngineIndexerProvider _engineProvider;
 
@@ -54,12 +56,23 @@ namespace NzbDrone.Core.Indexers.Cardigann
         {
             Categories = TvCategories,
             AnimeCategories = AnimeCategories,
-            AnimeStandardFormatSearch = true
+            AnimeStandardFormatSearch = true,
+            MovieCategories = MovieCategories
         };
 
         public override Task<IList<ReleaseInfo>> FetchRecent()
         {
             return Run(caps => EngineSearchCriteriaMapper.Recent(caps, Options));
+        }
+
+        public override Task<IList<ReleaseInfo>> FetchRecentMovies()
+        {
+            return Run(caps => EngineSearchCriteriaMapper.RecentMovies(caps, Options));
+        }
+
+        public override Task<IList<ReleaseInfo>> Fetch(MovieSearchCriteria searchCriteria)
+        {
+            return Run(caps => EngineSearchCriteriaMapper.Map(searchCriteria, caps, Options));
         }
 
         public override Task<IList<ReleaseInfo>> Fetch(SeasonSearchCriteria searchCriteria)
@@ -137,6 +150,7 @@ namespace NzbDrone.Core.Indexers.Cardigann
                     var result = criteria switch
                     {
                         EngineTvCriteria tv => await engineIndexer.Fetch(tv),
+                        EngineMovieCriteria movie => await engineIndexer.Fetch(movie),
                         EngineBasicCriteria basic => await engineIndexer.Fetch(basic),
                         _ => null
                     };

@@ -8,6 +8,7 @@ using NzbDrone.Core.IndexerSearch.Definitions;
 using NzbDrone.Core.Tv;
 using EngineBasicCriteria = NzbDrone.Core.IndexerEngine.IndexerSearch.Definitions.BasicSearchCriteria;
 using EngineCriteria = NzbDrone.Core.IndexerEngine.IndexerSearch.Definitions.SearchCriteriaBase;
+using EngineMovieCriteria = NzbDrone.Core.IndexerEngine.IndexerSearch.Definitions.MovieSearchCriteria;
 using EngineTvCriteria = NzbDrone.Core.IndexerEngine.IndexerSearch.Definitions.TvSearchCriteria;
 
 namespace NzbDrone.Core.Indexers.Engine
@@ -17,6 +18,7 @@ namespace NzbDrone.Core.Indexers.Engine
         public int[] Categories { get; set; } = Array.Empty<int>();
         public int[] AnimeCategories { get; set; } = Array.Empty<int>();
         public bool AnimeStandardFormatSearch { get; set; }
+        public int[] MovieCategories { get; set; } = Array.Empty<int>();
     }
 
     /// <summary>
@@ -40,6 +42,81 @@ namespace NzbDrone.Core.Indexers.Engine
             }
 
             return Tiers();
+        }
+
+        public static List<List<EngineCriteria>> RecentMovies(IndexerCapabilities caps, EngineSearchOptions options)
+        {
+            if (caps.MovieSearchAvailable)
+            {
+                return Tiers(Tier(new EngineMovieCriteria { SearchType = "movie", Categories = options.MovieCategories }));
+            }
+
+            if (caps.SearchAvailable)
+            {
+                return Tiers(Tier(new EngineBasicCriteria { SearchType = "search", Categories = options.MovieCategories }));
+            }
+
+            return Tiers();
+        }
+
+        public static List<List<EngineCriteria>> Map(MovieSearchCriteria criteria, IndexerCapabilities caps, EngineSearchOptions options)
+        {
+            var metadata = criteria.Movie.MovieMetadata.Value;
+            var ids = new List<EngineCriteria>();
+
+            if (caps.MovieSearchAvailable)
+            {
+                var idCriteria = new EngineMovieCriteria { SearchType = "movie", Categories = options.MovieCategories };
+                var any = false;
+
+                if (caps.MovieSearchImdbAvailable && metadata.ImdbId.IsNotNullOrWhiteSpace())
+                {
+                    idCriteria.ImdbId = metadata.ImdbId;
+                    any = true;
+                }
+
+                if (caps.MovieSearchTmdbAvailable && metadata.TmdbId > 0)
+                {
+                    idCriteria.TmdbId = metadata.TmdbId;
+                    any = true;
+                }
+
+                if (any)
+                {
+                    ids.Add(idCriteria);
+                }
+            }
+
+            var year = metadata.Year > 0 ? $" {metadata.Year}" : string.Empty;
+            var terms = Titles(criteria, caps).Select(t => t + year).ToList();
+            var titles = new List<EngineCriteria>();
+
+            if (caps.MovieSearchParams.Contains(MovieSearchParam.Q))
+            {
+                titles.AddRange(terms.Select(t => (EngineCriteria)new EngineMovieCriteria { SearchType = "movie", SearchTerm = t, Categories = options.MovieCategories }));
+            }
+            else if (caps.SearchAvailable)
+            {
+                titles.AddRange(terms.Select(t => (EngineCriteria)Basic(t, options.MovieCategories)));
+            }
+
+            var idSearch = criteria.SearchMode.HasFlag(SearchMode.SearchID) || criteria.SearchMode == SearchMode.Default;
+            var titleSearch = criteria.SearchMode.HasFlag(SearchMode.SearchTitle);
+            var titleFallback = criteria.SearchMode == SearchMode.Default;
+
+            var first = new List<EngineCriteria>();
+
+            if (idSearch)
+            {
+                first.AddRange(ids);
+            }
+
+            if (titleSearch)
+            {
+                first.AddRange(titles);
+            }
+
+            return Tiers(first, titleFallback ? titles : new List<EngineCriteria>());
         }
 
         public static List<List<EngineCriteria>> Map(SingleEpisodeSearchCriteria criteria, IndexerCapabilities caps, EngineSearchOptions options)
