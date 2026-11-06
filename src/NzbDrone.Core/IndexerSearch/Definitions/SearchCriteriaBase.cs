@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using NzbDrone.Common.EnsureThat;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.DataAugmentation.Scene;
+using NzbDrone.Core.Movies;
 using NzbDrone.Core.Tv;
 
 namespace NzbDrone.Core.IndexerSearch.Definitions
@@ -15,8 +16,9 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
         private static readonly Regex BeginningThe = new Regex(@"^the\s", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         public Series Series { get; set; }
+        public Movie Movie { get; set; }
         public List<string> SceneTitles { get; set; }
-        public List<Episode> Episodes { get; set; }
+        public List<Episode> Episodes { get; set; } = new List<Episode>();
         public SearchMode SearchMode { get; set; }
         public virtual bool MonitoredEpisodesOnly { get; set; }
         public virtual bool UserInvokedSearch { get; set; }

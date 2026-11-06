@@ -15,6 +15,8 @@ namespace NzbDrone.Core.Indexers
         IEnumerable<FailDownloads> DefaultFailDownloads { get; }
 
         Task<IList<ReleaseInfo>> FetchRecent();
+        Task<IList<ReleaseInfo>> FetchRecentMovies();
+        Task<IList<ReleaseInfo>> Fetch(MovieSearchCriteria searchCriteria);
         Task<IList<ReleaseInfo>> Fetch(SeasonSearchCriteria searchCriteria);
         Task<IList<ReleaseInfo>> Fetch(SingleEpisodeSearchCriteria searchCriteria);
         Task<IList<ReleaseInfo>> Fetch(DailyEpisodeSearchCriteria searchCriteria);
