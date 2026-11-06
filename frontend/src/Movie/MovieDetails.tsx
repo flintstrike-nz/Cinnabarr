@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Icon from 'Components/Icon';
 import Button from 'Components/Link/Button';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
+import ConfirmModal from 'Components/Modal/ConfirmModal';
 import NotFound from 'Components/NotFound';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
@@ -12,6 +13,7 @@ import { useQualityProfilesData } from 'Settings/Profiles/Quality/useQualityProf
 import formatBytes from 'Utilities/Number/formatBytes';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
+import MovieFiles from './MovieFiles';
 import MovieHistory from './MovieHistory';
 import MovieOrganizeModal from './MovieOrganizeModal';
 import MoviePoster from './MoviePoster';
@@ -129,6 +131,8 @@ function MovieDetails() {
   const { deleteMovie, isDeleting } = useDeleteMovie(id);
   const [showSearch, setShowSearch] = useState(false);
   const [isOrganizeOpen, setIsOrganizeOpen] = useState(false);
+  const [isDeleteFilesConfirmOpen, setIsDeleteFilesConfirmOpen] =
+    useState(false);
 
   const handleMonitoredPress = useCallback(() => {
     if (movie) {
@@ -155,6 +159,22 @@ function MovieDetails() {
   const handleDeletePress = useCallback(() => {
     deleteMovie(
       { deleteFiles: false },
+      { onSuccess: () => navigate('/movies') }
+    );
+  }, [deleteMovie, navigate]);
+
+  const handleDeleteWithFilesPress = useCallback(() => {
+    setIsDeleteFilesConfirmOpen(true);
+  }, []);
+
+  const handleDeleteWithFilesCancel = useCallback(() => {
+    setIsDeleteFilesConfirmOpen(false);
+  }, []);
+
+  const handleDeleteWithFilesConfirm = useCallback(() => {
+    setIsDeleteFilesConfirmOpen(false);
+    deleteMovie(
+      { deleteFiles: true },
       { onSuccess: () => navigate('/movies') }
     );
   }, [deleteMovie, navigate]);
@@ -227,11 +247,31 @@ function MovieDetails() {
               >
                 <Icon name={icons.DELETE} /> {translate('DeleteMovie')}
               </Button>
+
+              <Button
+                kind={kinds.DANGER}
+                isDisabled={isDeleting}
+                onPress={handleDeleteWithFilesPress}
+              >
+                <Icon name={icons.DELETE} /> {translate('DeleteMovieAndFiles')}
+              </Button>
             </div>
           </div>
         </div>
 
         {showSearch ? <InteractiveSearch movieId={movie.id} /> : null}
+
+        <ConfirmModal
+          isOpen={isDeleteFilesConfirmOpen}
+          kind={kinds.DANGER}
+          title={translate('DeleteMovieAndFiles')}
+          message={translate('DeleteMovieAndFilesConfirmation')}
+          confirmLabel={translate('Delete')}
+          onConfirm={handleDeleteWithFilesConfirm}
+          onCancel={handleDeleteWithFilesCancel}
+        />
+
+        <MovieFiles movieId={movie.id} />
 
         <MovieHistory movieId={movie.id} />
 
