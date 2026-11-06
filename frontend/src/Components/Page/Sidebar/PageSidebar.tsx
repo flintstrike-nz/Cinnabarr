@@ -91,6 +91,11 @@ const GROUPS: SidebarGroup[] = [
         ],
       },
       {
+        iconName: icons.SEARCH,
+        title: () => translate('Search'),
+        to: '/search',
+      },
+      {
         iconName: icons.CALENDAR,
         title: () => translate('Calendar'),
         to: '/calendar',

@@ -87,6 +87,8 @@ namespace NzbDrone.Core.Indexers
         public virtual Task<IList<ReleaseInfo>> FetchRecentMovies() => Task.FromResult<IList<ReleaseInfo>>(Array.Empty<ReleaseInfo>());
         public virtual Task<IList<ReleaseInfo>> Fetch(MovieSearchCriteria searchCriteria) => Task.FromResult<IList<ReleaseInfo>>(Array.Empty<ReleaseInfo>());
 
+        public virtual Task<IList<ReleaseInfo>> Fetch(FreeTextSearchCriteria searchCriteria) => Task.FromResult<IList<ReleaseInfo>>(Array.Empty<ReleaseInfo>());
+
         public abstract HttpRequest GetDownloadRequest(string link);
 
         protected virtual IList<ReleaseInfo> CleanupReleases(IEnumerable<ReleaseInfo> releases)

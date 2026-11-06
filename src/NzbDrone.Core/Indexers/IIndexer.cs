@@ -17,6 +17,7 @@ namespace NzbDrone.Core.Indexers
         Task<IList<ReleaseInfo>> FetchRecent();
         Task<IList<ReleaseInfo>> FetchRecentMovies();
         Task<IList<ReleaseInfo>> Fetch(MovieSearchCriteria searchCriteria);
+        Task<IList<ReleaseInfo>> Fetch(FreeTextSearchCriteria searchCriteria);
         Task<IList<ReleaseInfo>> Fetch(SeasonSearchCriteria searchCriteria);
         Task<IList<ReleaseInfo>> Fetch(SingleEpisodeSearchCriteria searchCriteria);
         Task<IList<ReleaseInfo>> Fetch(DailyEpisodeSearchCriteria searchCriteria);

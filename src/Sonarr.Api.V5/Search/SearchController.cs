@@ -1,0 +1,177 @@
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using NLog;
+using NzbDrone.Common.Cache;
+using NzbDrone.Core.DecisionEngine;
+using NzbDrone.Core.Download;
+using NzbDrone.Core.Exceptions;
+using NzbDrone.Core.IndexerSearch;
+using NzbDrone.Core.Languages;
+using NzbDrone.Core.Parser.Model;
+using NzbDrone.Core.Qualities;
+using Sonarr.Api.V5.Release;
+using Sonarr.Http;
+using Sonarr.Http.REST;
+using HttpStatusCode = System.Net.HttpStatusCode;
+
+namespace Sonarr.Api.V5.Search;
+
+public class SearchResultResource : RestResource
+{
+    // "series", "movie", or "unknown" when the release matched nothing in the library.
+    public required string MediaType { get; set; }
+    public int? MappedSeriesId { get; set; }
+    public int? MappedMovieId { get; set; }
+    public string? MappedTitle { get; set; }
+    public ReleaseInfoResource? Release { get; set; }
+    public ReleaseDecisionResource? Decision { get; set; }
+    public QualityModel? Quality { get; set; }
+    public List<Language> Languages { get; set; } = [];
+    public bool DownloadAllowed { get; set; }
+}
+
+public class SearchGrabResource
+{
+    public required string Guid { get; set; }
+    public required int IndexerId { get; set; }
+    public int? DownloadClientId { get; set; }
+}
+
+[V5ApiController("search")]
+public class SearchController : Controller
+{
+    private readonly ISearchForFreeText _searchService;
+    private readonly IDownloadService _downloadService;
+    private readonly Logger _logger;
+    private readonly ICached<RemoteMedia> _remoteCache;
+
+    public SearchController(ISearchForFreeText searchService,
+                            IDownloadService downloadService,
+                            ICacheManager cacheManager,
+                            Logger logger)
+    {
+        _searchService = searchService;
+        _downloadService = downloadService;
+        _logger = logger;
+        _remoteCache = cacheManager.GetCache<RemoteMedia>(GetType(), "remotes");
+    }
+
+    [HttpGet]
+    [Produces("application/json")]
+    public async Task<Ok<List<SearchResultResource>>> Search([FromQuery] string query)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            throw new Sonarr.Http.REST.BadRequestException("query must be provided");
+        }
+
+        try
+        {
+            var decisions = await _searchService.Search(query);
+            var result = new List<SearchResultResource>();
+
+            foreach (var decision in decisions.Where(d => d.Remote?.Release != null))
+            {
+                var remote = decision.Remote!;
+
+                _remoteCache.Set(GetCacheKey(remote.Release.IndexerId, remote.Release.Guid), remote, TimeSpan.FromMinutes(30));
+
+                result.Add(ToResource(decision, result.Count));
+            }
+
+            return TypedResults.Ok(result);
+        }
+        catch (SearchFailedException ex)
+        {
+            throw new NzbDroneClientException(HttpStatusCode.BadRequest, ex.Message);
+        }
+        catch (Exception ex) when (ex is not NzbDroneClientException)
+        {
+            _logger.Error(ex, "Search failed: " + ex.Message);
+            throw new NzbDroneClientException(HttpStatusCode.InternalServerError, ex.Message);
+        }
+    }
+
+    [HttpPost("grab")]
+    [Consumes("application/json")]
+    [Produces("application/json")]
+    public async Task<Ok<SearchGrabResource>> Grab([FromBody] SearchGrabResource release)
+    {
+        var remote = _remoteCache.Find(GetCacheKey(release.IndexerId, release.Guid));
+
+        if (remote == null)
+        {
+            throw new NzbDroneClientException(HttpStatusCode.NotFound, "Couldn't find requested release in cache, try searching again");
+        }
+
+        var isMatched = remote switch
+        {
+            RemoteEpisode episode => episode.Series != null && episode.Episodes.Count > 0,
+            RemoteMovie movie => movie.Movie != null,
+            _ => false
+        };
+
+        if (!isMatched)
+        {
+            throw new NzbDroneClientException(HttpStatusCode.NotFound, "This release doesn't match a series or movie in the library, add it first");
+        }
+
+        try
+        {
+            await _downloadService.DownloadReport(remote, release.DownloadClientId);
+        }
+        catch (ReleaseDownloadException ex)
+        {
+            _logger.Error(ex, ex.Message);
+            throw new NzbDroneClientException(HttpStatusCode.Conflict, $"Getting release from indexer failed: {ex.Message}");
+        }
+
+        return TypedResults.Ok(release);
+    }
+
+    private static SearchResultResource ToResource(DownloadDecision decision, int id)
+    {
+        var resource = new SearchResultResource
+        {
+            Id = id,
+            MediaType = "unknown",
+            Release = decision.Remote!.Release.ToResource(),
+            Decision = new ReleaseDecisionResource(decision)
+        };
+
+        if (decision.RemoteEpisode is { } episode)
+        {
+            resource.Quality = episode.ParsedEpisodeInfo?.Quality;
+            resource.Languages = episode.Languages ?? [];
+
+            if (episode.Series != null)
+            {
+                resource.MediaType = "series";
+                resource.MappedSeriesId = episode.Series.Id;
+                resource.MappedTitle = episode.Series.Title;
+                resource.DownloadAllowed = episode.Episodes.Count > 0;
+            }
+        }
+        else if (decision.RemoteMovie is { } movie)
+        {
+            resource.Quality = movie.ParsedMovieInfo?.Quality;
+            resource.Languages = movie.Languages ?? [];
+
+            if (movie.Movie != null)
+            {
+                resource.MediaType = "movie";
+                resource.MappedMovieId = movie.Movie.Id;
+                resource.MappedTitle = movie.Movie.Title;
+                resource.DownloadAllowed = true;
+            }
+        }
+
+        return resource;
+    }
+
+    private static string GetCacheKey(int indexerId, string guid)
+    {
+        return string.Concat(indexerId, "_", guid);
+    }
+}
