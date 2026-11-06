@@ -50,10 +50,10 @@ namespace NzbDrone.Core.Download
 
             foreach (var report in prioritizedDecisions)
             {
-                var downloadProtocol = report.RemoteEpisode.Release.DownloadProtocol;
+                var downloadProtocol = report.Remote.Release.DownloadProtocol;
 
                 // Skip if already grabbed
-                if (IsEpisodeProcessed(grabbed, report))
+                if (IsMediaProcessed(grabbed, report))
                 {
                     continue;
                 }
@@ -138,6 +138,11 @@ namespace NzbDrone.Core.Download
 
             if (decision.TemporarilyRejected)
             {
+                if (decision.RemoteMovie != null)
+                {
+                    return ProcessedDecisionResult.Skipped;
+                }
+
                 _pendingReleaseService.Add(decision, PendingReleaseReason.Delay);
 
                 return ProcessedDecisionResult.Pending;
@@ -145,7 +150,7 @@ namespace NzbDrone.Core.Download
 
             var result = await ProcessDecisionInternal(decision, downloadClientId);
 
-            if (result == ProcessedDecisionResult.Failed)
+            if (result == ProcessedDecisionResult.Failed && decision.RemoteMovie == null)
             {
                 _pendingReleaseService.Add(decision, PendingReleaseReason.DownloadClientUnavailable);
             }
@@ -161,14 +166,27 @@ namespace NzbDrone.Core.Download
         internal bool IsQualifiedReport(DownloadDecision decision)
         {
             // Process both approved and temporarily rejected
-            return (decision.Approved || decision.TemporarilyRejected) && decision.RemoteEpisode.Episodes.Any();
+            if (!decision.Approved && !decision.TemporarilyRejected)
+            {
+                return false;
+            }
+
+            return decision.RemoteMovie != null ? decision.RemoteMovie.Movie != null : decision.RemoteEpisode.Episodes.Any();
         }
 
-        private bool IsEpisodeProcessed(List<DownloadDecision> decisions, DownloadDecision report)
+        private bool IsMediaProcessed(List<DownloadDecision> decisions, DownloadDecision report)
         {
+            if (report.RemoteMovie != null)
+            {
+                var movieId = report.RemoteMovie.Movie.Id;
+
+                return decisions.Any(d => d.RemoteMovie?.Movie.Id == movieId);
+            }
+
             var episodeIds = report.RemoteEpisode.Episodes.Select(e => e.Id).ToList();
 
-            return decisions.SelectMany(r => r.RemoteEpisode.Episodes)
+            return decisions.Where(r => r.RemoteEpisode != null)
+                            .SelectMany(r => r.RemoteEpisode.Episodes)
                             .Select(e => e.Id)
                             .ToList()
                             .Intersect(episodeIds)
@@ -183,8 +201,15 @@ namespace NzbDrone.Core.Download
             // was sent to another client we still list it normally so it apparent that it'll grab next time.
             // Delayed is treated the same, but only the first is listed the subsequent items as stored as Fallback.
 
-            if (IsEpisodeProcessed(grabbed, report) ||
-                IsEpisodeProcessed(pending, report))
+            // Movies are not held back: there are no delay profiles for them yet, and a release the client could not
+            // take is found again by the next search or RSS sync.
+            if (report.RemoteMovie != null)
+            {
+                return;
+            }
+
+            if (IsMediaProcessed(grabbed, report) ||
+                IsMediaProcessed(pending, report))
             {
                 reason = PendingReleaseReason.Fallback;
             }
@@ -195,31 +220,31 @@ namespace NzbDrone.Core.Download
 
         private async Task<ProcessedDecisionResult> ProcessDecisionInternal(DownloadDecision decision, int? downloadClientId = null)
         {
-            var remoteEpisode = decision.RemoteEpisode;
-            var remoteIndexer = remoteEpisode.Release.Indexer;
+            var remote = decision.Remote;
+            var remoteIndexer = remote.Release.Indexer;
 
             try
             {
-                _logger.Trace("Grabbing release '{0}' from Indexer {1} at priority {2}.", remoteEpisode, remoteIndexer, remoteEpisode.Release.IndexerPriority);
-                await _downloadService.DownloadReport(remoteEpisode, downloadClientId);
+                _logger.Trace("Grabbing release '{0}' from Indexer {1} at priority {2}.", remote, remoteIndexer, remote.Release.IndexerPriority);
+                await _downloadService.DownloadReport(remote, downloadClientId);
 
                 return ProcessedDecisionResult.Grabbed;
             }
             catch (ReleaseUnavailableException)
             {
-                _logger.Warn("Failed to download release '{0}' from Indexer {1}. Release not available", remoteEpisode, remoteIndexer);
+                _logger.Warn("Failed to download release '{0}' from Indexer {1}. Release not available", remote, remoteIndexer);
                 return ProcessedDecisionResult.Rejected;
             }
             catch (Exception ex)
             {
                 if (ex is DownloadClientUnavailableException || ex is DownloadClientAuthenticationException)
                 {
-                    _logger.Debug(ex, "Failed to send release '{0}' from Indexer {1} to download client, storing until later.", remoteEpisode, remoteIndexer);
+                    _logger.Debug(ex, "Failed to send release '{0}' from Indexer {1} to download client, storing until later.", remote, remoteIndexer);
                     return ProcessedDecisionResult.Failed;
                 }
                 else
                 {
-                    _logger.Warn(ex, "Couldn't add release '{0}' from Indexer {1} to download queue.", remoteEpisode, remoteIndexer);
+                    _logger.Warn(ex, "Couldn't add release '{0}' from Indexer {1} to download queue.", remote, remoteIndexer);
                     return ProcessedDecisionResult.Skipped;
                 }
             }

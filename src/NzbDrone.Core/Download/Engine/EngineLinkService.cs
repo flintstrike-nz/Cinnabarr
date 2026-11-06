@@ -41,9 +41,10 @@ namespace NzbDrone.Core.Download.Engine
 
     // Writes the link-intent sidecar for every grab sent to the built-in engine, and uses it
     // to restore links that Embarr's database has lost (roadmap §4.4 rule 5).
-    public class EngineLinkService : IEngineLinkService, IHandle<EpisodeGrabbedEvent>
+    public class EngineLinkService : IEngineLinkService, IHandle<EpisodeGrabbedEvent>, IHandle<MovieGrabbedEvent>
     {
         public const string SeriesMediaType = "series";
+        public const string MovieMediaType = "movie";
         public const string RestoredFromKey = "LinkRestoredFrom";
         public const string IncompleteSuffix = ".!qB";
 
@@ -224,6 +225,38 @@ namespace NzbDrone.Core.Download.Engine
             {
                 // The grab itself has succeeded; without a sidecar the torrent is still linked
                 // through Embarr's database, it just can't be recovered from the engine alone.
+                _logger.Warn(ex, "Unable to write the engine link for '{0}'", link.SourceTitle);
+            }
+        }
+
+        public void Handle(MovieGrabbedEvent message)
+        {
+            if (!_engineClientRegistry.IsEngineClient(message.DownloadClientId) || !IsInfoHash(message.DownloadId))
+            {
+                return;
+            }
+
+            var remoteMovie = message.Movie;
+
+            var link = new EngineLink
+            {
+                MediaType = MovieMediaType,
+                TmdbId = remoteMovie.Movie.TmdbId,
+                SourceTitle = remoteMovie.Release?.Title,
+                Indexer = remoteMovie.Release?.Indexer,
+                TrackerSeedRatio = remoteMovie.SeedConfiguration?.Ratio,
+                TrackerSeedMinutes = remoteMovie.SeedConfiguration?.SeedTime is { } seedTime ? (int)seedTime.TotalMinutes : null,
+                Quality = FromQualityModel(remoteMovie.ParsedMovieInfo?.Quality),
+                Grabbed = DateTime.UtcNow,
+                InfoHashV2 = Read(message.DownloadId)?.InfoHashV2
+            };
+
+            try
+            {
+                Write(message.DownloadId, link);
+            }
+            catch (Exception ex)
+            {
                 _logger.Warn(ex, "Unable to write the engine link for '{0}'", link.SourceTitle);
             }
         }

@@ -11,6 +11,9 @@ namespace NzbDrone.Core.DecisionEngine
         // Set instead of RemoteEpisode when the release is for a movie.
         public RemoteMovie RemoteMovie { get; private set; }
 
+        // Whichever of the two the release was matched to.
+        public RemoteMedia Remote => (RemoteMedia)RemoteEpisode ?? RemoteMovie;
+
         public IEnumerable<DownloadRejection> Rejections { get; private set; }
 
         public bool Approved => !Rejections.Any();
