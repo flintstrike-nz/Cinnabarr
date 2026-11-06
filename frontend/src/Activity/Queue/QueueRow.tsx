@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import ProtocolLabel from 'Activity/Queue/ProtocolLabel';
 import { useSelect } from 'App/Select/SelectContext';
 import IconButton from 'Components/Link/IconButton';
+import Link from 'Components/Link/Link';
 import SpinnerIconButton from 'Components/Link/SpinnerIconButton';
 import ProgressBar from 'Components/ProgressBar';
 import RelativeDateCell from 'Components/Table/Cells/RelativeDateCell';
@@ -51,6 +52,8 @@ import styles from './QueueRow.module.css';
 interface QueueRowProps {
   id: number;
   seriesId?: number;
+  movieId?: number;
+  movieTitle?: string;
   episodeIds: number[];
   downloadId: string;
   title: string;
@@ -86,6 +89,8 @@ function QueueRow(props: QueueRowProps) {
   const {
     id,
     seriesId,
+    movieId,
+    movieTitle,
     episodeIds,
     downloadId,
     title,
@@ -243,7 +248,13 @@ function QueueRow(props: QueueRowProps) {
                     titleSlug={series.titleSlug}
                     title={series.title}
                   />
-                ) : (
+                ) : null}
+
+                {!series && movieId ? (
+                  <Link to={`/movie/${movieId}`}>{movieTitle}</Link>
+                ) : null}
+
+                {series || movieId ? null : (
                   <span className={styles.unmatchedTitle}>{title}</span>
                 )}
               </TableRowCell>

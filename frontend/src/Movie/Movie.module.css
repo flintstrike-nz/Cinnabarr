@@ -1,0 +1,90 @@
+.poster {
+  flex: 0 0 auto;
+  width: 120px;
+  height: 180px;
+  border-radius: 4px;
+  background-color: var(--cardBackgroundColor, rgb(128 128 128 / 20%));
+  object-fit: cover;
+}
+
+.smallPoster {
+  width: 40px;
+  height: 60px;
+  border-radius: 3px;
+  object-fit: cover;
+}
+
+.result {
+  display: flex;
+  gap: 16px;
+
+  padding: 12px 0;
+  border-bottom: 1px solid rgb(128 128 128 / 25%);
+}
+
+.resultBody {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.resultTitle {
+  font-weight: bold;
+  font-size: 20px;
+}
+
+.overview {
+  overflow: hidden;
+  margin: 8px 0;
+  max-height: 4.5em;
+  opacity: 0.85;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  gap: 8px;
+}
+
+.select {
+  padding: 6px 8px;
+  border: 1px solid rgb(128 128 128 / 50%);
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+}
+
+.header {
+  display: flex;
+  gap: 24px;
+
+  margin-bottom: 24px;
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+
+  margin-bottom: 8px;
+  opacity: 0.85;
+}
+
+.rejection {
+  color: var(--dangerColor, #f05050);
+  font-size: 12px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 8px;
+  border-bottom: 1px solid rgb(128 128 128 / 25%);
+  vertical-align: top;
+  text-align: left;
+}

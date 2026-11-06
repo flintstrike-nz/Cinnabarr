@@ -50,6 +50,8 @@ interface Queue extends ModelBase {
   outputPath: string;
   episodesWithFilesCount: number;
   seriesId?: number;
+  movieId?: number;
+  movieTitle?: string;
   episodeIds: number[];
   seasons: QueueSeason[];
   downloadClientHasPostImportCategory: boolean;

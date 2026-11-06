@@ -1124,3 +1124,12 @@ Built so far (4g-1, the movie API):
 - **`/api/v5/release/movie`**: `GET ?movieId=` runs an interactive search and returns every release with its decision (rejections included), quality, languages, custom formats and score; `POST` grabs one of them (`guid`, `indexerId`, optional download client).
 - **Checked.** 7 new tests, and a real run of the app against a stand-in metadata service (the sandbox has no outside network): migrations 244–248 apply to a fresh database; lookup, add (folder `…/The Matrix (1999)`), list, update, interactive search, the `MoviesSearch` command and the queue all work. Core suite shows only the 18 known failures.
 - **Not done:** covers are the service's remote URLs (no local cover cache for movies yet); movie history, blocklist, files and naming settings have no API yet; no screens. Next is the frontend (4g-2).
+
+Built so far (4g-2, the first movie screens):
+
+- **Movies** (`/movies`): the library's movies with poster, title (linking to the movie), year, downloaded or missing, quality profile and size.
+- **Add Movie** (`/add/movie`): search by title, `tmdb:` or `imdb:` as you type; each result can be added with a root folder, quality profile, monitored and "start search" (movies already in the library say so).
+- **Movie page** (`/movie/:id`): details, monitor toggle, **Search Movie** (the automatic search), **Interactive Search** (every release with its rejections, and Grab) and Delete.
+- **Sidebar and queue.** The Library menu has Movies and Add Movie, and a movie's download shows its title (linking to the movie) in the queue.
+- **Checked.** Lint, type check, stylelint and the build pass, and the screens were driven in a browser against a running app and a stand-in metadata service (the movie poster itself can't load in the sandbox).
+- **Rough edges, on purpose for now:** the lists are plain tables (no filters, sorting, posters grid or bulk edit yet), the movie page has no files, history or edit dialog, and there are no movie settings screens (naming formats, availability delay). The merged Library, Calendar and Wanted views are 4h.
