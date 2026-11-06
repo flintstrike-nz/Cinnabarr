@@ -13,6 +13,7 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.MediaInfo;
+using NzbDrone.Core.Movies.Translations;
 using NzbDrone.Core.Qualities;
 using NzbDrone.Core.Tv;
 
@@ -30,7 +31,7 @@ namespace NzbDrone.Core.Organizer
         bool RequiresAbsoluteEpisodeNumber();
     }
 
-    public class FileNameBuilder : IBuildFileNames
+    public partial class FileNameBuilder : IBuildFileNames, IBuildMovieFileNames
     {
         private const string MediaInfoVideoDynamicRangeToken = "{MediaInfo VideoDynamicRange}";
         private const string MediaInfoVideoDynamicRangeTypeToken = "{MediaInfo VideoDynamicRangeType}";
@@ -38,6 +39,7 @@ namespace NzbDrone.Core.Organizer
         private readonly INamingConfigService _namingConfigService;
         private readonly IQualityDefinitionService _qualityDefinitionService;
         private readonly IUpdateMediaInfo _mediaInfoUpdater;
+        private readonly IMovieTranslationService _movieTranslationService;
         private readonly ICustomFormatCalculationService _formatCalculator;
         private readonly ICached<EpisodeFormat[]> _episodeFormatCache;
         private readonly ICached<AbsoluteEpisodeFormat[]> _absoluteEpisodeFormatCache;
@@ -109,7 +111,9 @@ namespace NzbDrone.Core.Organizer
             { "rum", "ron" },
             { "slo", "slk" },
             { "tib", "bod" },
-            { "wel", "cym" }
+            { "wel", "cym" },
+            { "khk", "mon" },
+            { "mvf", "mon" }
         }.ToImmutableDictionary();
 
         public static readonly ImmutableArray<string> BadCharacters = ImmutableArray.Create("\\", "/", "<", ">", "?", "*", "|", "\"");
@@ -119,12 +123,14 @@ namespace NzbDrone.Core.Organizer
                                IQualityDefinitionService qualityDefinitionService,
                                ICacheManager cacheManager,
                                IUpdateMediaInfo mediaInfoUpdater,
+                               IMovieTranslationService movieTranslationService,
                                ICustomFormatCalculationService formatCalculator,
                                Logger logger)
         {
             _namingConfigService = namingConfigService;
             _qualityDefinitionService = qualityDefinitionService;
             _mediaInfoUpdater = mediaInfoUpdater;
+            _movieTranslationService = movieTranslationService;
             _formatCalculator = formatCalculator;
             _episodeFormatCache = cacheManager.GetCache<EpisodeFormat[]>(GetType(), "episodeFormat");
             _absoluteEpisodeFormatCache = cacheManager.GetCache<AbsoluteEpisodeFormat[]>(GetType(), "absoluteEpisodeFormat");
@@ -318,11 +324,21 @@ namespace NzbDrone.Core.Organizer
 
         public static string TitleThe(string title)
         {
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                return string.Empty;
+            }
+
             return TitlePrefixRegex.Replace(title, "$2, $1$3");
         }
 
         public static string CleanTitleThe(string title)
         {
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                return string.Empty;
+            }
+
             if (TitlePrefixRegex.IsMatch(title))
             {
                 var splitResult = TitlePrefixRegex.Split(title);
@@ -1251,6 +1267,7 @@ namespace NzbDrone.Core.Organizer
     internal sealed class TokenMatch
     {
         public Match RegexMatch { get; set; }
+        public string Tag { get; set; }
         public string Prefix { get; set; }
         public string Separator { get; set; }
         public string Suffix { get; set; }
