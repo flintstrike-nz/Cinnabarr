@@ -116,3 +116,20 @@ export const useSearchMovie = () => {
       mutate({ name: 'MoviesSearch', movieIds: [movieId] }),
   };
 };
+
+export const useRefreshMovie = () => {
+  const { isPending, error, mutate } = useApiMutation<
+    unknown,
+    { name: string; movieIds: number[] }
+  >({
+    path: '/command',
+    method: 'POST',
+  });
+
+  return {
+    isRefreshing: isPending,
+    refreshError: error,
+    refreshMovie: (movieId: number) =>
+      mutate({ name: 'RefreshMovie', movieIds: [movieId] }),
+  };
+};

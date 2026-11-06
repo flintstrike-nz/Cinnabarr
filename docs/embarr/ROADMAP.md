@@ -1217,3 +1217,8 @@ Built so far (4g-3c, movie files and deleting with files):
 - **Screen:** the movie page lists its files (quality, resolution, codec, release group, size) with a *Delete* button, and has *Delete Movie and Files* next to *Delete Movie*; both ask for confirmation.
 - **Checked.** 9 unit tests; the endpoints answer on the running app (400 without an id, 404 for an unknown movie or file); lint, type check, build and the Host test pass. Deleting real files on disk was not run end to end here.
 - **Not done:** bulk delete from the Library page, and the media info detail (audio and subtitle streams) on the screen.
+
+Built so far (4g-5, editing a movie):
+
+- The movie page has an *Edit* button (quality profile and minimum availability, saved with the ordinary movie update) and a *Refresh* button (runs the `RefreshMovie` command for that movie).
+- **Not done:** changing the movie's folder (there is no move-files command for movies yet, so the path is not editable), tags, and editing several movies at once from the Library page. Checked with lint, type check and the build only.
