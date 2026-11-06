@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Messaging.Events;
 
@@ -8,6 +9,7 @@ namespace NzbDrone.Core.Blocklisting
     {
         List<MovieBlocklist> BlocklistedByTitle(int movieId, string sourceTitle);
         List<MovieBlocklist> BlocklistedByTorrentInfoHash(int movieId, string torrentInfoHash);
+        List<MovieBlocklist> GetByMovieId(int movieId);
         void DeleteForMovies(List<int> movieIds);
     }
 
@@ -16,6 +18,11 @@ namespace NzbDrone.Core.Blocklisting
         public MovieBlocklistRepository(IMainDatabase database, IEventAggregator eventAggregator)
             : base(database, eventAggregator)
         {
+        }
+
+        public List<MovieBlocklist> GetByMovieId(int movieId)
+        {
+            return Query(x => x.MovieId == movieId).OrderByDescending(x => x.Date).ToList();
         }
 
         public List<MovieBlocklist> BlocklistedByTitle(int movieId, string sourceTitle)

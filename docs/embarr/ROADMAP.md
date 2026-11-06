@@ -1167,3 +1167,10 @@ Built so far (4e-5c, renaming existing movie files):
 - **Ported from Radarr:** `RenameMovieFileService` with the preview (`GET /api/v5/rename/movie?movieIds=…`), the `RenameMovieFiles` command (chosen files) and the `RenameMovie` command (all files of the chosen movies). Renaming moves each file with the movie file mover, removes empty folders and publishes `MovieFileRenamedEvent` / `MovieRenamedEvent`. Its Radarr tests are ported alongside.
 - **Screen:** the movie page has an *Organize* button (shown when the movie has a file) that opens the same preview as the series one, with each file ticked and the naming pattern shown. *Organize* then runs `RenameMovieFiles` for the ticked files.
 - **Not done:** a bulk "organize selected movies" action on the Library page, and renaming the movie folder (the `RenameMovieFolder` command from Radarr). Extras (subtitles) are still to do.
+
+Built so far (4g-3a, movie history and blocklist):
+
+- **API:** `GET /api/v5/history/movie?movieId=` (events of one movie, newest first), `GET /api/v5/blocklist/movie?movieId=` and `DELETE /api/v5/blocklist/movie/{id}`. A missing `movieId` is a 400.
+- **Screen:** the movie page lists the movie's history (grabbed, imported, failed, file deleted, renamed, ignored) and, when there are any, its blocklisted releases with a *Remove* button.
+- **Checked.** Against the running app the three endpoints answer (200/200/204, and 400 without an id); repository test for the blocklist query; lint, type check, build and the Host container test pass.
+- **Not done:** the global Activity → History and Blocklist pages still list series only. Merging both media types there (paged, filtered by type) is the next piece, together with the movie file list API.

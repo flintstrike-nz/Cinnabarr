@@ -1640,6 +1640,7 @@
   "Movie": "Movie",
   "MovieAlreadyAdded": "Already in the library",
   "MovieCalendar": "Movie Calendar",
+  "MovieFileDeleted": "Movie File Deleted",
   "MovieFolderFormat": "Movie Folder Format",
   "MovieFormatHelpText": "The file name of a movie, for example {Movie Title} ({Release Year}) {Quality Full}. Tokens: {Movie Title}, {Movie CleanTitle}, {Release Year}, {Quality Full}, {Edition Tags}, {MediaInfo Simple}, {Release Group}, {imdb-{ImdbId}}, {tmdb-{TmdbId}}",
   "MovieNotFound": "Movie not found",

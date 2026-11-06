@@ -1,0 +1,112 @@
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using NzbDrone.Core.Blocklisting;
+using NzbDrone.Core.History;
+using NzbDrone.Core.Indexers;
+using NzbDrone.Core.Languages;
+using NzbDrone.Core.Qualities;
+using Sonarr.Http;
+using Sonarr.Http.REST;
+
+namespace Sonarr.Api.V5.Movies;
+
+public class MovieHistoryResource : RestResource
+{
+    public int MovieId { get; set; }
+    public required string SourceTitle { get; set; }
+    public required List<Language> Languages { get; set; }
+    public required QualityModel Quality { get; set; }
+    public DateTime Date { get; set; }
+    public string? DownloadId { get; set; }
+    public MovieHistoryEventType EventType { get; set; }
+    public required Dictionary<string, string> Data { get; set; }
+}
+
+public class MovieBlocklistResource : RestResource
+{
+    public int MovieId { get; set; }
+    public required string SourceTitle { get; set; }
+    public required List<Language> Languages { get; set; }
+    public required QualityModel Quality { get; set; }
+    public DateTime Date { get; set; }
+    public DownloadProtocol Protocol { get; set; }
+    public string? Indexer { get; set; }
+    public string? Message { get; set; }
+}
+
+[V5ApiController("history/movie")]
+public class MovieHistoryController : Controller
+{
+    private readonly IMovieHistoryService _historyService;
+
+    public MovieHistoryController(IMovieHistoryService historyService)
+    {
+        _historyService = historyService;
+    }
+
+    [HttpGet]
+    [Produces("application/json")]
+    public Ok<List<MovieHistoryResource>> GetMovieHistory(int movieId)
+    {
+        if (movieId <= 0)
+        {
+            throw new BadRequestException("movieId must be provided");
+        }
+
+        return TypedResults.Ok(_historyService.GetByMovieId(movieId).Select(h => new MovieHistoryResource
+        {
+            Id = h.Id,
+            MovieId = h.MovieId,
+            SourceTitle = h.SourceTitle,
+            Languages = h.Languages ?? [],
+            Quality = h.Quality,
+            Date = h.Date,
+            DownloadId = h.DownloadId,
+            EventType = h.EventType,
+            Data = h.Data
+        }).ToList());
+    }
+}
+
+[V5ApiController("blocklist/movie")]
+public class MovieBlocklistController : Controller
+{
+    private readonly IMovieBlocklistService _blocklistService;
+
+    public MovieBlocklistController(IMovieBlocklistService blocklistService)
+    {
+        _blocklistService = blocklistService;
+    }
+
+    [HttpGet]
+    [Produces("application/json")]
+    public Ok<List<MovieBlocklistResource>> GetMovieBlocklist(int movieId)
+    {
+        if (movieId <= 0)
+        {
+            throw new BadRequestException("movieId must be provided");
+        }
+
+        return TypedResults.Ok(_blocklistService.GetByMovieId(movieId).Select(b => new MovieBlocklistResource
+        {
+            Id = b.Id,
+            MovieId = b.MovieId,
+            SourceTitle = b.SourceTitle,
+            Languages = b.Languages ?? [],
+            Quality = b.Quality,
+            Date = b.Date,
+            Protocol = b.Protocol,
+            Indexer = b.Indexer,
+            Message = b.Message
+        }).ToList());
+    }
+
+    [HttpDelete("{id:int}")]
+    public NoContent RemoveFromMovieBlocklist([FromRoute] int id)
+    {
+        _blocklistService.Delete(id);
+
+        return TypedResults.NoContent();
+    }
+}
