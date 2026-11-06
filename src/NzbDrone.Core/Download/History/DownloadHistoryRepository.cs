@@ -10,6 +10,7 @@ namespace NzbDrone.Core.Download.History
         List<DownloadHistory> FindByDownloadId(string downloadId);
         List<DownloadHistory> FindUnfinishedGrabs(int downloadClientId);
         void DeleteBySeriesIds(List<int> seriesIds);
+        void DeleteByMovieIds(List<int> movieIds);
     }
 
     public class DownloadHistoryRepository : BasicRepository<DownloadHistory>, IDownloadHistoryRepository
@@ -48,6 +49,11 @@ namespace NzbDrone.Core.Download.History
         public void DeleteBySeriesIds(List<int> seriesIds)
         {
             Delete(r => seriesIds.Contains(r.SeriesId));
+        }
+
+        public void DeleteByMovieIds(List<int> movieIds)
+        {
+            Delete(r => movieIds.Contains(r.MovieId));
         }
     }
 }

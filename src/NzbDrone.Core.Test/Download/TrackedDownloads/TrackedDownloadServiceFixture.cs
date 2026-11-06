@@ -26,6 +26,14 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
     [TestFixture]
     public class TrackedDownloadServiceFixture : CoreTest<TrackedDownloadService>
     {
+        [SetUp]
+        public void SetUp()
+        {
+            Mocker.GetMock<IMovieHistoryService>()
+                .Setup(s => s.FindByDownloadId(It.IsAny<string>()))
+                .Returns([]);
+        }
+
         private void GivenDownloadHistory()
         {
             Mocker.GetMock<IHistoryService>()

@@ -1052,3 +1052,13 @@ Built so far (4d-2b, deciding and grabbing movie releases):
 - **Checked.** 28 new tests; Core suite shows only the 18 known failures.
 - **Heads-up:** until 4d-2c lands, a movie torrent grabbed through the engine is not yet tracked in the queue or imported. Nothing in the UI grabs movies yet, so this is only visible through the API/commands.
 - **Next, 4d-2c:** tracked downloads and the queue for movies, failed-download handling (blocklist and search again), and the specifications that need them (queue, history, blocklist, already-imported, monitored, availability, free space); 4d-3: movie search commands.
+
+Built so far (4d-2c, a movie download shows in the queue):
+
+- **Download history knows movies.** `DownloadHistory` gains a `MovieId` (migration 247). A movie grab is recorded like a series grab (so "missing from engine" can find it), and is removed with the movie.
+- **Tracked downloads.** A `TrackedDownload` can carry a `RemoteMovie` instead of a `RemoteEpisode`. Tracking looks in the series history first and then the movie history by info-hash, so a movie torrent in the engine is no longer "Unlinked". The movie, quality, languages, indexer and custom formats come from the grab. A deleted movie leaves the download listed without one (and re-links it to nothing, like a deleted series). A grab whose torrent has left the engine is listed as "Missing from engine" with its movie.
+- **Queue.** Queue rows have the movie and its remote movie; the v5 queue resource has `movieId` and `movieTitle` (the screens come in 4g).
+- **Engine.** A movie torrent is held and prepared like one added by hand (video and subtitle files only, saved in the engine's folder), so it is no longer left held. Mapping its files into the library comes with the movie import (4e).
+- **Not yet.** A finished movie download is left alone by the completed-download check (nothing imports it yet), and a failed one is not yet blocklisted or searched again.
+- **Checked.** 18 new tests; Core suite shows only the 18 known failures.
+- **Next, 4d-2d:** failed movie downloads (blocklist, search again), and the specifications that need the queue and history (queue, history, blocklist, already-imported, monitored, availability, free space); then 4d-3 search commands.

@@ -98,5 +98,31 @@ namespace NzbDrone.Core.Test.QueueTests
 
             Subject.GetQueue().Should().BeEmpty();
         }
+
+        [Test]
+        public void should_map_a_movie_download_with_its_movie_quality_and_languages()
+        {
+            var movie = new NzbDrone.Core.Movies.Movie { Id = 5, MovieMetadata = new NzbDrone.Core.Movies.MovieMetadata { Title = "The Matrix", Year = 1999 } };
+
+            _trackedDownloads[0].RemoteEpisode = null;
+            _trackedDownloads[0].RemoteMovie = new RemoteMovie
+            {
+                Movie = movie,
+                ParsedMovieInfo = new ParsedMovieInfo { Quality = new NzbDrone.Core.Qualities.QualityModel(NzbDrone.Core.Qualities.Quality.Bluray1080p) },
+                Languages = new List<NzbDrone.Core.Languages.Language> { NzbDrone.Core.Languages.Language.English }
+            };
+
+            Subject.Handle(new TrackedDownloadRefreshedEvent(_trackedDownloads));
+
+            var queue = Subject.GetQueue();
+
+            queue.Should().ContainSingle();
+            queue[0].Movie.Should().BeSameAs(movie);
+            queue[0].Series.Should().BeNull();
+            queue[0].Episodes.Should().BeEmpty();
+            queue[0].RemoteMovie.Should().BeSameAs(_trackedDownloads[0].RemoteMovie);
+            queue[0].Quality.Quality.Should().Be(NzbDrone.Core.Qualities.Quality.Bluray1080p);
+            queue[0].Languages.Should().ContainSingle().Which.Should().Be(NzbDrone.Core.Languages.Language.English);
+        }
     }
 }

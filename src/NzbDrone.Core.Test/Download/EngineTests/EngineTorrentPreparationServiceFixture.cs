@@ -50,6 +50,10 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             Mocker.GetMock<IHistoryService>()
                 .Setup(s => s.FindByDownloadId(Hash.ToUpperInvariant()))
                 .Returns(new List<EpisodeHistory> { new EpisodeHistory { Id = 12, EventType = EpisodeHistoryEventType.Grabbed, Date = DateTime.UtcNow } });
+
+            Mocker.GetMock<IMovieHistoryService>()
+                .Setup(s => s.FindByDownloadId(It.IsAny<string>()))
+                .Returns(new List<MovieHistory>());
         }
 
         private IDownloadClient GivenClient(QBittorrentSettings settings = null)
@@ -86,6 +90,22 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             _proxy.Verify(p => p.SetFilePriority(Hash, It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { 0, 1 })), 0, _settings), Times.Once());
             _proxy.Verify(p => p.StartTorrent(It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
             ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_prepare_a_movie_grab_like_a_torrent_added_by_hand()
+        {
+            Mocker.GetMock<IHistoryService>().Setup(s => s.FindByDownloadId(Hash.ToUpperInvariant())).Returns(new List<EpisodeHistory>());
+            Mocker.GetMock<IMovieHistoryService>()
+                  .Setup(s => s.FindByDownloadId(Hash.ToUpperInvariant()))
+                  .Returns(new List<MovieHistory> { new MovieHistory { MovieId = 4, EventType = MovieHistoryEventType.Grabbed } });
+
+            Subject.Prepare(GivenClient());
+
+            _proxy.Verify(p => p.SetFilePriority(Hash, It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { 2, 3 })), 0, _settings), Times.Once());
+            _proxy.Verify(p => p.StartTorrent(Hash, _settings), Times.Once());
+            _proxy.Verify(p => p.AddTags(Hash, It.Is<IEnumerable<string>>(t => t.Contains(EngineTorrentTags.Prepared)), _settings), Times.Once());
+            _proxy.Verify(p => p.SetLocation(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
         }
 
         [Test]

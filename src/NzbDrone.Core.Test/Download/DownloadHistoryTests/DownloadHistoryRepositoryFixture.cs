@@ -110,5 +110,19 @@ namespace NzbDrone.Core.Test.Download.DownloadHistoryTests
 
             Subject.FindUnfinishedGrabs(3).Should().BeEmpty();
         }
+
+        [Test]
+        public void should_store_the_movie_of_a_grab_and_delete_history_items_by_movie_id()
+        {
+            Subject.Insert(new DownloadHistory { EventType = DownloadHistoryEventType.DownloadGrabbed, MovieId = 8, DownloadId = "A", SourceTitle = "a", Date = DateTime.UtcNow });
+            Subject.Insert(new DownloadHistory { EventType = DownloadHistoryEventType.DownloadGrabbed, MovieId = 9, DownloadId = "B", SourceTitle = "b", Date = DateTime.UtcNow });
+            Subject.Insert(new DownloadHistory { EventType = DownloadHistoryEventType.DownloadGrabbed, SeriesId = 7, DownloadId = "C", SourceTitle = "c", Date = DateTime.UtcNow });
+
+            Subject.FindByDownloadId("A").Should().ContainSingle().Which.MovieId.Should().Be(8);
+
+            Subject.DeleteByMovieIds(new List<int> { 8 });
+
+            Subject.All().Select(h => h.DownloadId).Should().BeEquivalentTo(new[] { "B", "C" });
+        }
     }
 }
