@@ -1017,3 +1017,11 @@ Built so far (4c-4b, movie custom formats):
 - **Calculation.** `ParseCustomFormat` works out the formats for a release matched to a movie and for a saved movie file.
 - **Checked.** 21 new tests, and the running app lists the three new conditions in the custom format editor.
 - **Next:** 4c-4c, the movie decision specifications and decision maker.
+
+Built so far (4c-4c, movie decision specifications and decision maker):
+
+- **`MovieDownloadDecisionMaker`** (`GetRssDecision`, `GetSearchDecision`) parses each release with the movie parser, matches it to a movie, works out custom formats and score, then runs the movie specifications grouped by priority, stopping at the first group that rejects. Unknown movie, unparseable title (search only) and a specification that throws each give their own rejection. `DownloadDecision` can now carry a `RemoteMovie`; new rejection reasons are `UnknownMovie`, `MovieNotMonitored` and `WrongMovie`. `ReleaseInfo` has a `TmdbId`, filled by the indexer engine mapper.
+- **15 specifications ported from Radarr** under `DecisionEngine/Movies/Specifications` (size, quality profile, cutoff, upgrade allowed, custom format score, minimum age, retention, release restrictions, edition, year and so on) with their tests (139).
+- **Left out:** Radarr's hardcoded-subs, language and required-indexer-flag specifications (we have no equivalent settings).
+- **Deferred to 4d**, because they need the movie queue, history, search criteria and download pipeline: queue, history, pending-release, delay, already-imported, blocklist, free-space, monitored, availability and search-criteria specifications, plus release prioritisation.
+- **Checked.** 9 decision-maker tests; Core suite shows only the 18 known failures.
