@@ -600,7 +600,7 @@ Built so far (3a-2):
 | --- | --- |
 | 4a | Movie metadata layer: the metadata tables, models and stores, and a client for the Radarr project's metadata service. **Done.** |
 | 4b | The movie itself: `Movie`, `MovieFile`, their stores and services, add-movie, root folders and monitoring. **Done.** |
-| 4c | Movie parser, quality and custom-format matching, and the decision engine for movie releases. Split: **4c-1 qualities (done)**, **4c-2 movie release parser (done)**, 4c-3 languages, movie custom formats and decision specifications. |
+| 4c | Movie parser, quality and custom-format matching, and the decision engine for movie releases. Split: **4c-1 qualities (done)**, **4c-2 movie release parser (done)**, **4c-3 languages (done)**, 4c-4 movie custom formats and decision specifications. |
 | 4d | Movie search and RSS: movie criteria for the indexers, release grabbing, and the media-type-aware download pipeline (§4.4). |
 | 4e | Movie import, naming and renaming; extras. |
 | 4f | Movie import lists. |
@@ -999,3 +999,8 @@ Built so far (4c-2, movie release parser):
 - **One deliberate difference.** With no hint in the name, a movie file with a `.mkv` extension is read as a web release, as Radarr does; the series parser says HDTV.
 - **Gap found: languages.** Radarr's language list differs from ours (the numbers diverge from 26 onward, and eight languages are missing: Bengali, Telugu, Kannada, Albanian, Afrikaans, Marathi, Tagalog, Mongolian). Movie parsing currently uses the series language parser, so releases in those eight languages are not recognised. Step 4c-3 adds them at new numbers and ports Radarr's language tests; an import from a Radarr database must translate the numbers.
 - **Not yet used.** Nothing calls the movie parser yet. It is used by the decision engine, which is 4c-3.
+
+Built so far (4c-3, languages):
+
+- **Eight languages added** at new numbers 54 to 61: Bengali, Telugu, Kannada, Albanian, Afrikaans, Marathi, Tagalog and Mongolian, with their ISO codes. Existing language numbers are unchanged (they are saved in profiles, files and releases). Radarr numbers these differently from 26 onward, so an import from a Radarr database must translate them.
+- **Movie language parser.** Radarr's language parser is ported as `MovieLanguageParser`, and `MovieParser` uses it. Radarr's 170 language tests were ported and pass, so the gap noted in 4c-2 is closed.

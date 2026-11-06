@@ -276,7 +276,7 @@ namespace NzbDrone.Core.Parser
 
                                 Logger.Debug("Release Group parsed: {0}", result.ReleaseGroup);
 
-                                result.Languages = LanguageParser.ParseLanguages(result.ReleaseGroup.IsNotNullOrWhiteSpace() ? simpleReleaseTitle.Replace(result.ReleaseGroup, "RlsGrp") : simpleReleaseTitle);
+                                result.Languages = MovieLanguageParser.ParseLanguages(result.ReleaseGroup.IsNotNullOrWhiteSpace() ? simpleReleaseTitle.Replace(result.ReleaseGroup, "RlsGrp") : simpleReleaseTitle);
                                 Logger.Debug("Languages parsed: {0}", string.Join(", ", result.Languages));
 
                                 result.Quality = MovieQualityParser.ParseQuality(title);
