@@ -9,6 +9,9 @@ import ImportSeries from 'AddSeries/ImportSeries/Import/ImportSeries';
 import ImportSeriesSelectFolder from 'AddSeries/ImportSeries/SelectFolder/ImportSeriesSelectFolder';
 import CalendarPage from 'Calendar/CalendarPage';
 import NotFound from 'Components/NotFound';
+import AddNewMovie from 'Movie/AddNewMovie';
+import MovieDetails from 'Movie/MovieDetails';
+import MoviesIndex from 'Movie/MoviesIndex';
 import SeriesDetailsPage from 'Series/Details/SeriesDetailsPage';
 import SeriesIndex from 'Series/Index/SeriesIndex';
 import CustomFormatSettingsPage from 'Settings/CustomFormats/CustomFormatSettingsPage';
@@ -58,6 +61,12 @@ export function appRouteElements() {
       />
 
       <Route path="/add/new" element={<AddNewSeries />} />
+
+      <Route path="/add/movie" element={<AddNewMovie />} />
+
+      <Route path="/movies" element={<MoviesIndex />} />
+
+      <Route path="/movie/:movieId" element={<MovieDetails />} />
 
       <Route path="/add/import" element={<ImportSeriesSelectFolder />} />
 
