@@ -1209,3 +1209,11 @@ Built so far (4g-4, movie library import):
 - **Screen:** *Add → Import Movies* (`/add/import/movie`): pick a root folder and a quality profile; each folder row looks the movie up (title plus year, preferring the result from the same year) and has an *Import* button that adds it with the folder as its path. The add scans the folder and imports the files already there (no search is started).
 - **Checked.** Four unit tests; against the running app the endpoint lists real folders (`Heat.1995.1080p.BluRay-GRP` → Heat, 1995). Lint, type check, the build and the Host test pass. The lookup and add steps need the metadata service, so they were not run here.
 - **Not done:** "import all matched" in one click, choosing another match when the guess is wrong, and folder formats nested more than one level deep.
+
+Built so far (4g-3c, movie files and deleting with files):
+
+- **Fixed a gap:** deleting a movie with *delete files* did nothing, because nothing handled it for movies. `MovieFileDeletionService` now sends the movie's folder to the recycle bin (unless another movie uses the same folder or a folder inside it), deletes a single file through the recycle bin on request, and removes an emptied movie folder after its last file goes (the *Delete Empty Folders* setting). Ported from Radarr's service and tests, with new tests for the folder cases.
+- **API:** `GET /api/v5/moviefile?movieId=` (path, quality, release group, edition, media info) and `DELETE /api/v5/moviefile/{id}`.
+- **Screen:** the movie page lists its files (quality, resolution, codec, release group, size) with a *Delete* button, and has *Delete Movie and Files* next to *Delete Movie*; both ask for confirmation.
+- **Checked.** 9 unit tests; the endpoints answer on the running app (400 without an id, 404 for an unknown movie or file); lint, type check, build and the Host test pass. Deleting real files on disk was not run end to end here.
+- **Not done:** bulk delete from the Library page, and the media info detail (audio and subtitle streams) on the screen.
