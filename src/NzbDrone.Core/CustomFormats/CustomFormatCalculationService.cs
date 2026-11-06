@@ -6,6 +6,7 @@ using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Blocklisting;
 using NzbDrone.Core.History;
+using NzbDrone.Core.Languages;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Tv;
@@ -15,6 +16,8 @@ namespace NzbDrone.Core.CustomFormats
     public interface ICustomFormatCalculationService
     {
         List<CustomFormat> ParseCustomFormat(RemoteEpisode remoteEpisode, long size);
+        List<CustomFormat> ParseCustomFormat(RemoteMovie remoteMovie, long size);
+        List<CustomFormat> ParseCustomFormat(MovieFile movieFile);
         List<CustomFormat> ParseCustomFormat(EpisodeFile episodeFile, Series series);
         List<CustomFormat> ParseCustomFormat(EpisodeFile episodeFile);
         List<CustomFormat> ParseCustomFormat(Blocklist blocklist, Series series);
@@ -43,6 +46,48 @@ namespace NzbDrone.Core.CustomFormats
                 Languages = remoteEpisode.Languages,
                 IndexerFlags = remoteEpisode.Release?.IndexerFlags ?? 0,
                 ReleaseType = remoteEpisode.ParsedEpisodeInfo.ReleaseType
+            };
+
+            return ParseCustomFormat(input);
+        }
+
+        public List<CustomFormat> ParseCustomFormat(RemoteMovie remoteMovie, long size)
+        {
+            var input = new CustomFormatInput
+            {
+                MovieInfo = remoteMovie.ParsedMovieInfo,
+                Movie = remoteMovie.Movie,
+                Size = size,
+                Languages = remoteMovie.Languages,
+                IndexerFlags = remoteMovie.Release?.IndexerFlags ?? 0
+            };
+
+            return ParseCustomFormat(input);
+        }
+
+        public List<CustomFormat> ParseCustomFormat(MovieFile movieFile)
+        {
+            var movie = movieFile.Movie;
+
+            var info = new ParsedMovieInfo
+            {
+                MovieTitles = new List<string> { movie?.Title ?? string.Empty },
+                SimpleReleaseTitle = movieFile.GetSceneOrFileName(),
+                Quality = movieFile.Quality,
+                Languages = movieFile.Languages ?? new List<Language>(),
+                ReleaseGroup = movieFile.ReleaseGroup,
+                Edition = movieFile.Edition,
+                Year = movie?.Year ?? 0
+            };
+
+            var input = new CustomFormatInput
+            {
+                MovieInfo = info,
+                Movie = movie,
+                Size = movieFile.Size,
+                Languages = info.Languages,
+                IndexerFlags = movieFile.IndexerFlags,
+                Filename = System.IO.Path.GetFileName(movieFile.RelativePath)
             };
 
             return ParseCustomFormat(input);

@@ -45,8 +45,14 @@ namespace NzbDrone.Core.CustomFormats
 
         protected override bool IsSatisfiedByWithoutNegate(CustomFormatInput input)
         {
-            var comparedLanguage = input.EpisodeInfo != null && input.Series != null && Value == Language.Original.Id && input.Series.OriginalLanguage != Language.Unknown
-                ? input.Series.OriginalLanguage
+            var originalLanguage = input.MovieInfo != null && input.Movie != null
+                ? input.Movie.MovieMetadata.Value.OriginalLanguage
+                : input.EpisodeInfo != null && input.Series != null
+                    ? input.Series.OriginalLanguage
+                    : Language.Unknown;
+
+            var comparedLanguage = Value == Language.Original.Id && originalLanguage != Language.Unknown
+                ? originalLanguage
                 : (Language)Value;
 
             if (ExceptLanguage)
@@ -59,8 +65,14 @@ namespace NzbDrone.Core.CustomFormats
 
         private bool IsSatisfiedByWithNegate(CustomFormatInput input)
         {
-            var comparedLanguage = input.EpisodeInfo != null && input.Series != null && Value == Language.Original.Id && input.Series.OriginalLanguage != Language.Unknown
-                ? input.Series.OriginalLanguage
+            var originalLanguage = input.MovieInfo != null && input.Movie != null
+                ? input.Movie.MovieMetadata.Value.OriginalLanguage
+                : input.EpisodeInfo != null && input.Series != null
+                    ? input.Series.OriginalLanguage
+                    : Language.Unknown;
+
+            var comparedLanguage = Value == Language.Original.Id && originalLanguage != Language.Unknown
+                ? originalLanguage
                 : (Language)Value;
 
             if (ExceptLanguage)

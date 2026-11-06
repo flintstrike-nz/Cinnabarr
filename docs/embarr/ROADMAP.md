@@ -600,7 +600,7 @@ Built so far (3a-2):
 | --- | --- |
 | 4a | Movie metadata layer: the metadata tables, models and stores, and a client for the Radarr project's metadata service. **Done.** |
 | 4b | The movie itself: `Movie`, `MovieFile`, their stores and services, add-movie, root folders and monitoring. **Done.** |
-| 4c | Movie parser, quality and custom-format matching, and the decision engine for movie releases. Split: **4c-1 qualities (done)**, **4c-2 movie release parser (done)**, **4c-3 languages (done)**, **4c-4a matching a release to a movie (done)**, 4c-4b movie custom formats, 4c-4c movie decision specifications. |
+| 4c | Movie parser, quality and custom-format matching, and the decision engine for movie releases. Split: **4c-1 qualities (done)**, **4c-2 movie release parser (done)**, **4c-3 languages (done)**, **4c-4a matching a release to a movie (done)**, **4c-4b movie custom formats (done)**, 4c-4c movie decision specifications. |
 | 4d | Movie search and RSS: movie criteria for the indexers, release grabbing, and the media-type-aware download pipeline (§4.4). |
 | 4e | Movie import, naming and renaming; extras. |
 | 4f | Movie import lists. |
@@ -1009,3 +1009,11 @@ Built so far (4c-4a, matching a release to a movie):
 
 - **`MovieParsingService`** turns a parsed release into a `RemoteMovie`: it finds the movie by IMDb id, then TMDb id (the year must agree within the secondary year), then by title and year using the movie's alternative titles, translations and roman-numeral spellings; for a search it first tries the movie that was searched for. `RemoteMovie`, `FindMovieResult` and `MovieMatchType` (title, alias, id) come with it. Radarr's matching tests were ported (a movie is searched for directly instead of through search criteria, which arrive in 4d).
 - **Still to do in 4c-4:** custom formats evaluated on movies (4c-4b) and the movie decision specifications and decision maker (4c-4c).
+
+Built so far (4c-4b, movie custom formats):
+
+- **One set of custom formats for series and movies.** A custom format input can now carry a parsed movie (and the movie) as well as a parsed episode, and the existing conditions (release title, release group, source, resolution, language, size, indexer flag) read whichever is present. For movies the title is matched against the simplified release title, and "Original" language means the movie's original language.
+- **Three movie conditions added:** Edition, Year (a range; falls back to the movie's own year) and Quality Modifier (regional, screener, raw HD, BR-DISK, remux), whose numbers match Radarr's so formats can be shared. They simply never match a series release. The modifier is worked out from the quality (our remux and BR-DISK qualities are their own sources).
+- **Calculation.** `ParseCustomFormat` works out the formats for a release matched to a movie and for a saved movie file.
+- **Checked.** 21 new tests, and the running app lists the three new conditions in the custom format editor.
+- **Next:** 4c-4c, the movie decision specifications and decision maker.
