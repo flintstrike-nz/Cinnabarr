@@ -260,6 +260,13 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("CreateEmptySeriesFolders", value); }
         }
 
+        public bool CreateEmptyMovieFolders
+        {
+            get { return GetValueBoolean("CreateEmptyMovieFolders", false); }
+
+            set { SetValue("CreateEmptyMovieFolders", value); }
+        }
+
         public bool DeleteEmptyFolders
         {
             get { return GetValueBoolean("DeleteEmptyFolders", false); }
