@@ -12,6 +12,7 @@ import { useQualityProfilesData } from 'Settings/Profiles/Quality/useQualityProf
 import formatBytes from 'Utilities/Number/formatBytes';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
+import MovieOrganizeModal from './MovieOrganizeModal';
 import MoviePoster from './MoviePoster';
 import {
   MovieRelease,
@@ -126,6 +127,7 @@ function MovieDetails() {
   const { searchMovie, isSearching } = useSearchMovie();
   const { deleteMovie, isDeleting } = useDeleteMovie(id);
   const [showSearch, setShowSearch] = useState(false);
+  const [isOrganizeOpen, setIsOrganizeOpen] = useState(false);
 
   const handleMonitoredPress = useCallback(() => {
     if (movie) {
@@ -139,6 +141,14 @@ function MovieDetails() {
 
   const handleInteractiveSearchPress = useCallback(() => {
     setShowSearch((value) => !value);
+  }, []);
+
+  const handleOrganizeOpen = useCallback(() => {
+    setIsOrganizeOpen(true);
+  }, []);
+
+  const handleOrganizeClose = useCallback(() => {
+    setIsOrganizeOpen(false);
   }, []);
 
   const handleDeletePress = useCallback(() => {
@@ -205,6 +215,10 @@ function MovieDetails() {
                 {translate('InteractiveSearch')}
               </Button>
 
+              <Button isDisabled={!movie.hasFile} onPress={handleOrganizeOpen}>
+                <Icon name={icons.ORGANIZE} /> {translate('Organize')}
+              </Button>
+
               <Button
                 kind={kinds.DANGER}
                 isDisabled={isDeleting}
@@ -217,6 +231,13 @@ function MovieDetails() {
         </div>
 
         {showSearch ? <InteractiveSearch movieId={movie.id} /> : null}
+
+        <MovieOrganizeModal
+          isOpen={isOrganizeOpen}
+          movieId={movie.id}
+          moviePath={movie.path}
+          onModalClose={handleOrganizeClose}
+        />
       </PageContentBody>
     </PageContent>
   );

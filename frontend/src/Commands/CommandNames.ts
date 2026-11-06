@@ -15,6 +15,7 @@ enum CommandNames {
   RefreshMonitoredDownloads = 'RefreshMonitoredDownloads',
   RefreshSeries = 'RefreshSeries',
   RenameFiles = 'RenameFiles',
+  RenameMovieFiles = 'RenameMovieFiles',
   RenameSeries = 'RenameSeries',
   ResetApiKey = 'ResetApiKey',
   ResetQualityDefinitions = 'ResetQualityDefinitions',

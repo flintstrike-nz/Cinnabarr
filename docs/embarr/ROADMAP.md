@@ -1161,3 +1161,9 @@ Built so far (4e-5b, movie naming settings):
 - **Settings → Media Management → Naming** now has the movie settings: *Rename Movies* (off keeps the existing file name), *Standard Movie Format* and *Movie Folder Format*, each with a live example built from a sample movie (the file example is shown even while renaming is off, as that is what turning it on gives). A format must contain the movie title token or it is refused (the API answers 400 with the reason).
 - **Checked.** Against the running app: the defaults are there on an existing database, examples are built for a format being edited, an invalid format is refused and a valid one saved. Lint, type check and the build pass.
 - **Not done:** the token picker dialog the series formats have, and renaming files that are already in the library when the format changes (the movie rename preview and command are the next piece of 4e-5).
+
+Built so far (4e-5c, renaming existing movie files):
+
+- **Ported from Radarr:** `RenameMovieFileService` with the preview (`GET /api/v5/rename/movie?movieIds=…`), the `RenameMovieFiles` command (chosen files) and the `RenameMovie` command (all files of the chosen movies). Renaming moves each file with the movie file mover, removes empty folders and publishes `MovieFileRenamedEvent` / `MovieRenamedEvent`. Its Radarr tests are ported alongside.
+- **Screen:** the movie page has an *Organize* button (shown when the movie has a file) that opens the same preview as the series one, with each file ticked and the naming pattern shown. *Organize* then runs `RenameMovieFiles` for the ticked files.
+- **Not done:** a bulk "organize selected movies" action on the Library page, and renaming the movie folder (the `RenameMovieFolder` command from Radarr). Extras (subtitles) are still to do.
