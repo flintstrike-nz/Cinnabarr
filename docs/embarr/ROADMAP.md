@@ -1180,3 +1180,12 @@ Built so far (4g-3b, movie activity page):
 - `GET /api/v5/history/movie` without a `movieId` now returns the most recent movie events (last 30 days, at most 200) with the movie title; with a `movieId` it still returns that movie's events.
 - **Activity → Movie Activity** (`/activity/movies`) lists them with a link to each movie.
 - **Not done:** the main History page (paged, filtered, with column options) and Blocklist page are still series-only; folding movies into them, and a movie file list API, remain.
+
+Built so far (4h-3, the Search page):
+
+- **Engine/indexers:** a new `FreeTextSearchCriteria` and `IIndexer.Fetch(FreeTextSearchCriteria)`. The Cardigann indexer sends the text as a plain `search` query in every category (indexers without text search are skipped). Each search is recorded in the indexer query history like any other.
+- **Service:** `FreeTextSearchService` searches every interactive-search indexer, then runs each release through both decision makers (series and movie). A release goes to whichever found a match in the library (a release that parses as episodes goes to the series when both match); one that matches neither is kept as *unknown* with its rejection.
+- **API:** `GET /api/v5/search?query=` returns the results (media type, matched library item, quality, rejections, size, seeders, age) and `POST /api/v5/search/grab` grabs one by guid and indexer from a 30-minute cache. A release that matches nothing in the library can't be grabbed (404 "add it first").
+- **Screen:** *Search* in the sidebar (`/search`): a search box, a results table with the library match as a link, the rejections under each title, and a Grab button (amber when the release was rejected, as in interactive search).
+- **Checked.** Unit tests for the criteria mapping and the service; against the running app the search answers (empty without indexers), a missing query is a 400 and a grab of an unknown release a 404; lint, type check, build and the Host test pass. A search with real indexers needs network and is not covered here.
+- **Not done:** grabbing releases that match nothing in the library (adding the title from a result), category/indexer filters, and sorting columns.

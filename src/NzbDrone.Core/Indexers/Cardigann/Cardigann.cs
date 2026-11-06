@@ -75,6 +75,11 @@ namespace NzbDrone.Core.Indexers.Cardigann
             return Run(caps => EngineSearchCriteriaMapper.Map(searchCriteria, caps, Options));
         }
 
+        public override Task<IList<ReleaseInfo>> Fetch(FreeTextSearchCriteria searchCriteria)
+        {
+            return Run(caps => EngineSearchCriteriaMapper.Map(searchCriteria, caps));
+        }
+
         public override Task<IList<ReleaseInfo>> Fetch(SeasonSearchCriteria searchCriteria)
         {
             return Run(caps => EngineSearchCriteriaMapper.Map(searchCriteria, caps, Options));

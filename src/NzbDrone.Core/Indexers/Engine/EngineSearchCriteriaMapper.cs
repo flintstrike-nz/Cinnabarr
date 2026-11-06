@@ -59,6 +59,17 @@ namespace NzbDrone.Core.Indexers.Engine
             return Tiers();
         }
 
+        // A plain text search: the query as typed, in every category.
+        public static List<List<EngineCriteria>> Map(FreeTextSearchCriteria criteria, IndexerCapabilities caps)
+        {
+            if (!caps.SearchAvailable)
+            {
+                return Tiers();
+            }
+
+            return Tiers(Tier(Basic(criteria.Query, Array.Empty<int>())));
+        }
+
         public static List<List<EngineCriteria>> Map(MovieSearchCriteria criteria, IndexerCapabilities caps, EngineSearchOptions options)
         {
             var metadata = criteria.Movie.MovieMetadata.Value;

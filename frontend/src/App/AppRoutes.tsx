@@ -16,6 +16,7 @@ import MovieCalendar from 'Movie/MovieCalendar';
 import MovieDetails from 'Movie/MovieDetails';
 import MoviesIndex from 'Movie/MoviesIndex';
 import WantedMovies from 'Movie/WantedMovies';
+import SearchPage from 'Search/SearchPage';
 import SeriesDetailsPage from 'Series/Details/SeriesDetailsPage';
 import SeriesIndex from 'Series/Index/SeriesIndex';
 import CustomFormatSettingsPage from 'Settings/CustomFormats/CustomFormatSettingsPage';
@@ -65,6 +66,7 @@ export function appRouteElements() {
 
       <Route path="/add/movie" element={<AddNewMovie />} />
 
+      <Route path="/search" element={<SearchPage />} />
       <Route path="/movies" element={<MoviesIndex />} />
 
       <Route path="/movie/:movieId" element={<MovieDetails />} />

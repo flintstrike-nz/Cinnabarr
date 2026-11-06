@@ -111,5 +111,21 @@ namespace NzbDrone.Core.Test.IndexerTests.EngineTests
         {
             EngineSearchCriteriaMapper.Map(Criteria(), Caps(false), _options).Should().BeEmpty();
         }
+
+        [Test]
+        public void free_text_search_sends_the_query_as_typed_in_every_category()
+        {
+            var tiers = EngineSearchCriteriaMapper.Map(new FreeTextSearchCriteria { Query = "the matrix 1999" }, Caps(true));
+
+            var query = tiers.Should().ContainSingle().Which.Should().ContainSingle().Which.Should().BeOfType<EngineBasicCriteria>().Subject;
+            query.SearchTerm.Should().Be("the matrix 1999");
+            query.Categories.Should().BeEmpty();
+        }
+
+        [Test]
+        public void free_text_search_is_skipped_by_an_indexer_without_text_search()
+        {
+            EngineSearchCriteriaMapper.Map(new FreeTextSearchCriteria { Query = "x" }, Caps(false)).Should().BeEmpty();
+        }
     }
 }
