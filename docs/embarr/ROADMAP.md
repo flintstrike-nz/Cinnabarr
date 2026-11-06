@@ -1133,3 +1133,11 @@ Built so far (4g-2, the first movie screens):
 - **Sidebar and queue.** The Library menu has Movies and Add Movie, and a movie's download shows its title (linking to the movie) in the queue.
 - **Checked.** Lint, type check, stylelint and the build pass, and the screens were driven in a browser against a running app and a stand-in metadata service (the movie poster itself can't load in the sandbox).
 - **Rough edges, on purpose for now:** the lists are plain tables (no filters, sorting, posters grid or bulk edit yet), the movie page has no files, history or edit dialog, and there are no movie settings screens (naming formats, availability delay). The merged Library, Calendar and Wanted views are 4h.
+
+Built so far (4e-5a, refreshing movies and scanning their folders):
+
+- **Adding a movie now does the rest.** After a movie is added, a refresh reads its details from the metadata service, creates its folder when that is wanted (the new "create empty movie folders" setting, off by default), scans the folder, imports the video files already in it (so a movie added on top of an existing library folder picks its file up), and then, if "start search" was ticked, searches for it. The add options are cleared once that is done.
+- **Refresh.** A scheduled refresh (every 12 hours, like series) and the `RefreshMovie` command update a movie's information, titles, translations, credits and images, publish `MovieUpdatedEvent`, and rescan its folder. Movies that haven't changed or are old are refreshed less often (`ShouldRefreshMovie`). Collections are not handled yet, only recorded.
+- **Disk scan** (`MovieDiskScanService`) finds the movie's video files, imports the new ones through the import decision, cleans up database entries for files that are gone (`MovieFileTableCleanupService`), and sets the movie's folder dates.
+- **Checked.** Radarr's tests for these ported (34); a real run of the app with a stand-in metadata service: add with `searchForMovie` on a folder that already holds a video file gave a refresh, a scan, an imported file (size and quality read from the file) and the search. Core suite shows only the 18 known failures.
+- **Still open in 4e:** extra files (subtitles and the like), renaming existing movie files and the movie folder, and the engine "straight into the final place" download for movies (4e-4).

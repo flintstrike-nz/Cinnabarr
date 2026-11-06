@@ -19,6 +19,7 @@ using NzbDrone.Core.Lifecycle;
 using NzbDrone.Core.MediaFiles.Commands;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
+using NzbDrone.Core.Movies.Commands;
 using NzbDrone.Core.Tv.Commands;
 
 namespace NzbDrone.Core.Jobs
@@ -103,6 +104,12 @@ namespace NzbDrone.Core.Jobs
                     {
                         Interval = 12 * 60,
                         TypeName = typeof(RefreshSeriesCommand).FullName
+                    },
+
+                    new ScheduledTask
+                    {
+                        Interval = 12 * 60,
+                        TypeName = typeof(RefreshMovieCommand).FullName
                     },
 
                     new ScheduledTask
