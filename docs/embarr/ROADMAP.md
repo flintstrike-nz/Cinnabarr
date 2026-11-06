@@ -600,7 +600,7 @@ Built so far (3a-2):
 | --- | --- |
 | 4a | Movie metadata layer: the metadata tables, models and stores, and a client for the Radarr project's metadata service. **Done.** |
 | 4b | The movie itself: `Movie`, `MovieFile`, their stores and services, add-movie, root folders and monitoring. **Done.** |
-| 4c | Movie parser, quality and custom-format matching, and the decision engine for movie releases. |
+| 4c | Movie parser, quality and custom-format matching, and the decision engine for movie releases. Split: **4c-1 qualities (done)**, 4c-2 movie release parser, 4c-3 movie custom formats and decision specifications. |
 | 4d | Movie search and RSS: movie criteria for the indexers, release grabbing, and the media-type-aware download pipeline (§4.4). |
 | 4e | Movie import, naming and renaming; extras. |
 | 4f | Movie import lists. |
@@ -983,3 +983,11 @@ Built so far (4b):
 - **Left out on purpose.** Auto-tagging rules for movies (the hook exists and does nothing yet), collection handling, and the movie refresh job (4d/4g).
 - **Also ported.** The roman-numeral helper used to find titles written with numerals, the setting that unmonitors a movie when its file is deleted (`AutoUnmonitorPreviouslyDownloadedMovies`), and the movie-deleted handlers that clean up credits, alternative titles and translations.
 - **Checked.** 10 new tests: the movie store against a real test database (loads metadata and profile, finds by id/path, files), and the add flow with mocked metadata (fills in from the lookup, sets the folder, refuses unknown ids and invalid paths, skips bad entries when errors are ignored). The real app starts and applies migration 245.
+
+Built so far (4c-1, qualities):
+
+- **One quality list for series and movies.** Eight movie-only qualities join the list: WORKPRINT, CAM, TELESYNC, TELECINE, DVDSCR, REGIONAL, DVD-R and BR-DISK, each with its own default size limits and a place in the best-to-worst order (the worst are the camera and screener copies, the best the 2160p remux).
+- **Saved numbers do not change.** Embarr's existing quality numbers stay as they are, because they are saved in profiles and episode files. Radarr uses the same numbers 23 to 29 for the movie-only ones (kept), but different numbers for four others (its Bluray-480p is 20, Bluray-576p 21, BR-DISK 22, Remux 30 and 31; ours are 13, 22, 32 and 20/21). An import from a Radarr database (Phase 6) must translate those; this is noted in the code.
+- **New source values.** Camera, telesync, telecine, workprint, DVD screener, DVD regional, DVD raw and Blu-ray disc were added at the end of the source list (the numbers are saved in custom formats, so the old ones are untouched). Each source and resolution still points to exactly one quality.
+- **Existing profiles get the new qualities.** At start-up, a profile that does not list a quality gets it added as not allowed, in its place by weight, so it can be switched on in the profile screen. A profile that is in use by a movie cannot be deleted.
+- **Checked.** 14 new tests (saved numbers, uniqueness, defaults, ordering, and the profile top-up including groups). A running app listed the 30 qualities and an existing profile showed the new ones switched off.

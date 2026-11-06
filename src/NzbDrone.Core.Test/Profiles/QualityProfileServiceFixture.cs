@@ -6,6 +6,7 @@ using NUnit.Framework;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.ImportLists;
 using NzbDrone.Core.Lifecycle;
+using NzbDrone.Core.Movies;
 using NzbDrone.Core.Profiles.Qualities;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Core.Tv;
@@ -21,6 +22,28 @@ namespace NzbDrone.Core.Test.Profiles
             Mocker.GetMock<IImportListFactory>()
                   .Setup(s => s.All())
                   .Returns(new List<ImportListDefinition>());
+
+            Mocker.GetMock<IMovieService>()
+                  .Setup(s => s.GetAllMovies())
+                  .Returns(new List<Movie>());
+        }
+
+        [Test]
+        public void should_not_be_able_to_delete_profile_if_assigned_to_movie()
+        {
+            Mocker.GetMock<IMovieService>()
+                  .Setup(s => s.GetAllMovies())
+                  .Returns(new List<Movie> { new Movie { QualityProfileId = 1 } });
+
+            Mocker.GetMock<ISeriesService>()
+                  .Setup(s => s.GetAllSeries())
+                  .Returns(new List<Series>());
+
+            Mocker.GetMock<IQualityProfileRepository>()
+                  .Setup(s => s.Get(1))
+                  .Returns(new QualityProfile { Name = "Movies" });
+
+            Assert.Throws<QualityProfileInUseException>(() => Subject.Delete(1));
         }
 
         [Test]

@@ -9,6 +9,16 @@ namespace NzbDrone.Core.Qualities
         WebRip,
         DVD,
         Bluray,
-        BlurayRaw
+        BlurayRaw,
+
+        // Movie-only sources. Added after the series ones: the numbers are saved in custom formats.
+        Cam,
+        Telesync,
+        Telecine,
+        Workprint,
+        DvdScreener,
+        DvdRegional,
+        DvdRaw,
+        BlurayDisk
     }
 }
