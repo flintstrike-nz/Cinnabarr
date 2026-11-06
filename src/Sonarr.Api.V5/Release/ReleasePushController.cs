@@ -6,8 +6,10 @@ using Microsoft.AspNetCore.Mvc;
 using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.DecisionEngine;
+using NzbDrone.Core.DecisionEngine.Movies;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Indexers;
+using NzbDrone.Core.IndexerSearch;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Profiles.Qualities;
 using Sonarr.Http;
@@ -19,6 +21,7 @@ namespace Sonarr.Api.V5.Release;
 public class ReleasePushController : RestController<ReleasePushResource>
 {
     private readonly IMakeDownloadDecision _downloadDecisionMaker;
+    private readonly IMakeMovieDownloadDecision _movieDecisionMaker;
     private readonly IProcessDownloadDecisions _downloadDecisionProcessor;
     private readonly IIndexerFactory _indexerFactory;
     private readonly IDownloadClientFactory _downloadClientFactory;
@@ -29,6 +32,7 @@ public class ReleasePushController : RestController<ReleasePushResource>
     private static readonly object PushLock = new object();
 
     public ReleasePushController(IMakeDownloadDecision downloadDecisionMaker,
+                             IMakeMovieDownloadDecision movieDecisionMaker,
                              IProcessDownloadDecisions downloadDecisionProcessor,
                              IIndexerFactory indexerFactory,
                              IDownloadClientFactory downloadClientFactory,
@@ -36,6 +40,7 @@ public class ReleasePushController : RestController<ReleasePushResource>
                              Logger logger)
     {
         _downloadDecisionMaker = downloadDecisionMaker;
+        _movieDecisionMaker = movieDecisionMaker;
         _downloadDecisionProcessor = downloadDecisionProcessor;
         _indexerFactory = indexerFactory;
         _downloadClientFactory = downloadClientFactory;
@@ -52,7 +57,7 @@ public class ReleasePushController : RestController<ReleasePushResource>
 
     [HttpPost]
     [Consumes("application/json")]
-    public Results<Ok<ReleaseResource>, BadRequest> Create([FromBody] ReleasePushResource release)
+    public Results<Ok<ReleaseResource>, Ok<MovieReleaseResource>, BadRequest> Create([FromBody] ReleasePushResource release)
     {
         _logger.Info("Release pushed: {0} - {1}", release.Title, release.DownloadUrl ?? release.MagnetUrl);
 
@@ -70,14 +75,26 @@ public class ReleasePushController : RestController<ReleasePushResource>
 
         lock (PushLock)
         {
-            var decisions = _downloadDecisionMaker.GetRssDecision(new List<ReleaseInfo> { info }, true);
+            // A pushed release is for a series or for a movie; the one that finds its title in the library wins.
+            var seriesDecision = _downloadDecisionMaker.GetRssDecision(new List<ReleaseInfo> { info }, true).FirstOrDefault();
+            var movieDecision = _movieDecisionMaker.GetRssDecision(new List<ReleaseInfo> { info }, true).FirstOrDefault();
 
-            decision = decisions.FirstOrDefault();
+            decision = FreeTextSearchService.Pick(seriesDecision, movieDecision);
 
             _downloadDecisionProcessor.ProcessDecision(decision, downloadClientId).GetAwaiter().GetResult();
         }
 
-        if (decision?.RemoteEpisode.ParsedEpisodeInfo == null)
+        if (decision?.RemoteMovie != null)
+        {
+            if (decision.RemoteMovie.ParsedMovieInfo == null)
+            {
+                throw new ValidationException(new List<ValidationFailure> { new("Title", "Unable to parse", release.Title) });
+            }
+
+            return TypedResults.Ok(decision.ToResource(1, _qualityProfile));
+        }
+
+        if (decision?.RemoteEpisode?.ParsedEpisodeInfo == null)
         {
             throw new ValidationException(new List<ValidationFailure> { new("Title", "Unable to parse", release.Title) });
         }
