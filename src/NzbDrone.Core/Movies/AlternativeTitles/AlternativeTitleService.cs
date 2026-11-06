@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using NLog;
+using NzbDrone.Core.Messaging.Events;
+using NzbDrone.Core.Movies.Events;
 
 namespace NzbDrone.Core.Movies.AlternativeTitles
 {
@@ -14,7 +16,7 @@ namespace NzbDrone.Core.Movies.AlternativeTitles
         List<AlternativeTitle> UpdateTitles(List<AlternativeTitle> titles, MovieMetadata movie);
     }
 
-    public class AlternativeTitleService : IAlternativeTitleService
+    public class AlternativeTitleService : IAlternativeTitleService, IHandleAsync<MoviesDeletedEvent>
     {
         private readonly IAlternativeTitleRepository _titleRepo;
         private readonly Logger _logger;
@@ -113,6 +115,11 @@ namespace NzbDrone.Core.Movies.AlternativeTitles
             _logger.Debug("[{0}] {1} alternative titles up to date; Updating {2}, Adding {3}, Deleting {4} entries.", movieMetadata.Title, upToDateCount, updateList.Count, addList.Count, existingTitles.Count);
 
             return titles;
+        }
+
+        public void HandleAsync(MoviesDeletedEvent message)
+        {
+            _titleRepo.DeleteForMovies(message.Movies.Select(m => m.MovieMetadataId).ToList());
         }
     }
 }

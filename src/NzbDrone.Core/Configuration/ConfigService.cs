@@ -88,6 +88,12 @@ namespace NzbDrone.Core.Configuration
             return _repository.Get(key.ToLower()) != null;
         }
 
+        public bool AutoUnmonitorPreviouslyDownloadedMovies
+        {
+            get { return GetValueBoolean("AutoUnmonitorPreviouslyDownloadedMovies"); }
+            set { SetValue("AutoUnmonitorPreviouslyDownloadedMovies", value); }
+        }
+
         public bool AutoUnmonitorPreviouslyDownloadedEpisodes
         {
             get { return GetValueBoolean("AutoUnmonitorPreviouslyDownloadedEpisodes"); }

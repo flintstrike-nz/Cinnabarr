@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using NLog;
+using NzbDrone.Core.Messaging.Events;
+using NzbDrone.Core.Movies.Events;
 
 namespace NzbDrone.Core.Movies.Credits
 {
@@ -14,7 +16,7 @@ namespace NzbDrone.Core.Movies.Credits
         List<Credit> UpdateCredits(List<Credit> credits, MovieMetadata movie);
     }
 
-    public class CreditService : ICreditService
+    public class CreditService : ICreditService, IHandleAsync<MoviesDeletedEvent>
     {
         private readonly ICreditRepository _creditRepo;
         private readonly Logger _logger;
@@ -106,6 +108,11 @@ namespace NzbDrone.Core.Movies.Credits
             _logger.Debug("[{0}] {1} credits up to date; Updating {2}, Adding {3}, Deleting {4} entries.", movieMetadata.Title, upToDateCount, updateList.Count, addList.Count, existingCredits.Count);
 
             return credits;
+        }
+
+        public void HandleAsync(MoviesDeletedEvent message)
+        {
+            _creditRepo.DeleteForMovies(message.Movies.Select(m => m.MovieMetadataId).ToList());
         }
     }
 }
