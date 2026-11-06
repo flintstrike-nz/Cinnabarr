@@ -81,5 +81,6 @@ public enum DownloadRejectionReason
     // Movies, added after the series reasons so the existing numbers do not move.
     UnknownMovie,
     MovieNotMonitored,
-    WrongMovie
+    WrongMovie,
+    Availability
 }

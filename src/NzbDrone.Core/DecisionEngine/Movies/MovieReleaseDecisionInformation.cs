@@ -13,10 +13,14 @@ namespace NzbDrone.Core.DecisionEngine.Movies
         {
         }
 
-        public MovieReleaseDecisionInformation(bool pushedRelease, Movie searchedMovie)
+        // The search was asked for by the user rather than run on a schedule.
+        public bool UserInvokedSearch { get; set; }
+
+        public MovieReleaseDecisionInformation(bool pushedRelease, Movie searchedMovie, bool userInvokedSearch = false)
         {
             PushedRelease = pushedRelease;
             SearchedMovie = searchedMovie;
+            UserInvokedSearch = userInvokedSearch;
         }
     }
 }

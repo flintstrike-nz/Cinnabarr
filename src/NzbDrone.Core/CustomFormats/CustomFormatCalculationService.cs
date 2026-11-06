@@ -8,6 +8,8 @@ using NzbDrone.Core.Blocklisting;
 using NzbDrone.Core.History;
 using NzbDrone.Core.Languages;
 using NzbDrone.Core.MediaFiles;
+using NzbDrone.Core.Movies;
+using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Tv;
 
@@ -18,6 +20,7 @@ namespace NzbDrone.Core.CustomFormats
         List<CustomFormat> ParseCustomFormat(RemoteEpisode remoteEpisode, long size);
         List<CustomFormat> ParseCustomFormat(RemoteMovie remoteMovie, long size);
         List<CustomFormat> ParseCustomFormat(MovieFile movieFile);
+        List<CustomFormat> ParseCustomFormat(MovieHistory history, Movie movie);
         List<CustomFormat> ParseCustomFormat(EpisodeFile episodeFile, Series series);
         List<CustomFormat> ParseCustomFormat(EpisodeFile episodeFile);
         List<CustomFormat> ParseCustomFormat(Blocklist blocklist, Series series);
@@ -88,6 +91,37 @@ namespace NzbDrone.Core.CustomFormats
                 Languages = info.Languages,
                 IndexerFlags = movieFile.IndexerFlags,
                 Filename = System.IO.Path.GetFileName(movieFile.RelativePath)
+            };
+
+            return ParseCustomFormat(input);
+        }
+
+        public List<CustomFormat> ParseCustomFormat(MovieHistory history, Movie movie)
+        {
+            var parsed = MovieParser.ParseMovieTitle(history.SourceTitle);
+
+            long.TryParse(history.Data.GetValueOrDefault("size"), out var size);
+            Enum.TryParse(history.Data.GetValueOrDefault("indexerFlags"), true, out IndexerFlags indexerFlags);
+
+            var movieInfo = new ParsedMovieInfo
+            {
+                MovieTitles = new List<string> { movie.Title },
+                SimpleReleaseTitle = parsed?.SimpleReleaseTitle ?? history.SourceTitle,
+                ReleaseTitle = parsed?.ReleaseTitle ?? history.SourceTitle,
+                Year = movie.Year,
+                Edition = parsed?.Edition,
+                Quality = history.Quality,
+                Languages = history.Languages ?? new List<Language>(),
+                ReleaseGroup = parsed?.ReleaseGroup
+            };
+
+            var input = new CustomFormatInput
+            {
+                MovieInfo = movieInfo,
+                Movie = movie,
+                Size = size,
+                Languages = movieInfo.Languages,
+                IndexerFlags = indexerFlags
             };
 
             return ParseCustomFormat(input);

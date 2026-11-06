@@ -1069,3 +1069,11 @@ Built so far (4d-2d, failed movie downloads and the search command):
 - **`MoviesSearchCommand`** (by movie ids) and the service that runs it: an automatic run only searches monitored movies that are out, a manual one always searches; the movies searched longest ago go first; each search is decided, prioritised and grabbed like an RSS release.
 - **Checked.** 24 new tests; Core suite shows only the 18 known failures.
 - **Next, 4d-3:** missing and cutoff-unmet searches (needs the "wanted" movie queries), then the specifications that need the queue and history (queue, history, blocklist, already-imported, monitored, availability, free space).
+
+Built so far (4d-3a, the remaining movie specifications):
+
+- **Ported from Radarr** into the movie decision engine: blocklist, queue (does the queued release already meet the cutoff or beat this one), already-imported (same release name or torrent hash after a different quality was imported), free space, availability (the movie is out, plus the new `AvailabilityDelay` setting, default 0 days), history (a recent grab already meets the cutoff or beats this one), indexer tags, monitored, proper (and repack) rules for the existing file, and "is this the movie that was searched for". Searches the user asked for skip the availability and monitored checks, and searches skip the history and proper checks, as in Radarr.
+- **Not ported:** delay and pending-release (movies have no delay profile or pending table yet), hardcoded subs, language and required indexer flags (no equivalent settings).
+- **Custom formats from history:** a grabbed movie in the history can be scored (needed by the history check).
+- **Checked.** 61 new tests; Core suite shows only the 18 known failures.
+- **Next, 4d-3b:** the "wanted" queries for movies (missing, cutoff unmet) with their search commands, then 4e (import and naming).
