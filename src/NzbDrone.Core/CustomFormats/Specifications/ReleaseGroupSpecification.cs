@@ -8,7 +8,7 @@ namespace NzbDrone.Core.CustomFormats
 
         protected override bool IsSatisfiedByWithoutNegate(CustomFormatInput input)
         {
-            return MatchString(input.EpisodeInfo?.ReleaseGroup);
+            return MatchString(input.MovieInfo?.ReleaseGroup ?? input.EpisodeInfo?.ReleaseGroup);
         }
     }
 }

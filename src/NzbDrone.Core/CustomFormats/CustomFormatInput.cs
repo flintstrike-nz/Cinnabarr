@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using NzbDrone.Core.Languages;
+using NzbDrone.Core.Movies;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Tv;
 
@@ -8,6 +9,8 @@ namespace NzbDrone.Core.CustomFormats
     public class CustomFormatInput
     {
         public ParsedEpisodeInfo EpisodeInfo { get; set; }
+        public ParsedMovieInfo MovieInfo { get; set; }
+        public Movie Movie { get; set; }
         public Series Series { get; set; }
         public long Size { get; set; }
         public IndexerFlags IndexerFlags { get; set; }
