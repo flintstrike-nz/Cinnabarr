@@ -7,6 +7,7 @@ using FluentAssertions;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.Disk;
+using NzbDrone.Core.Movies;
 using NzbDrone.Core.Organizer;
 using NzbDrone.Core.RootFolders;
 using NzbDrone.Core.Test.Framework;
@@ -40,6 +41,10 @@ namespace NzbDrone.Core.Test.RootFolderTests
             Mocker.GetMock<INamingConfigService>()
                   .Setup(c => c.GetConfig())
                   .Returns(_namingConfig);
+
+            Mocker.GetMock<IMovieRepository>()
+                  .Setup(s => s.AllMoviePaths())
+                  .Returns(new Dictionary<int, string>());
         }
 
         private void WithNonExistingFolder()
@@ -215,6 +220,27 @@ namespace NzbDrone.Core.Test.RootFolderTests
             var unmappedFolders = Subject.Get(rootFolder.Id, false).UnmappedFolders;
 
             unmappedFolders.Select(u => u.Name).Should().Equal("Series1");
+        }
+
+        [Test]
+        public void should_not_list_a_folder_a_movie_uses_as_unmapped()
+        {
+            var rootFolderPath = @"C:\Test\Media".AsOsAgnostic();
+            var rootFolder = Builder<RootFolder>.CreateNew()
+                                                .With(r => r.Path = rootFolderPath)
+                                                .Build();
+            var moviePath = Path.Combine(rootFolderPath, "Heat (1995)");
+
+            Mocker.GetMock<IRootFolderRepository>().Setup(s => s.Get(It.IsAny<int>())).Returns(rootFolder);
+            Mocker.GetMock<ISeriesRepository>().Setup(s => s.AllSeriesPaths()).Returns(new Dictionary<int, string>());
+            Mocker.GetMock<IMovieRepository>().Setup(s => s.AllMoviePaths()).Returns(new Dictionary<int, string> { { 1, moviePath } });
+            Mocker.GetMock<IDiskProvider>()
+                  .Setup(s => s.GetDirectories(rootFolder.Path))
+                  .Returns(new[] { moviePath, Path.Combine(rootFolderPath, "Some Show") });
+
+            var unmappedFolders = Subject.Get(rootFolder.Id, true).UnmappedFolders;
+
+            unmappedFolders.Should().ContainSingle().Which.Name.Should().Be("Some Show");
         }
     }
 }

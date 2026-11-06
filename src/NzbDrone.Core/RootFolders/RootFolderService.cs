@@ -8,6 +8,7 @@ using NzbDrone.Common;
 using NzbDrone.Common.Cache;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Movies;
 using NzbDrone.Core.Organizer;
 using NzbDrone.Core.Tv;
 
@@ -28,6 +29,7 @@ namespace NzbDrone.Core.RootFolders
         private readonly IRootFolderRepository _rootFolderRepository;
         private readonly IDiskProvider _diskProvider;
         private readonly ISeriesRepository _seriesRepository;
+        private readonly IMovieRepository _movieRepository;
         private readonly INamingConfigService _namingConfigService;
         private readonly Logger _logger;
 
@@ -50,6 +52,7 @@ namespace NzbDrone.Core.RootFolders
         public RootFolderService(IRootFolderRepository rootFolderRepository,
                                  IDiskProvider diskProvider,
                                  ISeriesRepository seriesRepository,
+                                 IMovieRepository movieRepository,
                                  INamingConfigService namingConfigService,
                                  ICacheManager cacheManager,
                                  Logger logger)
@@ -57,6 +60,7 @@ namespace NzbDrone.Core.RootFolders
             _rootFolderRepository = rootFolderRepository;
             _diskProvider = diskProvider;
             _seriesRepository = seriesRepository;
+            _movieRepository = movieRepository;
             _namingConfigService = namingConfigService;
             _logger = logger;
 
@@ -171,7 +175,9 @@ namespace NzbDrone.Core.RootFolders
                 }
             }
 
-            var unmappedFolders = possibleSeriesFolders.Except(seriesPaths.Select(s => s.Value), PathEqualityComparer.Instance).ToList();
+            // A folder a movie lives in is not an unmapped series folder either, whichever kind of library the root folder is.
+            var knownPaths = seriesPaths.Select(s => s.Value).Concat(_movieRepository.AllMoviePaths().Values);
+            var unmappedFolders = possibleSeriesFolders.Except(knownPaths, PathEqualityComparer.Instance).ToList();
 
             foreach (var unmappedFolder in unmappedFolders)
             {
