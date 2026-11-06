@@ -13,12 +13,12 @@ namespace NzbDrone.Core.MetadataSource.RadarrMetadata.Resource
         public string TitleSlug { get; set; }
 
         // Deprecated but left in place until cache fills new object (MovieRatings)
-        public List<RatingItem> Ratings { get; set; }
+        public List<RatingItem> Ratings { get; set; } = new();
         public RatingResource MovieRatings { get; set; }
         public int? Runtime { get; set; }
-        public List<ImageResource> Images { get; set; }
-        public List<string> Genres { get; set; }
-        public List<string> Keywords { get; set; }
+        public List<ImageResource> Images { get; set; } = new();
+        public List<string> Genres { get; set; } = new();
+        public List<string> Keywords { get; set; } = new();
 
         public int Year { get; set; }
         public DateTime? Premier { get; set; }
@@ -26,19 +26,19 @@ namespace NzbDrone.Core.MetadataSource.RadarrMetadata.Resource
         public DateTime? PhysicalRelease { get; set; }
         public DateTime? DigitalRelease { get; set; }
 
-        public List<AlternativeTitleResource> AlternativeTitles { get; set; }
-        public List<TranslationResource> Translations { get; set; }
+        public List<AlternativeTitleResource> AlternativeTitles { get; set; } = new();
+        public List<TranslationResource> Translations { get; set; } = new();
 
         public Credits Credits { get; set; }
         public string Studio { get; set; }
         public string YoutubeTrailerId { get; set; }
 
-        public List<CertificationResource> Certifications { get; set; }
+        public List<CertificationResource> Certifications { get; set; } = new();
         public string Status { get; set; }
         public CollectionResource Collection { get; set; }
         public string OriginalLanguage { get; set; }
         public string Homepage { get; set; }
-        public List<RecommendationResource> Recommendations { get; set; }
+        public List<RecommendationResource> Recommendations { get; set; } = new();
         public float? Popularity { get; set; }
     }
 }

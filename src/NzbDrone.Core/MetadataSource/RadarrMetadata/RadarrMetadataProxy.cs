@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using NLog;
 using NzbDrone.Common.Extensions;
@@ -21,19 +22,22 @@ using NzbDrone.Core.Parser;
 namespace NzbDrone.Core.MetadataSource.RadarrMetadata
 {
     /// <summary>Movie information from the Radarr project's metadata service (api.radarr.video), which in turn reads TMDb.</summary>
-    public class RadarrMetadataProxy : IProvideMovieInfo
+    public class RadarrMetadataProxy : IProvideMovieInfo, ISearchForNewMovie
     {
         private readonly IHttpClient _httpClient;
         private readonly Logger _logger;
 
         private readonly IConfigService _configService;
+        private readonly IMovieService _movieService;
 
         public RadarrMetadataProxy(IHttpClient httpClient,
             IConfigService configService,
+            IMovieService movieService,
             Logger logger)
         {
             _httpClient = httpClient;
             _configService = configService;
+            _movieService = movieService;
 
             _logger = logger;
         }
@@ -183,6 +187,111 @@ namespace NzbDrone.Core.MetadataSource.RadarrMetadata
             return movie;
         }
 
+        public List<Movie> SearchForNewMovie(string title)
+        {
+            try
+            {
+                var imdbUrl = Regex.Match(title, @"\bimdb\.com/title/(tt\d{7,})\b", RegexOptions.IgnoreCase);
+                var tmdbUrl = Regex.Match(title, @"\bthemoviedb\.org/movie/(\d+)\b", RegexOptions.IgnoreCase);
+
+                if (imdbUrl.Success)
+                {
+                    title = "imdb:" + imdbUrl.Groups[1].Value;
+                }
+                else if (tmdbUrl.Success)
+                {
+                    title = "tmdb:" + tmdbUrl.Groups[1].Value;
+                }
+
+                var lowerTitle = title.ToLower().Replace(".", string.Empty);
+
+                if (lowerTitle.StartsWith("imdb:") || lowerTitle.StartsWith("imdbid:"))
+                {
+                    var imdbId = lowerTitle.Split(':')[1].Trim();
+
+                    if (imdbId.IsNullOrWhiteSpace() || imdbId.Any(char.IsWhiteSpace))
+                    {
+                        return new List<Movie>();
+                    }
+
+                    return Single(() => GetMovieByImdbId(imdbId));
+                }
+
+                if (lowerTitle.StartsWith("tmdb:") || lowerTitle.StartsWith("tmdbid:"))
+                {
+                    var slug = lowerTitle.Split(':')[1].Trim();
+
+                    if (!int.TryParse(slug, out var tmdbId))
+                    {
+                        return new List<Movie>();
+                    }
+
+                    return Single(() => GetMovieInfo(tmdbId).Item1);
+                }
+
+                // "The Matrix 1999" and "The Matrix (1999)" search for the title with the year.
+                var parserTitle = lowerTitle;
+                var yearTerm = string.Empty;
+                var parsed = MovieParser.ParseMovieTitle(title, true);
+
+                if (parsed != null && parsed.PrimaryMovieTitle != title)
+                {
+                    parserTitle = parsed.PrimaryMovieTitle.ToLower().Replace(".", " ");
+
+                    if (parsed.Year > 1800)
+                    {
+                        yearTerm = parsed.Year.ToString();
+                    }
+                }
+
+                var searchTerm = parserTitle.Replace("_", "+").Replace(" ", "+").Replace(".", "+");
+
+                var request = RadarrMetadata.Create()
+                    .SetSegment("route", "search")
+                    .AddQueryParam("q", searchTerm)
+                    .AddQueryParam("year", yearTerm)
+                    .Build();
+
+                var httpResponse = _httpClient.Get<List<MovieResource>>(request);
+
+                return httpResponse.Resource.SelectList(MapSearchResult);
+            }
+            catch (HttpException ex)
+            {
+                _logger.Warn(ex);
+                throw new RadarrMetadataException("Search for '{0}' failed. Unable to communicate with the movie metadata service. {1}", ex, title, ex.Message);
+            }
+            catch (WebException ex)
+            {
+                _logger.Warn(ex);
+                throw new RadarrMetadataException("Search for '{0}' failed. Unable to communicate with the movie metadata service. {1}", ex, title, ex.Message);
+            }
+            catch (Exception ex) when (ex is not RadarrMetadataException)
+            {
+                _logger.Warn(ex);
+                throw new RadarrMetadataException("Search for '{0}' failed. Invalid response received from the movie metadata service. {1}", ex, title, ex.Message);
+            }
+        }
+
+        private List<Movie> Single(Func<MovieMetadata> lookup)
+        {
+            try
+            {
+                var metadata = lookup();
+
+                return metadata == null ? new List<Movie>() : new List<Movie> { _movieService.FindByTmdbId(metadata.TmdbId) ?? new Movie { MovieMetadata = metadata } };
+            }
+            catch (MovieNotFoundException)
+            {
+                return new List<Movie>();
+            }
+        }
+
+        private Movie MapSearchResult(MovieResource result)
+        {
+            return _movieService.FindByTmdbId(result.TmdbId) ?? new Movie { MovieMetadata = MapMovie(result) };
+        }
+
         public MovieMetadata MapMovie(MovieResource resource)
         {
             var movie = new MovieMetadata();
@@ -201,7 +310,7 @@ namespace NzbDrone.Core.MetadataSource.RadarrMetadata
 
             movie.Translations.AddRange(resource.Translations.Select(MapTranslation));
 
-            movie.OriginalLanguage = IsoLanguages.Find(resource.OriginalLanguage.ToLower())?.Language ?? Language.English;
+            movie.OriginalLanguage = (resource.OriginalLanguage.IsNotNullOrWhiteSpace() ? IsoLanguages.Find(resource.OriginalLanguage.ToLower())?.Language : null) ?? Language.English;
 
             movie.Website = resource.Homepage;
             movie.InCinemas = resource.InCinema;
@@ -239,9 +348,10 @@ namespace NzbDrone.Core.MetadataSource.RadarrMetadata
             movie.Recommendations = resource.Recommendations?.Select(r => r.TmdbId).ToList() ?? new List<int>();
 
             // Workaround due to metadata change until cache cleans up
-            if (movie.Ratings.Tmdb == null)
+            var tmdbRating = resource.Ratings.FirstOrDefault();
+
+            if (movie.Ratings.Tmdb == null && tmdbRating != null)
             {
-                var tmdbRating = resource.Ratings.FirstOrDefault();
                 movie.Ratings.Tmdb = new RatingChild
                 {
                     Votes = tmdbRating.Count,

@@ -1116,3 +1116,11 @@ Built so far (4e-3b, importing a finished movie download):
 - **Completed downloads.** `CompletedDownloadService` hands a movie download to a new `CompletedMovieDownloadService`: a finished download becomes "import pending" (the movie is known from the grab, never guessed from the title); importing it either marks it imported and publishes `MovieDownloadCompletedEvent`, or leaves it blocked with the reason for each file, or waiting if no file is eligible yet. A file that was imported before counts as done.
 - **Checked.** 28 new and ported tests; Core suite shows only the 18 known failures.
 - **Still to do for movies in 4e:** 4e-4 downloading a movie straight into its final place in the engine (with the movie names) and importing it file by file; 4e-5 extra files (subtitles), renaming existing movie files, and scanning the movie folders.
+
+Built so far (4g-1, the movie API):
+
+- **`/api/v5/movie`**: list (or find by `tmdbId`), get, add, update and delete (with or without files and the import-list exclusion), with the same path, root folder, quality profile and "already exists" checks as series, and live updates when a movie is added, edited, deleted or gets a file.
+- **`/api/v5/movie/lookup?term=`** searches by title (with a year such as `The Matrix (1999)`), `tmdb:603`, `imdb:tt0133093` or a TMDb/IMDb page link; movies already in the library come back as the library's own. The metadata proxy now also reads results that lack some optional fields.
+- **`/api/v5/release/movie`**: `GET ?movieId=` runs an interactive search and returns every release with its decision (rejections included), quality, languages, custom formats and score; `POST` grabs one of them (`guid`, `indexerId`, optional download client).
+- **Checked.** 7 new tests, and a real run of the app against a stand-in metadata service (the sandbox has no outside network): migrations 244–248 apply to a fresh database; lookup, add (folder `…/The Matrix (1999)`), list, update, interactive search, the `MoviesSearch` command and the queue all work. Core suite shows only the 18 known failures.
+- **Not done:** covers are the service's remote URLs (no local cover cache for movies yet); movie history, blocklist, files and naming settings have no API yet; no screens. Next is the frontend (4g-2).
