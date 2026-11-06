@@ -6,6 +6,7 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Events;
+using NzbDrone.Core.Movies;
 using NzbDrone.Core.Tv;
 
 namespace NzbDrone.Core.MediaFiles.MediaInfo
@@ -14,24 +15,29 @@ namespace NzbDrone.Core.MediaFiles.MediaInfo
     {
         bool Update(EpisodeFile episodeFile, Series series);
         bool UpdateMediaInfo(EpisodeFile episodeFile, Series series);
+        bool Update(MovieFile movieFile, Movie movie);
+        bool UpdateMediaInfo(MovieFile movieFile, Movie movie);
     }
 
     public class UpdateMediaInfoService : IUpdateMediaInfo, IHandle<SeriesScannedEvent>
     {
         private readonly IDiskProvider _diskProvider;
         private readonly IMediaFileService _mediaFileService;
+        private readonly IMovieFileService _movieFileService;
         private readonly IVideoFileInfoReader _videoFileInfoReader;
         private readonly IConfigService _configService;
         private readonly Logger _logger;
 
         public UpdateMediaInfoService(IDiskProvider diskProvider,
                                 IMediaFileService mediaFileService,
+                                IMovieFileService movieFileService,
                                 IVideoFileInfoReader videoFileInfoReader,
                                 IConfigService configService,
                                 Logger logger)
         {
             _diskProvider = diskProvider;
             _mediaFileService = mediaFileService;
+            _movieFileService = movieFileService;
             _videoFileInfoReader = videoFileInfoReader;
             _configService = configService;
             _logger = logger;
@@ -89,6 +95,46 @@ namespace NzbDrone.Core.MediaFiles.MediaInfo
             if (episodeFile.Id != 0)
             {
                 _mediaFileService.Update(episodeFile);
+            }
+
+            _logger.Debug("Updated MediaInfo for '{0}'", path);
+
+            return true;
+        }
+
+        public bool Update(MovieFile movieFile, Movie movie)
+        {
+            if (!_configService.EnableMediaInfo)
+            {
+                _logger.Debug("MediaInfo is disabled");
+                return false;
+            }
+
+            return UpdateMediaInfo(movieFile, movie);
+        }
+
+        public bool UpdateMediaInfo(MovieFile movieFile, Movie movie)
+        {
+            var path = movieFile.Path.IsNotNullOrWhiteSpace() ? movieFile.Path : Path.Combine(movie.Path, movieFile.RelativePath);
+
+            if (!_diskProvider.FileExists(path))
+            {
+                _logger.Debug("Can't update MediaInfo because '{0}' does not exist", path);
+                return false;
+            }
+
+            var updatedMediaInfo = _videoFileInfoReader.GetMediaInfo(path);
+
+            if (updatedMediaInfo == null)
+            {
+                return false;
+            }
+
+            movieFile.MediaInfo = updatedMediaInfo;
+
+            if (movieFile.Id != 0)
+            {
+                _movieFileService.Update(movieFile);
             }
 
             _logger.Debug("Updated MediaInfo for '{0}'", path);

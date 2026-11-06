@@ -7,14 +7,19 @@ namespace NzbDrone.Core.Organizer
         string GetMovieFolder(Movie movie);
     }
 
-    // The movie naming settings (roadmap 4e) will replace this fixed "Title (Year)" folder with the configurable format.
+    // The folder a new movie is put in, from the movie folder format in the naming settings.
     public class MovieFolderNameBuilder : IBuildMovieFolderName
     {
+        private readonly IBuildMovieFileNames _fileNameBuilder;
+
+        public MovieFolderNameBuilder(IBuildMovieFileNames fileNameBuilder)
+        {
+            _fileNameBuilder = fileNameBuilder;
+        }
+
         public string GetMovieFolder(Movie movie)
         {
-            var name = movie.Year > 0 ? $"{movie.Title} ({movie.Year})" : movie.Title;
-
-            return FileNameBuilder.CleanFileName(name);
+            return _fileNameBuilder.GetMovieFolder(movie);
         }
     }
 }

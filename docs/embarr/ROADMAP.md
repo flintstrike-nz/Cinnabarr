@@ -1084,3 +1084,12 @@ Built so far (4d-3b, searching for what is wanted):
 - **Search commands.** `MissingMoviesSearchCommand` and `CutoffUnmetMoviesSearchCommand` search every wanted, monitored movie that is not already in the queue, the one searched longest ago first. They are not scheduled yet (like Sonarr, a missing search is something you run or schedule yourself).
 - **Checked.** 13 new tests; Core suite shows only the 18 known failures.
 - **That completes 4d** (movie search, RSS, grabbing, tracking, failure handling, decision specifications and the wanted searches). **Next, 4e:** importing a finished movie, naming and renaming, and the movie folder.
+
+Built so far (4e-1, naming movie files and folders):
+
+- **Settings.** The naming settings gain `RenameMovies` (off by default, as in Radarr), `StandardMovieFormat` (`{Movie Title} ({Release Year}) {Quality Full}`) and `MovieFolderFormat` (`{Movie Title} ({Release Year})`), stored by migration 248 (existing installs get the defaults).
+- **Builder.** The file name builder now also builds movie names, with Radarr's movie tokens: title in several forms (clean, "The" last, first character, original, a translated title by language code), certification, collection, release year, IMDb and TMDb ids, `{edition-{Edition Tags}}`, quality (full, title, proper, real), media info (video, audio, languages, dynamic range), release group (`Embarr` when unknown), original title and file name, custom formats. The series naming is untouched; only `TitleThe` and `CleanTitleThe` now cope with an empty title, and the language table knows Mongolian's other codes.
+- **Folders.** Adding a movie now builds its folder from the movie folder format instead of the fixed `Title (Year)`.
+- **Media info** for a movie file is read again when a naming token needs newer information, as for episodes. The `{MediaInfo 3D}` token is not carried over (our media info reader has no multi-view count).
+- **Checked.** Radarr's naming tests were ported (341); Core suite shows only the 18 known failures.
+- **Next, 4e-2:** the movie import decision (what a finished file is, whether it may be imported) and the import itself.
