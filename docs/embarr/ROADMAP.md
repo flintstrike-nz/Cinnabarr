@@ -600,7 +600,7 @@ Built so far (3a-2):
 | --- | --- |
 | 4a | Movie metadata layer: the metadata tables, models and stores, and a client for the Radarr project's metadata service. **Done.** |
 | 4b | The movie itself: `Movie`, `MovieFile`, their stores and services, add-movie, root folders and monitoring. **Done.** |
-| 4c | Movie parser, quality and custom-format matching, and the decision engine for movie releases. Split: **4c-1 qualities (done)**, 4c-2 movie release parser, 4c-3 movie custom formats and decision specifications. |
+| 4c | Movie parser, quality and custom-format matching, and the decision engine for movie releases. Split: **4c-1 qualities (done)**, **4c-2 movie release parser (done)**, 4c-3 languages, movie custom formats and decision specifications. |
 | 4d | Movie search and RSS: movie criteria for the indexers, release grabbing, and the media-type-aware download pipeline (§4.4). |
 | 4e | Movie import, naming and renaming; extras. |
 | 4f | Movie import lists. |
@@ -991,3 +991,11 @@ Built so far (4c-1, qualities):
 - **New source values.** Camera, telesync, telecine, workprint, DVD screener, DVD regional, DVD raw and Blu-ray disc were added at the end of the source list (the numbers are saved in custom formats, so the old ones are untouched). Each source and resolution still points to exactly one quality.
 - **Existing profiles get the new qualities.** At start-up, a profile that does not list a quality gets it added as not allowed, in its place by weight, so it can be switched on in the profile screen. A profile that is in use by a movie cannot be deleted.
 - **Checked.** 14 new tests (saved numbers, uniqueness, defaults, ordering, and the profile top-up including groups). A running app listed the 30 qualities and an existing profile showed the new ones switched off.
+
+Built so far (4c-2, movie release parser):
+
+- **Movie parsers beside the series ones.** `MovieParser` (title, year, edition, IMDb and TMDb ids, hardcoded subtitles, release hash), `MovieQualityParser` and `MovieReleaseGroupParser` are Radarr's, ported under their own names so the series parser is untouched. `ParsedMovieInfo` is the result. Movie quality names map to the shared list (Radarr's Remux-1080p is Bluray-1080p Remux here, and so on).
+- **Radarr's parser tests came with it.** 708 tests (titles, qualities, editions, hashed releases, release groups, title normalising) were ported and pass, which is the evidence that the parsing behaves as Radarr's does. The source and modifier pairs in the quality tests are translated to our single source value.
+- **One deliberate difference.** With no hint in the name, a movie file with a `.mkv` extension is read as a web release, as Radarr does; the series parser says HDTV.
+- **Gap found: languages.** Radarr's language list differs from ours (the numbers diverge from 26 onward, and eight languages are missing: Bengali, Telugu, Kannada, Albanian, Afrikaans, Marathi, Tagalog, Mongolian). Movie parsing currently uses the series language parser, so releases in those eight languages are not recognised. Step 4c-3 adds them at new numbers and ports Radarr's language tests; an import from a Radarr database must translate the numbers.
+- **Not yet used.** Nothing calls the movie parser yet. It is used by the decision engine, which is 4c-3.

@@ -19,7 +19,7 @@ namespace NzbDrone.Core.Movies
                 return value;
             }
 
-            return Parser.Parser.NormalizeTitle(title).ToLower();
+            return Parser.MovieParser.NormalizeTitle(title).ToLower();
         }
     }
 }
