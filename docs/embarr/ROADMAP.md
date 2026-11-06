@@ -1141,3 +1141,10 @@ Built so far (4e-5a, refreshing movies and scanning their folders):
 - **Disk scan** (`MovieDiskScanService`) finds the movie's video files, imports the new ones through the import decision, cleans up database entries for files that are gone (`MovieFileTableCleanupService`), and sets the movie's folder dates.
 - **Checked.** Radarr's tests for these ported (34); a real run of the app with a stand-in metadata service: add with `searchForMovie` on a folder that already holds a video file gave a refresh, a scan, an imported file (size and quality read from the file) and the search. Core suite shows only the 18 known failures.
 - **Still open in 4e:** extra files (subtitles and the like), renaming existing movie files and the movie folder, and the engine "straight into the final place" download for movies (4e-4).
+
+Built so far (4h-1, Wanted and Calendar for movies):
+
+- **API.** `GET /api/v5/wanted/movie/missing` and `/wanted/movie/cutoff` (paged and sortable, monitored or not) list the movies that still need a file or whose file is below the quality profile's cutoff; `GET /api/v5/calendar/movie?start&end&includeUnmonitored` lists movies with a cinema, digital or physical release in the range.
+- **Screens.** Wanted → Movies (`/wanted/movies`) shows both lists with a "search all" button for each (it runs the missing or cutoff-unmet movie search); Calendar → Movies (`/calendar/movies`) lists the next 90 days of releases.
+- **Checked.** Run against the app (all four calls, including sorting by `movies.added`) and driven in a browser; lint, type check, stylelint and the build pass.
+- **Still to do in 4h:** the merged views themselves: one Library grid, one Calendar and one Wanted page that show series and movies together (these first pages keep the two kinds apart), and the Search page.

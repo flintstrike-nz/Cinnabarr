@@ -90,6 +90,12 @@ const GROUPS: SidebarGroup[] = [
         iconName: icons.CALENDAR,
         title: () => translate('Calendar'),
         to: '/calendar',
+        children: [
+          {
+            title: () => translate('Movies'),
+            to: '/calendar/movies',
+          },
+        ],
       },
       {
         iconName: icons.WARNING,
@@ -103,6 +109,10 @@ const GROUPS: SidebarGroup[] = [
           {
             title: () => translate('CutoffUnmet'),
             to: '/wanted/cutoffunmet',
+          },
+          {
+            title: () => translate('Movies'),
+            to: '/wanted/movies',
           },
         ],
       },
