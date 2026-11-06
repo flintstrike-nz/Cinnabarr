@@ -1202,3 +1202,10 @@ Built so far (4h-4, movies on the main Calendar):
 - The Calendar grid (month, week, day, forecast) now shows movie releases next to the episodes: each monitored movie with a cinema, digital or physical release on a day appears on that day as a titled block with the kind of release, linking to the movie. The range asked for is padded by a day, as for episodes.
 - The separate *Calendar → Movies* list stays for now as a flat list of what is coming up.
 - **Not done:** the grid's filters (unmonitored, tags), the iCal feed and the agenda view do not include movies yet; the movie blocks have no status colour or detail popup. Checked with lint, type check and the build only; not looked at in a browser.
+
+Built so far (4g-4, movie library import):
+
+- **Backend:** `UnmappedMovieFolderService` lists the folders directly inside a root folder that no movie of the library points at (hidden folders skipped) and parses a title and year from each name; `GET /api/v5/movie/import?path=` returns them (400 without a path).
+- **Screen:** *Add → Import Movies* (`/add/import/movie`): pick a root folder and a quality profile; each folder row looks the movie up (title plus year, preferring the result from the same year) and has an *Import* button that adds it with the folder as its path. The add scans the folder and imports the files already there (no search is started).
+- **Checked.** Four unit tests; against the running app the endpoint lists real folders (`Heat.1995.1080p.BluRay-GRP` → Heat, 1995). Lint, type check, the build and the Host test pass. The lookup and add steps need the metadata service, so they were not run here.
+- **Not done:** "import all matched" in one click, choosing another match when the guess is wrong, and folder formats nested more than one level deep.

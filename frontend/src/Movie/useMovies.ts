@@ -37,7 +37,9 @@ export interface AddMoviePayload {
   title: string;
   year: number;
   qualityProfileId: number;
-  rootFolderPath: string;
+  rootFolderPath?: string;
+  // An existing folder to take the movie from (library import); the root folder is then not needed.
+  path?: string;
   monitored: boolean;
   minimumAvailability: string;
   addOptions: { searchForMovie: boolean };

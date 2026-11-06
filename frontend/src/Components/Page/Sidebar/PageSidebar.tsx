@@ -88,6 +88,10 @@ const GROUPS: SidebarGroup[] = [
             title: () => translate('LibraryImport'),
             to: '/add/import',
           },
+          {
+            title: () => translate('ImportMovies'),
+            to: '/add/import/movie',
+          },
         ],
       },
       {
