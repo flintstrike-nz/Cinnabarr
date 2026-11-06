@@ -109,6 +109,25 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_reject_a_movie_grab_with_no_video()
+        {
+            _files.RemoveAll(f => f.Name.EndsWith(".mkv") && !f.Name.EndsWith(".exe"));
+            _files.RemoveAll(f => f.Name.EndsWith("sample.mkv.exe"));
+
+            Mocker.GetMock<IHistoryService>().Setup(s => s.FindByDownloadId(Hash.ToUpperInvariant())).Returns(new List<EpisodeHistory>());
+            Mocker.GetMock<IMovieHistoryService>()
+                  .Setup(s => s.FindByDownloadId(Hash.ToUpperInvariant()))
+                  .Returns(new List<MovieHistory> { new MovieHistory { Id = 31, MovieId = 4, EventType = MovieHistoryEventType.Grabbed } });
+
+            Subject.Prepare(GivenClient());
+
+            Mocker.GetMock<IFailedDownloadService>().Verify(f => f.MarkMovieAsFailed(31, It.IsAny<string>(), "Embarr", false), Times.Once());
+            _proxy.Verify(p => p.RemoveTorrent(Hash, true, _settings), Times.Once());
+            _proxy.Verify(p => p.StartTorrent(It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
         public void should_leave_alone_a_held_torrent_without_a_grab_that_was_not_added_by_hand()
         {
             Mocker.GetMock<IHistoryService>().Setup(s => s.FindByDownloadId(Hash.ToUpperInvariant())).Returns(new List<EpisodeHistory>());

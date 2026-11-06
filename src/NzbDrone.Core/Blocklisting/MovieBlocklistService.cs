@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Download;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Movies.Events;
@@ -18,6 +20,7 @@ namespace NzbDrone.Core.Blocklisting
     }
 
     public class MovieBlocklistService : IMovieBlocklistService,
+                                         IHandle<MovieDownloadFailedEvent>,
                                          IHandle<MoviesDeletedEvent>
     {
         private readonly IMovieBlocklistRepository _repository;
@@ -78,6 +81,33 @@ namespace NzbDrone.Core.Blocklisting
         public void Clear()
         {
             _repository.Purge();
+        }
+
+        public void Handle(MovieDownloadFailedEvent message)
+        {
+            var blocklist = new MovieBlocklist
+            {
+                MovieId = message.MovieId,
+                SourceTitle = message.SourceTitle,
+                Quality = message.Quality,
+                Date = DateTime.UtcNow,
+                PublishedDate = DateTime.TryParse(message.Data.GetValueOrDefault("publishedDate"), out var published) ? published : null,
+                Size = long.TryParse(message.Data.GetValueOrDefault("size", "0"), out var size) ? size : 0,
+                Indexer = message.Data.GetValueOrDefault("indexer"),
+                Protocol = Enum.TryParse(message.Data.GetValueOrDefault("protocol"), out DownloadProtocol protocol) ? protocol : DownloadProtocol.Unknown,
+                Message = message.Message,
+                Languages = message.Languages,
+                TorrentInfoHash = message.TrackedDownload?.Protocol == DownloadProtocol.Torrent
+                    ? message.TrackedDownload.DownloadItem.DownloadId
+                    : message.Data.GetValueOrDefault("torrentInfoHash")
+            };
+
+            if (Enum.TryParse(message.Data.GetValueOrDefault("indexerFlags"), true, out IndexerFlags flags))
+            {
+                blocklist.IndexerFlags = flags;
+            }
+
+            _repository.Insert(blocklist);
         }
 
         public void Handle(MoviesDeletedEvent message)

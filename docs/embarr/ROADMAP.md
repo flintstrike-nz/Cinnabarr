@@ -1062,3 +1062,10 @@ Built so far (4d-2c, a movie download shows in the queue):
 - **Not yet.** A finished movie download is left alone by the completed-download check (nothing imports it yet), and a failed one is not yet blocklisted or searched again.
 - **Checked.** 18 new tests; Core suite shows only the 18 known failures.
 - **Next, 4d-2d:** failed movie downloads (blocklist, search again), and the specifications that need the queue and history (queue, history, blocklist, already-imported, monitored, availability, free space); then 4d-3 search commands.
+
+Built so far (4d-2d, failed movie downloads and the search command):
+
+- **Failure.** A movie download that the client reports failed (or encrypted) is marked failed by the same check as a series one, and a torrent with no video file in the engine is rejected, removed and marked failed. Either way a `MovieDownloadFailedEvent` is published; the movie history records it, the movie blocklist blocks the torrent hash (so the same release is not grabbed again), the download history closes the grab (so it is not reported missing from the engine), and "search again" runs when the auto-redownload settings allow. A grab can also be marked failed by its movie history id.
+- **`MoviesSearchCommand`** (by movie ids) and the service that runs it: an automatic run only searches monitored movies that are out, a manual one always searches; the movies searched longest ago go first; each search is decided, prioritised and grabbed like an RSS release.
+- **Checked.** 24 new tests; Core suite shows only the 18 known failures.
+- **Next, 4d-3:** missing and cutoff-unmet searches (needs the "wanted" movie queries), then the specifications that need the queue and history (queue, history, blocklist, already-imported, monitored, availability, free space).
