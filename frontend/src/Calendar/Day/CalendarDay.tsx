@@ -5,7 +5,9 @@ import { useCalendarOption } from 'Calendar/calendarOptionsStore';
 import * as calendarViews from 'Calendar/calendarViews';
 import CalendarEvent from 'Calendar/Events/CalendarEvent';
 import CalendarEventGroup from 'Calendar/Events/CalendarEventGroup';
+import CalendarMovieEvent from 'Calendar/Events/CalendarMovieEvent';
 import useCalendar, { useCalendarTime } from 'Calendar/useCalendar';
+import { useCalendarMoviesForDay } from 'Movie/useCalendarMovies';
 import { useUiSettingsValues } from 'Settings/UI/useUiSettings';
 import {
   CalendarEvent as CalendarEventModel,
@@ -99,6 +101,7 @@ function CalendarDay({
   const view = useCalendarOption('view');
   const time = useCalendarTime();
   const events = useCalendarEvents(date);
+  const movies = useCalendarMoviesForDay(date);
   const { longDateFormat } = useUiSettingsValues();
   const momentDate = moment(date);
 
@@ -139,7 +142,7 @@ function CalendarDay({
           </time>
         </div>
       )}
-      {!events.length && view === calendarViews.DAY ? (
+      {!events.length && !movies.length && view === calendarViews.DAY ? (
         <div className={styles.noEvents}>{translate('NoEpisodesAiring')}</div>
       ) : null}
       <div>
@@ -165,6 +168,14 @@ function CalendarDay({
             />
           );
         })}
+        {movies.map((movie) => (
+          <CalendarMovieEvent
+            key={movie.key}
+            movieId={movie.movieId}
+            title={movie.title}
+            label={movie.label}
+          />
+        ))}
       </div>
     </td>
   );

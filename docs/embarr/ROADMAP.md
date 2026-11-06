@@ -1196,3 +1196,9 @@ Built so far (4e-5d, movie subtitles):
 - **Behaviour:** when a movie is imported, subtitle files next to it (matched by name, or by title and year) are moved or copied beside the movie file with the right language tags, following the *Import Extra Files* and *Extra File Extensions* settings. Renaming a movie moves its subtitles with it; deleting a movie file sends its subtitles to the recycle bin; deleting a movie removes their records.
 - **Fixed on the way:** the new table was first missing the `Copy` column, which the ported repository tests caught.
 - **Not done:** other extras (`.nfo`, artwork, metadata files) and importing subtitles already beside existing movie files on a scan. Core tests still show only the 18 known baseline failures.
+
+Built so far (4h-4, movies on the main Calendar):
+
+- The Calendar grid (month, week, day, forecast) now shows movie releases next to the episodes: each monitored movie with a cinema, digital or physical release on a day appears on that day as a titled block with the kind of release, linking to the movie. The range asked for is padded by a day, as for episodes.
+- The separate *Calendar → Movies* list stays for now as a flat list of what is coming up.
+- **Not done:** the grid's filters (unmonitored, tags), the iCal feed and the agenda view do not include movies yet; the movie blocks have no status colour or detail popup. Checked with lint, type check and the build only; not looked at in a browser.
