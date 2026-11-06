@@ -11,6 +11,7 @@ namespace NzbDrone.Core.History
 {
     public interface IMovieHistoryService
     {
+        MovieHistory Get(int id);
         MovieHistory MostRecentForMovie(int movieId);
         MovieHistory MostRecentForDownloadId(string downloadId);
         List<MovieHistory> FindByDownloadId(string downloadId);
@@ -20,6 +21,7 @@ namespace NzbDrone.Core.History
 
     public class MovieHistoryService : IMovieHistoryService,
                                        IHandle<MovieGrabbedEvent>,
+                                       IHandle<MovieDownloadFailedEvent>,
                                        IHandle<MoviesDeletedEvent>
     {
         private readonly IMovieHistoryRepository _historyRepository;
@@ -28,6 +30,8 @@ namespace NzbDrone.Core.History
         {
             _historyRepository = historyRepository;
         }
+
+        public MovieHistory Get(int id) => _historyRepository.Get(id);
 
         public MovieHistory MostRecentForMovie(int movieId) => _historyRepository.MostRecentForMovie(movieId);
 
@@ -85,6 +89,25 @@ namespace NzbDrone.Core.History
             {
                 history.Data.Add("TorrentInfoHash", torrent.InfoHash);
             }
+
+            _historyRepository.Insert(history);
+        }
+
+        public void Handle(MovieDownloadFailedEvent message)
+        {
+            var history = new MovieHistory
+            {
+                EventType = MovieHistoryEventType.DownloadFailed,
+                Date = DateTime.UtcNow,
+                Quality = message.Quality,
+                SourceTitle = message.SourceTitle,
+                MovieId = message.MovieId,
+                DownloadId = message.DownloadId,
+                Languages = message.Languages
+            };
+
+            history.Data.Add("DownloadClient", message.DownloadClient);
+            history.Data.Add("Message", message.Message);
 
             _historyRepository.Insert(history);
         }

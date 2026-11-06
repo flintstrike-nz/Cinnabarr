@@ -109,9 +109,15 @@ namespace NzbDrone.Core.Download.Engine
             {
                 // A movie's grab is in its own history. Its files are not mapped into the library yet (that comes with the
                 // movie import), so it is prepared like one added by hand: only video and subtitles, into the engine's folder.
-                var isMovieGrab = _movieHistoryService.FindByDownloadId(torrent.Hash.ToUpperInvariant()).Any(h => h.EventType == MovieHistoryEventType.Grabbed);
+                var movieGrab = _movieHistoryService.FindByDownloadId(torrent.Hash.ToUpperInvariant())
+                    .Where(h => h.EventType == MovieHistoryEventType.Grabbed)
+                    .MaxBy(h => h.Date);
 
-                if (isMovieGrab || EngineTorrentTags.HasTag(torrent.Tags, EngineTorrentTags.Manual))
+                if (movieGrab != null)
+                {
+                    PrepareMovieTorrent(proxy, settings, torrent, hash, movieGrab);
+                }
+                else if (EngineTorrentTags.HasTag(torrent.Tags, EngineTorrentTags.Manual))
                 {
                     PrepareManualTorrent(proxy, settings, torrent, hash);
                 }
@@ -177,6 +183,29 @@ namespace NzbDrone.Core.Download.Engine
             proxy.AddTags(hash, new[] { EngineTorrentTags.Prepared }, settings);
 
             _logger.Info("Prepared '{0}': {1} of {2} file(s) will be downloaded{3}", torrent.Name, files.Count - excluded.Count, files.Count, map == null ? string.Empty : $" into '{map.SavePath}'");
+        }
+
+        // A grab for a movie: the same as one added by hand, except that a torrent with no video at all is rejected
+        // (marked failed, which blocklists it and searches again).
+        private void PrepareMovieTorrent(IQBittorrentProxy proxy, QBittorrentSettings settings, QBittorrentTorrent torrent, string hash, MovieHistory grab)
+        {
+            var files = proxy.GetTorrentFiles(hash, settings);
+
+            if (!files.Any(f => EngineFileWhitelist.IsVideo(f.Name)))
+            {
+                if (_downloadHistoryService.GetLatestDownloadHistoryItem(torrent.Hash.ToUpperInvariant()) is not { EventType: DownloadHistoryEventType.DownloadFailed })
+                {
+                    _logger.Warn("'{0}' has no video file ({1}); rejecting it and searching again", torrent.Name, files.Select(f => f.Name).ConcatToString());
+
+                    _failedDownloadService.MarkMovieAsFailed(grab.Id, NoVideoMessage, "Embarr");
+                }
+
+                proxy.RemoveTorrent(hash, true, settings);
+
+                return;
+            }
+
+            PrepareManualTorrent(proxy, settings, torrent, hash);
         }
 
         // A torrent added by hand: only video and subtitle files are downloaded (roadmap §4.8), into the engine's

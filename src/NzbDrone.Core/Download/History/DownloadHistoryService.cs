@@ -25,6 +25,7 @@ namespace NzbDrone.Core.Download.History
                                           IHandle<EpisodeGrabbedEvent>,
                                           IHandle<MovieGrabbedEvent>,
                                           IHandle<MoviesDeletedEvent>,
+                                          IHandle<MovieDownloadFailedEvent>,
                                           IHandle<EpisodeImportedEvent>,
                                           IHandle<DownloadCompletedEvent>,
                                           IHandle<DownloadFailedEvent>,
@@ -161,6 +162,34 @@ namespace NzbDrone.Core.Download.History
             history.Data.Add("DownloadClient", message.DownloadClient);
             history.Data.Add("DownloadClientName", message.DownloadClientName);
             history.Data.Add("CustomFormatScore", message.Movie.CustomFormatScore.ToString());
+
+            _repository.Insert(history);
+        }
+
+        public void Handle(MovieDownloadFailedEvent message)
+        {
+            // Record the failure against the known grab so it no longer counts as unfinished, whether or not the
+            // torrent was still tracked.
+            var grab = message.DownloadId.IsNullOrWhiteSpace() ? null : GetLatestGrab(message.DownloadId);
+
+            if (grab == null)
+            {
+                return;
+            }
+
+            var history = new DownloadHistory
+            {
+                EventType = DownloadHistoryEventType.DownloadFailed,
+                MovieId = message.MovieId,
+                DownloadId = message.DownloadId,
+                SourceTitle = message.SourceTitle,
+                Date = DateTime.UtcNow,
+                Protocol = grab.Protocol,
+                DownloadClientId = grab.DownloadClientId
+            };
+
+            history.Data.Add("DownloadClient", grab.Data.GetValueOrDefault("DownloadClient"));
+            history.Data.Add("DownloadClientName", grab.Data.GetValueOrDefault("DownloadClientName"));
 
             _repository.Insert(history);
         }
