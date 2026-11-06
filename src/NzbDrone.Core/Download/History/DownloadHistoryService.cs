@@ -26,6 +26,8 @@ namespace NzbDrone.Core.Download.History
                                           IHandle<MovieGrabbedEvent>,
                                           IHandle<MoviesDeletedEvent>,
                                           IHandle<MovieDownloadFailedEvent>,
+                                          IHandle<MovieFileImportedEvent>,
+                                          IHandle<MovieDownloadCompletedEvent>,
                                           IHandle<EpisodeImportedEvent>,
                                           IHandle<DownloadCompletedEvent>,
                                           IHandle<DownloadFailedEvent>,
@@ -190,6 +192,51 @@ namespace NzbDrone.Core.Download.History
 
             history.Data.Add("DownloadClient", grab.Data.GetValueOrDefault("DownloadClient"));
             history.Data.Add("DownloadClientName", grab.Data.GetValueOrDefault("DownloadClientName"));
+
+            _repository.Insert(history);
+        }
+
+        public void Handle(MovieFileImportedEvent message)
+        {
+            if (!message.NewDownload || message.DownloadId.IsNullOrWhiteSpace() || message.DownloadClientInfo == null)
+            {
+                return;
+            }
+
+            var history = new DownloadHistory
+            {
+                EventType = DownloadHistoryEventType.FileImported,
+                MovieId = message.ImportedMovie.MovieId,
+                DownloadId = message.DownloadId,
+                SourceTitle = message.MovieInfo.Path,
+                Date = DateTime.UtcNow,
+                Protocol = message.DownloadClientInfo.Protocol,
+                DownloadClientId = message.DownloadClientInfo.Id
+            };
+
+            history.Data.Add("DownloadClient", message.DownloadClientInfo.Type);
+            history.Data.Add("DownloadClientName", message.DownloadClientInfo.Name);
+
+            _repository.Insert(history);
+        }
+
+        public void Handle(MovieDownloadCompletedEvent message)
+        {
+            var downloadItem = message.TrackedDownload.DownloadItem;
+
+            var history = new DownloadHistory
+            {
+                EventType = DownloadHistoryEventType.DownloadImported,
+                MovieId = message.Movie.Id,
+                DownloadId = downloadItem.DownloadId,
+                SourceTitle = downloadItem.Title,
+                Date = DateTime.UtcNow,
+                Protocol = message.TrackedDownload.Protocol,
+                DownloadClientId = message.TrackedDownload.DownloadClient
+            };
+
+            history.Data.Add("DownloadClient", downloadItem.DownloadClientInfo.Type);
+            history.Data.Add("DownloadClientName", downloadItem.DownloadClientInfo.Name);
 
             _repository.Insert(history);
         }

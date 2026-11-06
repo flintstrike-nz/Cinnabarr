@@ -1101,3 +1101,11 @@ Built so far (4e-2, deciding whether a movie file may be imported):
 - **Decision.** `ImportDecisionMaker` (movie) runs a file through the specifications: not a sample, has an audio track, not still unpacking, not part of a multi-part movie, matches the folder and the grab, not already imported, enough free space, the grabbed release's quality, and whether it is an upgrade of the file the movie has.
 - **Checked.** Radarr's tests for all of this were ported (148); Core suite shows only the 18 known failures. Nothing imports a file yet.
 - **Next, 4e-3:** the import itself (moving or copying the file into the movie folder, replacing an older file, history and events) and importing a finished download.
+
+Built so far (4e-3a, importing a movie file):
+
+- **`ImportApprovedMovie`** imports the approved decisions: one file per movie (the best quality, then the largest), the file is moved or hard-linked/copied into the movie's folder under its configured name, an older file is moved to the recycle bin and replaced, and the new file is added with its quality, languages, release group, edition, media info and indexer flags. Failures (root folder missing, destination exists, recycle bin, permissions) are reported per file and published as `MovieImportFailedEvent`; success is `MovieFileImportedEvent`.
+- **Moving** (`MovieFileMovingService`) builds the path from the naming settings, creates the folder, sets permissions and the folder and file dates (the file date setting gains `Release` and `Cinemas` for movies), and the upgrade service replaces an existing file. There are no import scripts for movies, and extra files (subtitles and the like) are the next step (4e-5).
+- **History.** An imported movie is recorded as `DownloadFolderImported` in the movie history (which the "already imported" check reads), a deleted file as `MovieFileDeleted` (not for clean-up or an overridden file), and the download history gets the file and, when the whole download is done, `MovieDownloadCompletedEvent`.
+- **Checked.** Radarr's tests ported (25); Core suite shows only the 18 known failures.
+- **Next, 4e-3b:** importing a finished download: find the files of a completed movie download, decide, import, then mark the download imported (or blocked/pending), so a grabbed movie lands in the library.
