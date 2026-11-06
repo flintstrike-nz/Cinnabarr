@@ -28,6 +28,7 @@ namespace NzbDrone.Core.Download
     public class CompletedDownloadService : ICompletedDownloadService
     {
         private readonly IEventAggregator _eventAggregator;
+        private readonly ICompletedMovieDownloadService _completedMovieDownloadService;
         private readonly IHistoryService _historyService;
         private readonly IProvideImportItemService _provideImportItemService;
         private readonly IDownloadedEpisodesImportService _downloadedEpisodesImportService;
@@ -44,6 +45,7 @@ namespace NzbDrone.Core.Download
         private readonly Logger _logger;
 
         public CompletedDownloadService(IEventAggregator eventAggregator,
+                                        ICompletedMovieDownloadService completedMovieDownloadService,
                                         IHistoryService historyService,
                                         IProvideImportItemService provideImportItemService,
                                         IDownloadedEpisodesImportService downloadedEpisodesImportService,
@@ -60,6 +62,7 @@ namespace NzbDrone.Core.Download
                                         Logger logger)
         {
             _eventAggregator = eventAggregator;
+            _completedMovieDownloadService = completedMovieDownloadService;
             _historyService = historyService;
             _provideImportItemService = provideImportItemService;
             _downloadedEpisodesImportService = downloadedEpisodesImportService;
@@ -83,9 +86,11 @@ namespace NzbDrone.Core.Download
                 return;
             }
 
-            // A movie download is listed and seeded like any other; importing it comes with the movie import.
+            // A movie download is imported by the movie side.
             if (trackedDownload.RemoteMovie != null)
             {
+                _completedMovieDownloadService.Check(trackedDownload);
+
                 return;
             }
 
@@ -168,6 +173,13 @@ namespace NzbDrone.Core.Download
 
         public void Import(TrackedDownload trackedDownload)
         {
+            if (trackedDownload.RemoteMovie != null)
+            {
+                _completedMovieDownloadService.Import(trackedDownload);
+
+                return;
+            }
+
             SetImportItem(trackedDownload);
 
             if (!ValidatePath(trackedDownload))

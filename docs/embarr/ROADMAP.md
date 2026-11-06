@@ -1109,3 +1109,10 @@ Built so far (4e-3a, importing a movie file):
 - **History.** An imported movie is recorded as `DownloadFolderImported` in the movie history (which the "already imported" check reads), a deleted file as `MovieFileDeleted` (not for clean-up or an overridden file), and the download history gets the file and, when the whole download is done, `MovieDownloadCompletedEvent`.
 - **Checked.** Radarr's tests ported (25); Core suite shows only the 18 known failures.
 - **Next, 4e-3b:** importing a finished download: find the files of a completed movie download, decide, import, then mark the download imported (or blocked/pending), so a grabbed movie lands in the library.
+
+Built so far (4e-3b, importing a finished movie download):
+
+- **`DownloadedMovieImportService`** (ported from Radarr) looks at a download's folder or file, finds the video files, runs them through the import decision and imports the approved ones; it knows whether a folder can be cleaned up afterwards.
+- **Completed downloads.** `CompletedDownloadService` hands a movie download to a new `CompletedMovieDownloadService`: a finished download becomes "import pending" (the movie is known from the grab, never guessed from the title); importing it either marks it imported and publishes `MovieDownloadCompletedEvent`, or leaves it blocked with the reason for each file, or waiting if no file is eligible yet. A file that was imported before counts as done.
+- **Checked.** 28 new and ported tests; Core suite shows only the 18 known failures.
+- **Still to do for movies in 4e:** 4e-4 downloading a movie straight into its final place in the engine (with the movie names) and importing it file by file; 4e-5 extra files (subtitles), renaming existing movie files, and scanning the movie folders.
