@@ -1189,3 +1189,10 @@ Built so far (4h-3, the Search page):
 - **Screen:** *Search* in the sidebar (`/search`): a search box, a results table with the library match as a link, the rejections under each title, and a Grab button (amber when the release was rejected, as in interactive search).
 - **Checked.** Unit tests for the criteria mapping and the service; against the running app the search answers (empty without indexers), a missing query is a 400 and a grab of an unknown release a 404; lint, type check, build and the Host test pass. A search with real indexers needs network and is not covered here.
 - **Not done:** grabbing releases that match nothing in the library (adding the title from a result), category/indexer filters, and sorting columns.
+
+Built so far (4e-5d, movie subtitles):
+
+- **Ported from Radarr, in `NzbDrone.Core.Extras.MovieExtras`:** the movie extra-file base (`MovieExtraFile`, manager, repository, service), `MovieSubtitleFile` with its own `MovieSubtitleFiles` table (migration 249) and `MovieSubtitleService`, and `MovieExtraService`. The series versions are untouched. Radarr's tests are ported alongside.
+- **Behaviour:** when a movie is imported, subtitle files next to it (matched by name, or by title and year) are moved or copied beside the movie file with the right language tags, following the *Import Extra Files* and *Extra File Extensions* settings. Renaming a movie moves its subtitles with it; deleting a movie file sends its subtitles to the recycle bin; deleting a movie removes their records.
+- **Fixed on the way:** the new table was first missing the `Copy` column, which the ported repository tests caught.
+- **Not done:** other extras (`.nfo`, artwork, metadata files) and importing subtitles already beside existing movie files on a scan. Core tests still show only the 18 known baseline failures.

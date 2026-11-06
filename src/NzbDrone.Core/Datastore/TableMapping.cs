@@ -16,6 +16,7 @@ using NzbDrone.Core.Download.History;
 using NzbDrone.Core.Download.Pending;
 using NzbDrone.Core.Extras.Metadata;
 using NzbDrone.Core.Extras.Metadata.Files;
+using NzbDrone.Core.Extras.MovieExtras;
 using NzbDrone.Core.Extras.Others;
 using NzbDrone.Core.Extras.Subtitles;
 using NzbDrone.Core.History;
@@ -163,6 +164,7 @@ namespace NzbDrone.Core.Datastore
             Mapper.Entity<MovieBlocklist>("MovieBlocklist").RegisterModel();
             Mapper.Entity<MetadataFile>("MetadataFiles").RegisterModel();
             Mapper.Entity<SubtitleFile>("SubtitleFiles").RegisterModel();
+            Mapper.Entity<MovieSubtitleFile>("MovieSubtitleFiles").RegisterModel();
             Mapper.Entity<OtherExtraFile>("ExtraFiles").RegisterModel();
 
             Mapper.Entity<PendingRelease>("PendingReleases").RegisterModel()
