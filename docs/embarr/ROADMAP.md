@@ -1174,3 +1174,9 @@ Built so far (4g-3a, movie history and blocklist):
 - **Screen:** the movie page lists the movie's history (grabbed, imported, failed, file deleted, renamed, ignored) and, when there are any, its blocklisted releases with a *Remove* button.
 - **Checked.** Against the running app the three endpoints answer (200/200/204, and 400 without an id); repository test for the blocklist query; lint, type check, build and the Host container test pass.
 - **Not done:** the global Activity → History and Blocklist pages still list series only. Merging both media types there (paged, filtered by type) is the next piece, together with the movie file list API.
+
+Built so far (4g-3b, movie activity page):
+
+- `GET /api/v5/history/movie` without a `movieId` now returns the most recent movie events (last 30 days, at most 200) with the movie title; with a `movieId` it still returns that movie's events.
+- **Activity → Movie Activity** (`/activity/movies`) lists them with a link to each movie.
+- **Not done:** the main History page (paged, filtered, with column options) and Blocklist page are still series-only; folding movies into them, and a movie file list API, remain.

@@ -11,6 +11,7 @@ import CalendarPage from 'Calendar/CalendarPage';
 import NotFound from 'Components/NotFound';
 import LibraryIndex from 'Library/LibraryIndex';
 import AddNewMovie from 'Movie/AddNewMovie';
+import MovieActivity from 'Movie/MovieActivity';
 import MovieCalendar from 'Movie/MovieCalendar';
 import MovieDetails from 'Movie/MovieDetails';
 import MoviesIndex from 'Movie/MoviesIndex';
@@ -112,6 +113,7 @@ export function appRouteElements() {
         element={<Navigate to="/downloads" replace={true} />}
       />
 
+      <Route path="/activity/movies" element={<MovieActivity />} />
       <Route path="/activity/blocklist" element={<Blocklist />} />
       <Route path="/activity/indexer-queries" element={<IndexerQueries />} />
 

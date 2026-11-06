@@ -7,8 +7,10 @@ import { QualityModel } from 'Quality/Quality';
 import translate from 'Utilities/String/translate';
 import styles from './Movie.module.css';
 
-interface MovieHistoryItem {
+export interface MovieHistoryItem {
   id: number;
+  movieId: number;
+  movieTitle?: string;
   sourceTitle: string;
   quality: QualityModel;
   date: string;
@@ -28,7 +30,7 @@ interface MovieBlocklistItem {
 const NO_HISTORY: MovieHistoryItem[] = [];
 const NO_BLOCKLIST: MovieBlocklistItem[] = [];
 
-function getEventLabel(eventType: string) {
+export function getEventLabel(eventType: string) {
   switch (eventType) {
     case 'grabbed':
       return translate('Grabbed');
