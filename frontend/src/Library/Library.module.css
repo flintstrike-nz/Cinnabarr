@@ -1,0 +1,52 @@
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  margin-bottom: 16px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
+}
+
+.tile {
+  position: relative;
+  display: block;
+}
+
+.poster {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+
+  border-radius: 4px;
+  background-color: rgb(128 128 128 / 20%);
+  object-fit: cover;
+}
+
+.badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background-color: rgb(0 0 0 / 65%);
+  color: #fff;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.title {
+  overflow: hidden;
+  margin-top: 6px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: bold;
+}
+
+.meta {
+  font-size: 12px;
+  opacity: 0.75;
+}
