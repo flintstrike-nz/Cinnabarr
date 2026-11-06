@@ -6,7 +6,7 @@ namespace NzbDrone.Core.Indexers
 {
     public interface ISeedConfigProvider
     {
-        TorrentSeedConfiguration GetSeedConfiguration(RemoteEpisode release);
+        TorrentSeedConfiguration GetSeedConfiguration(RemoteMedia release);
         TorrentSeedConfiguration GetSeedConfiguration(int indexerId, bool fullSeason);
     }
 
@@ -19,19 +19,22 @@ namespace NzbDrone.Core.Indexers
             _cachedIndexerSettingsProvider = cachedIndexerSettingsProvider;
         }
 
-        public TorrentSeedConfiguration GetSeedConfiguration(RemoteEpisode remoteEpisode)
+        public TorrentSeedConfiguration GetSeedConfiguration(RemoteMedia remote)
         {
-            if (remoteEpisode.Release.DownloadProtocol != DownloadProtocol.Torrent)
+            if (remote.Release.DownloadProtocol != DownloadProtocol.Torrent)
             {
                 return null;
             }
 
-            if (remoteEpisode.Release.IndexerId == 0)
+            if (remote.Release.IndexerId == 0)
             {
                 return null;
             }
 
-            return GetSeedConfiguration(remoteEpisode.Release.IndexerId, remoteEpisode.ParsedEpisodeInfo.FullSeason);
+            // Only a series release can be a full season; a movie never uses the season pack goal.
+            var fullSeason = remote is RemoteEpisode { ParsedEpisodeInfo: { } parsed } && parsed.FullSeason;
+
+            return GetSeedConfiguration(remote.Release.IndexerId, fullSeason);
         }
 
         public TorrentSeedConfiguration GetSeedConfiguration(int indexerId, bool fullSeason)

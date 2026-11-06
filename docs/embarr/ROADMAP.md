@@ -1034,3 +1034,11 @@ Built so far (4d-1, movie search against the indexers):
 - **RSS.** `FetchAndParseRssService.FetchMovies()` reads each indexer's movie feed. It is not wired into the RSS sync yet: grabbing a movie is 4d-2.
 - **Checked.** 15 new tests; Core suite shows only the 18 known failures.
 - **Next:** 4d-2 grabbing (download service, history, tracked downloads and the queue for movies, RSS sync for movies, the deferred specifications); 4d-3 search commands (missing, cutoff unmet, per movie).
+
+Built so far (4d-2a, grabbing a movie):
+
+- **`RemoteMedia`** is the new shared base of `RemoteEpisode` and `RemoteMovie` (release, seed configuration, custom formats and score, languages, release source, plus the tags and "is recent" of whatever it is for). The download client contract (`IDownloadClient.Download`), `TorrentClientBase`, the qBittorrent client (which the built-in engine uses), `DownloadService` and the indexer seed configuration all take a `RemoteMedia`, so one grab path serves both. A movie never gets a season-pack seed goal.
+- **`DownloadService`** can grab a `RemoteMovie`: it picks clients by the movie's tags, sets the seed configuration, sends it to the client and publishes `MovieGrabbedEvent` (the episode event is unchanged).
+- **Movie history and blocklist** are their own tables (migration 246: `MovieHistory`, `MovieBlocklist`) rather than new columns on the series ones, so the series pipeline is untouched. `MovieHistoryService` records the grab with the same details as a series grab and cleans up when a movie is deleted. `MovieBlocklistService` blocks a release and answers "is this torrent hash blocklisted for this movie" (used by the torrent client's check at grab time and when it rejects a torrent's files); "Clear blocklist" clears both.
+- **Checked.** 12 new tests (grab, history, blocklist, tables); Core suite shows only the 18 known failures; the Http suite's 14 password-reset failures are unrelated.
+- **Next, 4d-2b:** processing movie decisions (prioritise, grab, skip duplicates), RSS sync for movies, the movie link in the engine, then the tracked-download and queue side and the deferred specifications; 4d-3: search commands.

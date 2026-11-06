@@ -19,7 +19,7 @@ namespace NzbDrone.Core.Download
 {
     public interface IDownloadService
     {
-        Task DownloadReport(RemoteEpisode remoteEpisode, int? downloadClientId);
+        Task DownloadReport(RemoteMedia remote, int? downloadClientId);
     }
 
     public class DownloadService : IDownloadService
@@ -52,29 +52,29 @@ namespace NzbDrone.Core.Download
             _logger = logger;
         }
 
-        public async Task DownloadReport(RemoteEpisode remoteEpisode, int? downloadClientId)
+        public async Task DownloadReport(RemoteMedia remote, int? downloadClientId)
         {
-            var filterBlockedClients = remoteEpisode.Release.PendingReleaseReason == PendingReleaseReason.DownloadClientUnavailable;
+            var filterBlockedClients = remote.Release.PendingReleaseReason == PendingReleaseReason.DownloadClientUnavailable;
 
-            var tags = remoteEpisode.Series?.Tags;
+            var tags = remote.Tags;
 
             if (downloadClientId.HasValue)
             {
                 var specificClient = _downloadClientProvider.Get(downloadClientId.Value);
-                await DownloadReport(remoteEpisode, specificClient);
+                await DownloadReport(remote, specificClient);
 
                 return;
             }
 
             var availableClients = _downloadClientProvider.GetDownloadClients(
-                remoteEpisode.Release.DownloadProtocol,
-                remoteEpisode.Release.IndexerId,
+                remote.Release.DownloadProtocol,
+                remote.Release.IndexerId,
                 filterBlockedClients,
                 tags).ToList();
 
             if (!availableClients.Any())
             {
-                throw new DownloadClientUnavailableException($"No {remoteEpisode.Release.DownloadProtocol} download client available");
+                throw new DownloadClientUnavailableException($"No {remote.Release.DownloadProtocol} download client available");
             }
 
             var triedClients = new HashSet<int>();
@@ -89,10 +89,10 @@ namespace NzbDrone.Core.Download
                 try
                 {
                     _logger.Debug("Attempting download with client: {0}", downloadClient.Definition.Name);
-                    await DownloadReport(remoteEpisode, downloadClient);
+                    await DownloadReport(remote, downloadClient);
 
                     _downloadClientProvider.ReportSuccessfulDownloadClient(
-                        remoteEpisode.Release.DownloadProtocol,
+                        remote.Release.DownloadProtocol,
                         downloadClient.Definition.Id);
 
                     return;
@@ -115,86 +115,107 @@ namespace NzbDrone.Core.Download
                 }
             }
 
-            throw new DownloadClientUnavailableException("All '{0}' download clients failed", remoteEpisode.Release.DownloadProtocol);
+            throw new DownloadClientUnavailableException("All '{0}' download clients failed", remote.Release.DownloadProtocol);
         }
 
-        private async Task DownloadReport(RemoteEpisode remoteEpisode, IDownloadClient downloadClient)
+        private async Task DownloadReport(RemoteMedia remote, IDownloadClient downloadClient)
         {
-            Ensure.That(remoteEpisode.Series, () => remoteEpisode.Series).IsNotNull();
-            Ensure.That(remoteEpisode.Episodes, () => remoteEpisode.Episodes).HasItems();
+            switch (remote)
+            {
+                case RemoteEpisode remoteEpisode:
+                    Ensure.That(remoteEpisode.Series, () => remoteEpisode.Series).IsNotNull();
+                    Ensure.That(remoteEpisode.Episodes, () => remoteEpisode.Episodes).HasItems();
+                    break;
+                case RemoteMovie remoteMovie:
+                    Ensure.That(remoteMovie.Movie, () => remoteMovie.Movie).IsNotNull();
+                    break;
+            }
 
-            var downloadTitle = remoteEpisode.Release.Title;
+            var downloadTitle = remote.Release.Title;
 
             if (downloadClient == null)
             {
-                throw new DownloadClientUnavailableException($"{remoteEpisode.Release.DownloadProtocol} Download client isn't configured yet");
+                throw new DownloadClientUnavailableException($"{remote.Release.DownloadProtocol} Download client isn't configured yet");
             }
 
             // Get the seed configuration for this release.
-            remoteEpisode.SeedConfiguration = _seedConfigProvider.GetSeedConfiguration(remoteEpisode);
+            remote.SeedConfiguration = _seedConfigProvider.GetSeedConfiguration(remote);
 
             // Limit grabs to 2 per second.
-            if (remoteEpisode.Release.DownloadUrl.IsNotNullOrWhiteSpace() && !remoteEpisode.Release.DownloadUrl.StartsWith("magnet:"))
+            if (remote.Release.DownloadUrl.IsNotNullOrWhiteSpace() && !remote.Release.DownloadUrl.StartsWith("magnet:"))
             {
-                var url = new HttpUri(remoteEpisode.Release.DownloadUrl);
+                var url = new HttpUri(remote.Release.DownloadUrl);
                 await _rateLimitService.WaitAndPulseAsync(url.Host, TimeSpan.FromSeconds(2));
             }
 
             IIndexer indexer = null;
 
-            if (remoteEpisode.Release.IndexerId > 0)
+            if (remote.Release.IndexerId > 0)
             {
-                indexer = _indexerFactory.GetInstance(_indexerFactory.Get(remoteEpisode.Release.IndexerId));
+                indexer = _indexerFactory.GetInstance(_indexerFactory.Get(remote.Release.IndexerId));
             }
 
             string downloadClientId;
             try
             {
-                downloadClientId = await downloadClient.Download(remoteEpisode, indexer);
+                downloadClientId = await downloadClient.Download(remote, indexer);
                 _downloadClientStatusService.RecordSuccess(downloadClient.Definition.Id);
-                _indexerStatusService.RecordSuccess(remoteEpisode.Release.IndexerId);
+                _indexerStatusService.RecordSuccess(remote.Release.IndexerId);
             }
             catch (ReleaseUnavailableException)
             {
-                _logger.Trace("Release {0} no longer available on indexer.", remoteEpisode);
+                _logger.Trace("Release {0} no longer available on indexer.", remote);
                 throw;
             }
             catch (ReleaseBlockedException)
             {
-                _logger.Trace("Release {0} previously added to blocklist, not sending to download client again.", remoteEpisode);
+                _logger.Trace("Release {0} previously added to blocklist, not sending to download client again.", remote);
                 throw;
             }
             catch (DownloadClientRejectedReleaseException)
             {
-                _logger.Trace("Release {0} rejected by download client, possible duplicate.", remoteEpisode);
+                _logger.Trace("Release {0} rejected by download client, possible duplicate.", remote);
                 throw;
             }
             catch (ReleaseDownloadException ex)
             {
                 if (ex.InnerException is TooManyRequestsException http429)
                 {
-                    _indexerStatusService.RecordFailure(remoteEpisode.Release.IndexerId, http429.RetryAfter);
+                    _indexerStatusService.RecordFailure(remote.Release.IndexerId, http429.RetryAfter);
                 }
                 else
                 {
-                    _indexerStatusService.RecordFailure(remoteEpisode.Release.IndexerId);
+                    _indexerStatusService.RecordFailure(remote.Release.IndexerId);
                 }
 
                 throw;
             }
 
-            var episodeGrabbedEvent = new EpisodeGrabbedEvent(remoteEpisode);
-            episodeGrabbedEvent.DownloadClient = downloadClient.Name;
-            episodeGrabbedEvent.DownloadClientId = downloadClient.Definition.Id;
-            episodeGrabbedEvent.DownloadClientName = downloadClient.Definition.Name;
+            _logger.ProgressInfo("Report sent to {0}. Indexer {1}. {2}", downloadClient.Definition.Name, remote.Release.Indexer, downloadTitle);
 
-            if (downloadClientId.IsNotNullOrWhiteSpace())
+            var downloadId = downloadClientId.IsNotNullOrWhiteSpace() ? downloadClientId : null;
+
+            switch (remote)
             {
-                episodeGrabbedEvent.DownloadId = downloadClientId;
+                case RemoteEpisode remoteEpisode:
+                    _eventAggregator.PublishEvent(new EpisodeGrabbedEvent(remoteEpisode)
+                    {
+                        DownloadClient = downloadClient.Name,
+                        DownloadClientId = downloadClient.Definition.Id,
+                        DownloadClientName = downloadClient.Definition.Name,
+                        DownloadId = downloadId
+                    });
+                    break;
+                case RemoteMovie remoteMovie:
+                    _eventAggregator.PublishEvent(new MovieGrabbedEvent(remoteMovie)
+                    {
+                        DownloadClient = downloadClient.Name,
+                        DownloadClientId = downloadClient.Definition.Id,
+                        DownloadClientName = downloadClient.Definition.Name,
+                        DownloadId = downloadId
+                    });
+                    break;
             }
-
-            _logger.ProgressInfo("Report sent to {0}. Indexer {1}. {2}", downloadClient.Definition.Name, remoteEpisode.Release.Indexer, downloadTitle);
-            _eventAggregator.PublishEvent(episodeGrabbedEvent);
         }
     }
 }

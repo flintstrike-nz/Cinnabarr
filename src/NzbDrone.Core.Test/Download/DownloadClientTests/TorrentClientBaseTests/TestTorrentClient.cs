@@ -21,8 +21,9 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.TorrentClientBaseTests
             IDiskProvider diskProvider,
             ILocalizationService localizationService,
             IBlocklistService blocklistService,
+            IMovieBlocklistService movieBlocklistService,
             Logger logger)
-            : base(torrentFileInfoReader, httpClient, configService, diskProvider, localizationService, blocklistService, logger)
+            : base(torrentFileInfoReader, httpClient, configService, diskProvider, localizationService, blocklistService, movieBlocklistService, logger)
         {
         }
 
@@ -34,8 +35,8 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.TorrentClientBaseTests
         public override bool PreferTorrentFile => _preferTorrentFile;
         public void SetPreferTorrentFile(bool value) => _preferTorrentFile = value;
 
-        protected override string AddFromMagnetLink(RemoteEpisode remoteEpisode, string hash, string magnetLink) => hash;
-        protected override string AddFromTorrentFile(RemoteEpisode remoteEpisode, string hash, string filename, byte[] fileContent) => hash;
+        protected override string AddFromMagnetLink(RemoteMedia remote, string hash, string magnetLink) => hash;
+        protected override string AddFromTorrentFile(RemoteMedia remote, string hash, string filename, byte[] fileContent) => hash;
 
         public override IEnumerable<DownloadClientItem> GetItems() => Enumerable.Empty<DownloadClientItem>();
         public override void RemoveItem(DownloadClientItem item, bool deleteData)
