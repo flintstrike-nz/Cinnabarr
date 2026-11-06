@@ -1222,3 +1222,5 @@ Built so far (4g-5, editing a movie):
 
 - The movie page has an *Edit* button (quality profile and minimum availability, saved with the ordinary movie update) and a *Refresh* button (runs the `RefreshMovie` command for that movie).
 - **Not done:** changing the movie's folder (there is no move-files command for movies yet, so the path is not editable), tags, and editing several movies at once from the Library page. Checked with lint, type check and the build only.
+
+Checked in a browser (after 4g-5): the app was run against a stand-in metadata server with a small movie library, and driven with Playwright through Import Movies (folder list, lookup, import), the movie page (file table, edit panel, delete confirmation), the Calendar month view (the release shows on its day), Search (no indexers: "No results"), and the Wanted, Activity and Library pages. It found and fixed two bugs: the live-update listener had no handler for movie changes (a console error on every change), and the Calendar showed "No series found" for a library of only movies.

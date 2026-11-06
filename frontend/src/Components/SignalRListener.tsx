@@ -283,6 +283,20 @@ function SignalRListener() {
       return;
     }
 
+    if (name === 'movie') {
+      // A movie was added, changed or removed: the lists and the open movie page refetch.
+      queryClient.invalidateQueries({ queryKey: ['/movie'] });
+
+      if (body.resource?.id) {
+        queryClient.invalidateQueries({
+          queryKey: [`/movie/${body.resource.id}`],
+        });
+        queryClient.invalidateQueries({ queryKey: ['/moviefile'] });
+      }
+
+      return;
+    }
+
     if (name === 'tag') {
       if (body.action !== 'sync') {
         return;

@@ -21,6 +21,7 @@ import EpisodeFileProvider from 'EpisodeFile/EpisodeFileProvider';
 import { useCustomFiltersList } from 'Filters/useCustomFilters';
 import useMeasure from 'Helpers/Hooks/useMeasure';
 import { align, icons } from 'Helpers/Props';
+import { useHasMovies } from 'Movie/useMovies';
 import NoSeries from 'Series/NoSeries';
 import { useHasSeries } from 'Series/useSeries';
 import selectUniqueIds from 'Utilities/Object/selectUniqueIds';
@@ -51,7 +52,9 @@ function CalendarPage() {
 
   const isRssSyncExecuting = useCommandExecuting(CommandNames.RssSync);
   const customFilters = useCustomFiltersList('calendar');
-  const hasSeries = useHasSeries();
+  // The calendar also lists movie releases, so a library of only movies is enough.
+  const hasMovies = useHasMovies();
+  const hasSeries = useHasSeries() || hasMovies;
 
   const [pageContentRef, { width }] = useMeasure();
   const [isCalendarLinkModalOpen, setIsCalendarLinkModalOpen] = useState(false);
