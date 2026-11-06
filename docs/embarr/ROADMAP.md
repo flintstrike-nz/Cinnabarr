@@ -1077,3 +1077,10 @@ Built so far (4d-3a, the remaining movie specifications):
 - **Custom formats from history:** a grabbed movie in the history can be scored (needed by the history check).
 - **Checked.** 61 new tests; Core suite shows only the 18 known failures.
 - **Next, 4d-3b:** the "wanted" queries for movies (missing, cutoff unmet) with their search commands, then 4e (import and naming).
+
+Built so far (4d-3b, searching for what is wanted):
+
+- **Wanted queries.** `MovieCutoffService` lists monitored movies whose file is below the profile's cutoff (or below the best allowed quality when the profile can't be upgraded); movies with no file are the "missing" list. Both work from the existing repository queries, now covered by database tests.
+- **Search commands.** `MissingMoviesSearchCommand` and `CutoffUnmetMoviesSearchCommand` search every wanted, monitored movie that is not already in the queue, the one searched longest ago first. They are not scheduled yet (like Sonarr, a missing search is something you run or schedule yourself).
+- **Checked.** 13 new tests; Core suite shows only the 18 known failures.
+- **That completes 4d** (movie search, RSS, grabbing, tracking, failure handling, decision specifications and the wanted searches). **Next, 4e:** importing a finished movie, naming and renaming, and the movie folder.
