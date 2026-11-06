@@ -13,6 +13,7 @@ import { useQualityProfilesData } from 'Settings/Profiles/Quality/useQualityProf
 import formatBytes from 'Utilities/Number/formatBytes';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
+import MovieEditPanel from './MovieEditPanel';
 import MovieFiles from './MovieFiles';
 import MovieHistory from './MovieHistory';
 import MovieOrganizeModal from './MovieOrganizeModal';
@@ -25,6 +26,7 @@ import {
 import {
   useDeleteMovie,
   useMovie,
+  useRefreshMovie,
   useSearchMovie,
   useUpdateMovie,
 } from './useMovies';
@@ -131,6 +133,8 @@ function MovieDetails() {
   const { deleteMovie, isDeleting } = useDeleteMovie(id);
   const [showSearch, setShowSearch] = useState(false);
   const [isOrganizeOpen, setIsOrganizeOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const { refreshMovie, isRefreshing } = useRefreshMovie();
   const [isDeleteFilesConfirmOpen, setIsDeleteFilesConfirmOpen] =
     useState(false);
 
@@ -147,6 +151,14 @@ function MovieDetails() {
   const handleInteractiveSearchPress = useCallback(() => {
     setShowSearch((value) => !value);
   }, []);
+
+  const handleEditToggle = useCallback(() => {
+    setIsEditing((value) => !value);
+  }, []);
+
+  const handleRefreshPress = useCallback(() => {
+    refreshMovie(id);
+  }, [refreshMovie, id]);
 
   const handleOrganizeOpen = useCallback(() => {
     setIsOrganizeOpen(true);
@@ -217,6 +229,10 @@ function MovieDetails() {
 
             <div className={styles.overview}>{movie.overview}</div>
 
+            {isEditing ? (
+              <MovieEditPanel movie={movie} onDone={handleEditToggle} />
+            ) : null}
+
             <div className={styles.actions}>
               <Button onPress={handleMonitoredPress}>
                 <Icon
@@ -234,6 +250,14 @@ function MovieDetails() {
               <Button onPress={handleInteractiveSearchPress}>
                 <Icon name={icons.INTERACTIVE} />{' '}
                 {translate('InteractiveSearch')}
+              </Button>
+
+              <Button onPress={handleEditToggle}>
+                <Icon name={icons.EDIT} /> {translate('Edit')}
+              </Button>
+
+              <Button isDisabled={isRefreshing} onPress={handleRefreshPress}>
+                <Icon name={icons.REFRESH} /> {translate('Refresh')}
               </Button>
 
               <Button isDisabled={!movie.hasFile} onPress={handleOrganizeOpen}>
