@@ -62,6 +62,7 @@ namespace NzbDrone.Core.Download.Engine
         private readonly IEngineProcessLauncher _processLauncher;
         private readonly IHttpClient _httpClient;
         private readonly IEngineClientRegistry _engineClientRegistry;
+        private readonly IEngineProfileBackup _engineProfileBackup;
         private readonly IDownloadClientFactory _downloadClientFactory;
         private readonly IDownloadClientStatusService _downloadClientStatusService;
         private readonly IEventAggregator _eventAggregator;
@@ -85,6 +86,7 @@ namespace NzbDrone.Core.Download.Engine
                                 IEngineProcessLauncher processLauncher,
                                 IHttpClient httpClient,
                                 IEngineClientRegistry engineClientRegistry,
+                                IEngineProfileBackup engineProfileBackup,
                                 IDownloadClientFactory downloadClientFactory,
                                 IDownloadClientStatusService downloadClientStatusService,
                                 IEventAggregator eventAggregator,
@@ -95,6 +97,7 @@ namespace NzbDrone.Core.Download.Engine
             _processLauncher = processLauncher;
             _httpClient = httpClient;
             _engineClientRegistry = engineClientRegistry;
+            _engineProfileBackup = engineProfileBackup;
             _downloadClientFactory = downloadClientFactory;
             _downloadClientStatusService = downloadClientStatusService;
             _eventAggregator = eventAggregator;
@@ -470,6 +473,9 @@ namespace NzbDrone.Core.Download.Engine
 
         private bool StartEngine(CancellationToken token)
         {
+            // A profile restored from a backup replaces the live one here, while the engine is not running.
+            _engineProfileBackup.ApplyStagedRestore();
+
             _port = GetFreeLoopbackPort();
             EnsurePrivateEngineFolder();
 
