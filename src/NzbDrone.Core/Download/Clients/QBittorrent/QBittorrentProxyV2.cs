@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using Newtonsoft.Json.Linq;
 using NLog;
 using NzbDrone.Common.Cache;
 using NzbDrone.Common.Extensions;
@@ -508,6 +509,21 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         public void ToggleAlternativeSpeedLimits(QBittorrentSettings settings)
         {
             var request = BuildRequest(settings).Resource("/api/v2/transfer/toggleSpeedLimitsMode").Post();
+            ProcessRequest(request, settings);
+        }
+
+        public JObject GetPreferencesJson(QBittorrentSettings settings)
+        {
+            var request = BuildRequest(settings).Resource("/api/v2/app/preferences");
+
+            return JObject.Parse(ProcessRequest(request, settings));
+        }
+
+        public void SetPreferencesJson(JObject preferences, QBittorrentSettings settings)
+        {
+            var request = BuildRequest(settings).Resource("/api/v2/app/setPreferences")
+                                                .Post()
+                                                .AddFormParameter("json", preferences.ToString(Newtonsoft.Json.Formatting.None));
             ProcessRequest(request, settings);
         }
 

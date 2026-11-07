@@ -15,6 +15,7 @@ import {
   SetChildSave,
 } from 'typings/Settings/SettingsState';
 import translate from 'Utilities/String/translate';
+import EngineNetworkOptions from './EngineNetworkOptions';
 import EngineOrphanOptions from './EngineOrphanOptions';
 import EngineSeedingOptions from './EngineSeedingOptions';
 import { useManageDownloadClientSettings } from './useDownloadClientSettings';
@@ -145,6 +146,8 @@ function DownloadClientOptions({
           </Form>
         </FieldSet>
       ) : null}
+
+      <EngineNetworkOptions />
 
       {hasSettings && isFetched && !error ? (
         <EngineSeedingOptions

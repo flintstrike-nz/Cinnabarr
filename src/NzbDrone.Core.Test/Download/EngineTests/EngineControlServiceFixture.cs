@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using FluentAssertions;
 using Moq;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.Clients.QBittorrent;
@@ -42,6 +43,47 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             });
             _proxy.Setup(p => p.GetAlternativeSpeedLimitsEnabled(_settings)).Returns(() => _altSpeed);
             _proxy.Setup(p => p.GetTransferInfo(_settings)).Returns(new QBittorrentTransferInfo { DownloadSpeed = 1000, UploadSpeed = 200 });
+        }
+
+        [Test]
+        public void should_read_the_engine_preferences_in_kib_per_second()
+        {
+            _proxy.Setup(p => p.GetPreferencesJson(_settings)).Returns(JObject.Parse(
+                "{\"listen_port\": 6881, \"upnp\": true, \"dl_limit\": 2048000, \"up_limit\": 0, \"max_active_downloads\": 3, \"anonymous_mode\": true, \"preallocate_all\": true, \"current_network_interface\": \"eth0\"}"));
+
+            var preferences = Subject.GetPreferences();
+
+            preferences.ListenPort.Should().Be(6881);
+            preferences.Upnp.Should().BeTrue();
+            preferences.DownloadLimit.Should().Be(2000);
+            preferences.UploadLimit.Should().Be(0);
+            preferences.MaxActiveDownloads.Should().Be(3);
+            preferences.AnonymousMode.Should().BeTrue();
+            preferences.PreallocateDisk.Should().BeTrue();
+            preferences.NetworkInterface.Should().Be("eth0");
+        }
+
+        [Test]
+        public void should_write_the_engine_preferences_in_bytes_per_second()
+        {
+            JObject sent = null;
+            _proxy.Setup(p => p.SetPreferencesJson(It.IsAny<JObject>(), _settings)).Callback<JObject, QBittorrentSettings>((json, _) => sent = json);
+
+            Subject.SetPreferences(new EnginePreferences { ListenPort = 51413, DownloadLimit = 500, UploadLimit = -5, MaxActiveTorrents = 8, Dht = true });
+
+            sent.Value<int>("listen_port").Should().Be(51413);
+            sent.Value<int>("dl_limit").Should().Be(500 * 1024);
+            sent.Value<int>("up_limit").Should().Be(0);
+            sent.Value<int>("max_active_torrents").Should().Be(8);
+            sent.Value<bool>("dht").Should().BeTrue();
+        }
+
+        [Test]
+        public void should_refuse_a_listening_port_out_of_range()
+        {
+            Assert.Throws<EngineControlException>(() => Subject.SetPreferences(new EnginePreferences { ListenPort = 70000 }));
+
+            _proxy.Verify(p => p.SetPreferencesJson(It.IsAny<JObject>(), It.IsAny<QBittorrentSettings>()), Times.Never());
         }
 
         [Test]

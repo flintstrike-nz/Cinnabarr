@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 
+using Newtonsoft.Json.Linq;
 using NLog;
 using NzbDrone.Common.Cache;
 
@@ -51,6 +52,10 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         QBittorrentTransferInfo GetTransferInfo(QBittorrentSettings settings);
         bool GetAlternativeSpeedLimitsEnabled(QBittorrentSettings settings);
         void ToggleAlternativeSpeedLimits(QBittorrentSettings settings);
+
+        // The engine's preferences as the JSON the engine sends (only the built-in engine's settings screen uses them).
+        JObject GetPreferencesJson(QBittorrentSettings settings);
+        void SetPreferencesJson(JObject preferences, QBittorrentSettings settings);
     }
 
     public interface IQBittorrentProxySelector
