@@ -10,8 +10,10 @@ using NzbDrone.Core.Download.Clients.QBittorrent;
 using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Download.History;
 using NzbDrone.Core.Indexers;
+using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Test.Framework;
+using NzbDrone.Test.Common;
 
 namespace NzbDrone.Core.Test.Download.EngineTests
 {
@@ -93,6 +95,42 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             Subject.Process(GivenClient());
 
             VerifyRemoved(true);
+        }
+
+        [Test]
+        public void should_list_a_torrent_past_its_goal_that_the_engine_would_not_remove()
+        {
+            _torrent.Ratio = 1.2f;
+            _proxy.Setup(p => p.RemoveTorrent(Hash, false, _settings)).Throws(new InvalidOperationException("engine busy"));
+
+            Subject.Process(GivenClient());
+
+            Subject.OverdueTorrents.Should().Equal("Show");
+            Mocker.GetMock<IEventAggregator>().Verify(e => e.PublishEvent(It.IsAny<EngineSeedingProcessedEvent>()), Times.Once());
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_stop_listing_a_torrent_once_it_is_removed()
+        {
+            _torrent.Ratio = 1.2f;
+            var attempts = 0;
+            _proxy.Setup(p => p.RemoveTorrent(Hash, false, _settings))
+                  .Callback(() =>
+                  {
+                      if (attempts++ == 0)
+                      {
+                          throw new InvalidOperationException("engine busy");
+                      }
+                  });
+
+            Subject.Process(GivenClient());
+            Subject.OverdueTorrents.Should().NotBeEmpty();
+
+            Subject.Process(GivenClient());
+
+            Subject.OverdueTorrents.Should().BeEmpty();
+            ExceptionVerification.IgnoreWarns();
         }
 
         [Test]
