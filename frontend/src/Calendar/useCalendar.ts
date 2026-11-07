@@ -79,18 +79,12 @@ const VIEW_RANGES: Record<
   forecast: 'day',
 };
 
-const useCalendar = () => {
-  const dates = useCalendarDates();
-  const time = useCalendarTime();
+// What the calendar's filter asks for; shared with the movie releases shown on it.
+export const useCalendarFilterValues = () => {
   const selectedFilterKey = useCalendarOption('selectedFilterKey');
-  const view = useCalendarOption('view');
   const customFilters = useCustomFiltersList('calendar');
 
-  const { start, end } = useMemo(() => {
-    return getPopulatableRange(dates[0], dates[dates.length - 1], view);
-  }, [dates, view]);
-
-  const { includeUnmonitored, includeSpecials, tags } = useMemo(() => {
+  return useMemo(() => {
     const selectedFilters = findSelectedFilters(
       selectedFilterKey,
       FILTERS,
@@ -123,6 +117,19 @@ const useCalendar = () => {
       }
     );
   }, [customFilters, selectedFilterKey]);
+};
+
+const useCalendar = () => {
+  const dates = useCalendarDates();
+  const time = useCalendarTime();
+  const view = useCalendarOption('view');
+
+  const { start, end } = useMemo(() => {
+    return getPopulatableRange(dates[0], dates[dates.length - 1], view);
+  }, [dates, view]);
+
+  const { includeUnmonitored, includeSpecials, tags } =
+    useCalendarFilterValues();
 
   const { queryKey, ...result } = useApiQuery<CalendarItem[]>({
     path: '/calendar',
