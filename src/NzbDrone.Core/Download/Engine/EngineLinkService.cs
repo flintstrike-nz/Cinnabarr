@@ -10,6 +10,7 @@ using NzbDrone.Core.Download.History;
 using NzbDrone.Core.History;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Messaging.Events;
+using NzbDrone.Core.Movies;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
@@ -56,6 +57,8 @@ namespace NzbDrone.Core.Download.Engine
         private readonly IEpisodeService _episodeService;
         private readonly IHistoryRepository _historyRepository;
         private readonly IDownloadHistoryRepository _downloadHistoryRepository;
+        private readonly IMovieService _movieService;
+        private readonly IMovieHistoryRepository _movieHistoryRepository;
         private readonly Logger _logger;
 
         public EngineLinkService(IEngineClientRegistry engineClientRegistry,
@@ -64,6 +67,8 @@ namespace NzbDrone.Core.Download.Engine
                                  IEpisodeService episodeService,
                                  IHistoryRepository historyRepository,
                                  IDownloadHistoryRepository downloadHistoryRepository,
+                                 IMovieService movieService,
+                                 IMovieHistoryRepository movieHistoryRepository,
                                  Logger logger)
         {
             _engineClientRegistry = engineClientRegistry;
@@ -72,6 +77,8 @@ namespace NzbDrone.Core.Download.Engine
             _episodeService = episodeService;
             _historyRepository = historyRepository;
             _downloadHistoryRepository = downloadHistoryRepository;
+            _movieService = movieService;
+            _movieHistoryRepository = movieHistoryRepository;
             _logger = logger;
         }
 
@@ -91,9 +98,14 @@ namespace NzbDrone.Core.Download.Engine
                 return false;
             }
 
+            if (link.MediaType == MovieMediaType)
+            {
+                return TryRestoreMovie(downloadClient, downloadId, link);
+            }
+
             if (link.MediaType != SeriesMediaType)
             {
-                _logger.Debug("Link for {0} is for media type '{1}', which can't be restored yet", downloadId, link.MediaType);
+                _logger.Debug("Link for {0} is for media type '{1}', which can't be restored", downloadId, link.MediaType);
                 return false;
             }
 
@@ -185,6 +197,73 @@ namespace NzbDrone.Core.Download.Engine
             }
 
             _logger.Info("Restored link for '{0}' to {1} ({2} episode(s)) from the engine sidecar", sourceTitle, series.Title, episodes.Count);
+
+            return true;
+        }
+
+        private bool TryRestoreMovie(DownloadClientDefinition downloadClient, string downloadId, EngineLink link)
+        {
+            var movie = link.TmdbId > 0 ? _movieService.FindByTmdbId(link.TmdbId) : null;
+
+            if (movie == null)
+            {
+                _logger.Debug("Link for {0} is for TMDb id {1}, which isn't in the library", downloadId, link.TmdbId);
+                return false;
+            }
+
+            var sourceTitle = link.SourceTitle ?? string.Empty;
+            var quality = ToQualityModel(link.Quality) ?? QualityParser.ParseQuality(sourceTitle);
+            var date = link.Grabbed == default ? DateTime.UtcNow : link.Grabbed;
+
+            var history = new MovieHistory
+            {
+                EventType = MovieHistoryEventType.Grabbed,
+                Date = date,
+                Quality = quality,
+                SourceTitle = sourceTitle,
+                MovieId = movie.Id,
+                DownloadId = downloadId,
+                Languages = LanguageParser.ParseLanguages(sourceTitle)
+            };
+
+            history.Data.Add("Indexer", link.Indexer);
+            history.Data.Add("DownloadClient", downloadClient.Implementation);
+            history.Data.Add("DownloadClientName", downloadClient.Name);
+            history.Data.Add("Protocol", ((int)DownloadProtocol.Torrent).ToString());
+            history.Data.Add("TorrentInfoHash", downloadId);
+            history.Data.Add(RestoredFromKey, "EngineSidecar");
+
+            _movieHistoryRepository.Insert(history);
+
+            // The download-level grab makes the restored torrent count as unfinished, so reconcile can report it if it
+            // later disappears from the engine.
+            try
+            {
+                var grab = new DownloadHistory
+                {
+                    EventType = DownloadHistoryEventType.DownloadGrabbed,
+                    MovieId = movie.Id,
+                    DownloadId = downloadId,
+                    SourceTitle = sourceTitle,
+                    Date = date,
+                    Protocol = DownloadProtocol.Torrent,
+                    DownloadClientId = downloadClient.Id,
+                    Release = new ReleaseInfo { Title = sourceTitle, Indexer = link.Indexer, DownloadProtocol = DownloadProtocol.Torrent }
+                };
+
+                grab.Data.Add("Indexer", link.Indexer);
+                grab.Data.Add("DownloadClient", downloadClient.Implementation);
+                grab.Data.Add("DownloadClientName", downloadClient.Name);
+                grab.Data.Add(RestoredFromKey, "EngineSidecar");
+
+                _downloadHistoryRepository.Insert(grab);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "Unable to record the restored grab for '{0}'", sourceTitle);
+            }
+
+            _logger.Info("Restored link for '{0}' to {1} from the engine sidecar", sourceTitle, movie.Title);
 
             return true;
         }
