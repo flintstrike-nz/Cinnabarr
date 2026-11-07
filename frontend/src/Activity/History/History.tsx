@@ -17,6 +17,7 @@ import useEpisodes from 'Episode/useEpisodes';
 import { useCustomFiltersList } from 'Filters/useCustomFilters';
 import { align, icons, kinds } from 'Helpers/Props';
 import { SortDirection } from 'Helpers/Props/sortDirections';
+import { MovieHistorySection } from 'Movie/MovieActivity';
 import HistoryItem from 'typings/History';
 import { TableOptionsChangePayload } from 'typings/Table';
 import selectUniqueIds from 'Utilities/Object/selectUniqueIds';
@@ -210,6 +211,8 @@ function History() {
             />
           </div>
         ) : null}
+
+        <MovieHistorySection />
       </PageContentBody>
 
       <TableOptionsModal
