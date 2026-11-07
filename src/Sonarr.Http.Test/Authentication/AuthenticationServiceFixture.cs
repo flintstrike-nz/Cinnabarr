@@ -18,6 +18,13 @@ namespace Sonarr.Http.Test.Authentication
     {
         private HttpRequest _request;
 
+        // Failed sign-ins and password resets are logged as warnings on purpose.
+        [TearDown]
+        public void IgnoreAuthWarnings()
+        {
+            ExceptionVerification.IgnoreWarns();
+        }
+
         [SetUp]
         public void Setup()
         {

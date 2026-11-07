@@ -237,6 +237,9 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             Subject.Check(_trackedDownload);
 
             AssertNotReadyToImport();
+
+            // Blocking an import is logged as a warning.
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]
@@ -249,6 +252,9 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             Subject.Check(_trackedDownload);
 
             AssertNotReadyToImport();
+
+            // Blocking an import is logged as a warning.
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         private void AssertNotReadyToImport()
