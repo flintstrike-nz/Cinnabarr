@@ -165,6 +165,7 @@ namespace NzbDrone.Core.Datastore
             Mapper.Entity<MetadataFile>("MetadataFiles").RegisterModel();
             Mapper.Entity<SubtitleFile>("SubtitleFiles").RegisterModel();
             Mapper.Entity<MovieSubtitleFile>("MovieSubtitleFiles").RegisterModel();
+            Mapper.Entity<MovieOtherExtraFile>("MovieOtherExtraFiles").RegisterModel();
             Mapper.Entity<OtherExtraFile>("ExtraFiles").RegisterModel();
 
             Mapper.Entity<PendingRelease>("PendingReleases").RegisterModel()
