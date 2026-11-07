@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Button from 'Components/Link/Button';
 import Link from 'Components/Link/Link';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
@@ -32,17 +32,33 @@ function pickMatch(movies: readonly Movie[], year: number) {
 interface ImportRowProps {
   folder: UnmappedMovieFolder;
   qualityProfileId: number;
+  // Goes up each time *Import All* is pressed; every row that has a match then imports it.
+  importAllToken: number;
 }
 
-function ImportRow({ folder, qualityProfileId }: ImportRowProps) {
+function ImportRow({
+  folder,
+  qualityProfileId,
+  importAllToken,
+}: ImportRowProps) {
   const term = folder.parsedYear
     ? `${folder.parsedTitle} ${folder.parsedYear}`
     : folder.parsedTitle;
   const { data, isFetching } = useLookupMovies(term);
   const { isAdding, addError, addMovie } = useAddMovie();
   const [added, setAdded] = useState(false);
+  const [chosenTmdbId, setChosenTmdbId] = useState(0);
 
-  const match = pickMatch(data, folder.parsedYear);
+  const match =
+    data.find((movie) => movie.tmdbId === chosenTmdbId) ??
+    pickMatch(data, folder.parsedYear);
+
+  const handleMatchChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      setChosenTmdbId(Number(event.target.value));
+    },
+    []
+  );
 
   const handleAddPress = useCallback(() => {
     if (!match) {
@@ -64,16 +80,55 @@ function ImportRow({ folder, qualityProfileId }: ImportRowProps) {
     );
   }, [match, folder.path, qualityProfileId, addMovie]);
 
+  const hasBeenPressed = useRef(0);
+
+  // *Import All*: add this folder's match once per press, unless it is already added, still loading or has none.
+  useEffect(() => {
+    if (
+      importAllToken > hasBeenPressed.current &&
+      match &&
+      !added &&
+      !isAdding &&
+      !isFetching &&
+      qualityProfileId
+    ) {
+      hasBeenPressed.current = importAllToken;
+      handleAddPress();
+    }
+  }, [
+    importAllToken,
+    match,
+    added,
+    isAdding,
+    isFetching,
+    qualityProfileId,
+    handleAddPress,
+  ]);
+
   let matchCell: React.ReactNode = translate('NoResultsFound');
 
   if (isFetching) {
     matchCell = <LoadingIndicator size={20} />;
   } else if (match) {
-    matchCell = (
-      <>
-        {match.title} ({match.year})
-      </>
-    );
+    matchCell =
+      data.length > 1 && !added ? (
+        <select
+          className={styles.select}
+          aria-label={translate('Movie')}
+          value={match.tmdbId}
+          onChange={handleMatchChange}
+        >
+          {data.map((movie) => (
+            <option key={movie.tmdbId} value={movie.tmdbId}>
+              {movie.title} ({movie.year})
+            </option>
+          ))}
+        </select>
+      ) : (
+        <>
+          {match.title} ({match.year})
+        </>
+      );
   }
 
   return (
@@ -103,6 +158,11 @@ function ImportMovies() {
   const profiles = useQualityProfilesData();
   const [rootFolderPath, setRootFolderPath] = useState('');
   const [qualityProfileId, setQualityProfileId] = useState(0);
+  const [importAllToken, setImportAllToken] = useState(0);
+
+  const handleImportAllPress = useCallback(() => {
+    setImportAllToken((token) => token + 1);
+  }, []);
 
   const path = rootFolderPath || rootFolders[0]?.path || '';
   const profile = qualityProfileId || profiles[0]?.id || 0;
@@ -167,6 +227,14 @@ function ImportMovies() {
           </select>
         </div>
 
+        {data.length ? (
+          <div className={styles.actions}>
+            <Button kind={kinds.PRIMARY} onPress={handleImportAllPress}>
+              {translate('ImportAll')}
+            </Button>
+          </div>
+        ) : null}
+
         {isFetching ? <LoadingIndicator /> : null}
 
         {!isFetching && error ? <p>{getErrorMessage(error)}</p> : null}
@@ -193,6 +261,7 @@ function ImportMovies() {
                   key={folder.path}
                   folder={folder}
                   qualityProfileId={profile}
+                  importAllToken={importAllToken}
                 />
               ))}
             </tbody>
