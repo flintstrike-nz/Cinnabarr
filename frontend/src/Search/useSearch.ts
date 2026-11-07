@@ -10,6 +10,9 @@ export interface SearchResult {
   mappedSeriesId?: number;
   mappedMovieId?: number;
   mappedTitle?: string;
+  guessedMediaType?: 'series' | 'movie';
+  parsedTitle?: string;
+  parsedYear?: number;
   release: {
     guid: string;
     title: string;

@@ -9,6 +9,7 @@ import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import PageHeading from 'Components/Page/PageHeading';
 import useDebounce from 'Helpers/Hooks/useDebounce';
+import useQueryParams from 'Helpers/Hooks/useQueryParams';
 import { icons, kinds } from 'Helpers/Props';
 import useRootFolders from 'RootFolder/useRootFolders';
 import { useQualityProfilesData } from 'Settings/Profiles/Quality/useQualityProfiles';
@@ -176,7 +177,8 @@ function SearchResult({ movie }: SearchResultProps) {
 }
 
 function AddNewMovie() {
-  const [term, setTerm] = useState('');
+  const { term: initialTerm = '' } = useQueryParams<{ term: string }>();
+  const [term, setTerm] = useState(initialTerm);
   const query = useDebounce(term, term ? 400 : 0);
   const { isFetching, error, data } = useLookupMovies(query);
 

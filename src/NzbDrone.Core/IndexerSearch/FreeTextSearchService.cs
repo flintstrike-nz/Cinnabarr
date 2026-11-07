@@ -83,10 +83,7 @@ namespace NzbDrone.Core.IndexerSearch
 
             if (seriesMatched && movieMatched)
             {
-                var parsed = series.RemoteEpisode.ParsedEpisodeInfo;
-                var looksLikeEpisodes = parsed != null && (parsed.EpisodeNumbers.Any() || parsed.AbsoluteEpisodeNumbers.Any() || parsed.IsDaily || parsed.FullSeason);
-
-                return looksLikeEpisodes ? series : movie;
+                return LooksLikeEpisodes(series.RemoteEpisode.ParsedEpisodeInfo) ? series : movie;
             }
 
             if (movieMatched)
@@ -94,7 +91,18 @@ namespace NzbDrone.Core.IndexerSearch
                 return movie;
             }
 
+            // Neither found a match in the library: keep the one whose parse looks right, so the page can offer to add it.
+            if (!LooksLikeEpisodes(series?.RemoteEpisode?.ParsedEpisodeInfo) && movie?.RemoteMovie?.ParsedMovieInfo != null)
+            {
+                return movie;
+            }
+
             return series ?? movie;
+        }
+
+        private static bool LooksLikeEpisodes(ParsedEpisodeInfo parsed)
+        {
+            return parsed != null && (parsed.EpisodeNumbers.Any() || parsed.AbsoluteEpisodeNumbers.Any() || parsed.IsDaily || parsed.FullSeason);
         }
 
         private async Task<IList<ReleaseInfo>> DispatchIndexer(IIndexer indexer, FreeTextSearchCriteria criteria)
