@@ -129,5 +129,23 @@ namespace NzbDrone.Core.Test.IndexerSearchTests
 
             FreeTextSearchService.Pick(series, movie).Should().BeSameAs(movie);
         }
+
+        [Test]
+        public void pick_should_keep_the_movie_parse_when_nothing_matched_and_it_is_not_episodes()
+        {
+            var series = new DownloadDecision(new RemoteEpisode { Series = null, ParsedEpisodeInfo = null }, new DownloadRejection(DownloadRejectionReason.UnknownSeries, "x"));
+            var movie = new DownloadDecision(new RemoteMovie { ParsedMovieInfo = new ParsedMovieInfo { MovieTitles = new List<string> { "Heat" }, Year = 1995 } }, new DownloadRejection(DownloadRejectionReason.UnknownMovie, "y"));
+
+            FreeTextSearchService.Pick(series, movie).Should().BeSameAs(movie);
+        }
+
+        [Test]
+        public void pick_should_keep_the_series_parse_when_nothing_matched_and_it_has_episodes()
+        {
+            var series = new DownloadDecision(new RemoteEpisode { ParsedEpisodeInfo = new ParsedEpisodeInfo { EpisodeNumbers = new[] { 1 } } }, new DownloadRejection(DownloadRejectionReason.UnknownSeries, "x"));
+            var movie = new DownloadDecision(new RemoteMovie { ParsedMovieInfo = new ParsedMovieInfo { MovieTitles = new List<string> { "Heat" } } }, new DownloadRejection(DownloadRejectionReason.UnknownMovie, "y"));
+
+            FreeTextSearchService.Pick(series, movie).Should().BeSameAs(series);
+        }
     }
 }

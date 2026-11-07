@@ -24,6 +24,11 @@ public class SearchResultResource : RestResource
     public int? MappedSeriesId { get; set; }
     public int? MappedMovieId { get; set; }
     public string? MappedTitle { get; set; }
+
+    // What the release looks like when nothing in the library matched: "series" or "movie" with the parsed title (and year).
+    public string? GuessedMediaType { get; set; }
+    public string? ParsedTitle { get; set; }
+    public int ParsedYear { get; set; }
     public ReleaseInfoResource? Release { get; set; }
     public ReleaseDecisionResource? Decision { get; set; }
     public QualityModel? Quality { get; set; }
@@ -145,6 +150,13 @@ public class SearchController : Controller
             resource.Quality = episode.ParsedEpisodeInfo?.Quality;
             resource.Languages = episode.Languages ?? [];
 
+            if (episode.ParsedEpisodeInfo?.SeriesTitle != null)
+            {
+                resource.GuessedMediaType = "series";
+                resource.ParsedTitle = episode.ParsedEpisodeInfo.SeriesTitle;
+                resource.ParsedYear = episode.ParsedEpisodeInfo.SeriesTitleInfo?.Year ?? 0;
+            }
+
             if (episode.Series != null)
             {
                 resource.MediaType = "series";
@@ -157,6 +169,13 @@ public class SearchController : Controller
         {
             resource.Quality = movie.ParsedMovieInfo?.Quality;
             resource.Languages = movie.Languages ?? [];
+
+            if (movie.ParsedMovieInfo != null)
+            {
+                resource.GuessedMediaType = "movie";
+                resource.ParsedTitle = movie.ParsedMovieInfo.PrimaryMovieTitle;
+                resource.ParsedYear = movie.ParsedMovieInfo.Year;
+            }
 
             if (movie.Movie != null)
             {
