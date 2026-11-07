@@ -1239,3 +1239,5 @@ Backlog BL-001 and BL-082 (see `docs/product/04-product-backlog.md`):
 
 - **BL-001:** the header and sidebar showed a fixed "Sonarr"; they now show the instance name (Embarr today, Cinnabarr after the rename).
 - **BL-082:** the "18 baseline failures" are cleared. Six were tests that call thexem.info over the network, which CI already leaves out with `TestCategory!=IntegrationTest`. The rest were tests that did not expect warnings the code logs on purpose (a generated first-run password, a blocked import, a failed database restore, failed sign-ins and password resets). With CI's filter every unit test project now passes (Core 7470, Common 710, Http 57, Api 44, Update 17, Host 22, Libraries 2).
+
+Backlog BL-020 (one Wanted page): the Wanted → Missing and Cutoff Unmet pages now list the wanted movies under the episodes (a *Movies: Missing* / *Movies: Cutoff Unmet* section, shown only when the library has movies), with their own *Search All*. The separate *Wanted → Movies* sidebar entry is gone and `/wanted/movies` redirects to `/wanted/missing`. Checked in a browser.

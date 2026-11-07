@@ -123,10 +123,6 @@ const GROUPS: SidebarGroup[] = [
             title: () => translate('CutoffUnmet'),
             to: '/wanted/cutoffunmet',
           },
-          {
-            title: () => translate('Movies'),
-            to: '/wanted/movies',
-          },
         ],
       },
       {
@@ -354,7 +350,9 @@ function PageSidebar() {
                 src={`${window.Sonarr.urlBase}/Content/Images/logo.svg`}
                 alt=""
               />
-              <span className={styles.brandName}>{window.Sonarr.instanceName}</span>
+              <span className={styles.brandName}>
+                {window.Sonarr.instanceName}
+              </span>
             </Link>
           </div>
 

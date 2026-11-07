@@ -33,6 +33,7 @@ import { Filter } from 'Filters/Filter';
 import { useCustomFiltersList } from 'Filters/useCustomFilters';
 import { align, icons, kinds } from 'Helpers/Props';
 import { SortDirection } from 'Helpers/Props/sortDirections';
+import { WantedMoviesSection } from 'Movie/WantedMovies';
 import { CheckInputChanged } from 'typings/inputs';
 import { TableOptionsChangePayload } from 'typings/Table';
 import getFilterValue from 'Utilities/Filter/getFilterValue';
@@ -357,6 +358,8 @@ function CutoffUnmetContent() {
               />
             </div>
           ) : null}
+
+          <WantedMoviesSection kind="cutoff" />
         </PageContentBody>
 
         <TableOptionsModal
