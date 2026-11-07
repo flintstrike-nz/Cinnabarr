@@ -25,8 +25,8 @@ BL-031,Indexers,"Native Prowlarr torrent indexers (3c), only for a tracker the d
 BL-032,Engine,Verify that Dismiss works for grabs missing from the engine,Spike,ENG-07,2,S,XS,none,Now,Done (checked against the real engine)
 BL-040,Engine,"Per-row priority, speed and share limits on the Downloads page",Story,ENG-11,2,C,M,none,Later,Ready
 BL-041,Engine,Health check for torrents past their seeding goal,Task,SEED-05,2,S,S,none,Next,Done (movie torrents follow the global and tracker goals; there is no per-movie rule)
-BL-042,Engine,"Verify removing one file from a seeding torrent (priority, delete, recheck)",Spike,SEED-04,2,M,S,none,Now,Ready
-BL-043,Engine,Verify pre-download and post-completion checks against sample files,Spike,"FIL-02, FIL-03",2,M,M,none,Now,Ready
+BL-042,Engine,"Verify removing one file from a seeding torrent (priority, delete, recheck)",Spike,SEED-04,2,M,S,none,Now,"Partial: checked against the real engine for a movie upgrade replacing a torrent's only video (priority, delete, torrent removed); a pack with one video replaced is only unit-tested"
+BL-043,Engine,Verify pre-download and post-completion checks against sample files,Spike,"FIL-02, FIL-03",2,M,M,none,Now,"Done (checked against the real engine: sample excluded before download, short clip rejected after)"
 BL-044,Engine,Sidecar: add slot label and seeding rule fields; restore test,Story,"ENG-08, NFR-03","2, 5",M,M,BL-050,Next,Ready
 BL-045,Engine,Verify backups include the engine profile; restore test,Spike,MIG-06,2,M,S,none,Now,Done (full restore and restart not run)
 BL-046,Engine,Engine push channel (SSE or websocket) instead of polling,Story,ENG-18,Later,C,L,none,Later,Ready
@@ -39,7 +39,7 @@ BL-053,Versions,"Race mode per file, with winner rules and loser cleanup",Story,
 BL-054,Versions,Race groups on the Downloads page,Story,VER-03,5,S,M,BL-053,Next,Ready
 BL-055,Versions,"Verify Emby, Jellyfin and Plex multi-version conventions",Spike,VER-05,5,M,S,none,Next,Ready
 BL-056,Versions,Version label in file names,Task,NAM-04,5,M,S,"BL-050, BL-055",Next,Ready
-BL-059,Versions,"Verify subtitle language, forced and SDH naming, and copy numbers",Spike,NAM-02,2,S,S,none,Now,Ready
+BL-059,Versions,"Verify subtitle language, forced and SDH naming, and copy numbers",Spike,NAM-02,2,S,S,none,Now,"Done (checked against the real engine: language, forced and SDH names; copy numbers only unit-tested)"
 BL-057,Versions,Default version slots and race defaults in Settings,Story,SET-02,5,S,M,BL-050,Next,Ready
 BL-058,Versions,Decide the maximum number of version slots (decision 6),Decision,VER-01,5,S,XS,none,Next,Decision
 BL-060,Migration,"Library reorganisation tool with preview, journal and undo",Story,"MIG-01, NFR-02, FIL-09",6,M,XL,BL-010,Later,Ready

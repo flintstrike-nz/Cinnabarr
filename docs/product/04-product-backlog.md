@@ -91,8 +91,8 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | BL-032 | Verify that Dismiss works for grabs missing from the engine | Spike | ENG-07 | 2 | S | XS | none | Now | Done (checked against the real engine) |
 | BL-040 | Per-row priority, speed and share limits on the Downloads page | Story | ENG-11 | 2 | C | M | none | Later | Ready |
 | BL-041 | Health check for torrents past their seeding goal | Task | SEED-05 | 2 | S | S | none | Next | Done (movie torrents follow the global and tracker goals; there is no per-movie rule) |
-| BL-042 | Verify removing one file from a seeding torrent (priority, delete, recheck) | Spike | SEED-04 | 2 | M | S | none | Now | Ready |
-| BL-043 | Verify pre-download and post-completion checks against sample files | Spike | FIL-02, FIL-03 | 2 | M | M | none | Now | Ready |
+| BL-042 | Verify removing one file from a seeding torrent (priority, delete, recheck) | Spike | SEED-04 | 2 | M | S | none | Now | Partial: checked against the real engine for a movie upgrade replacing a torrent's only video (priority, delete, torrent removed); a pack with one video replaced is only unit-tested |
+| BL-043 | Verify pre-download and post-completion checks against sample files | Spike | FIL-02, FIL-03 | 2 | M | M | none | Now | Done (checked against the real engine: sample excluded before download, short clip rejected after) |
 | BL-044 | Sidecar: add slot label and seeding rule fields; restore test | Story | ENG-08, NFR-03 | 2, 5 | M | M | BL-050 | Next | Ready |
 | BL-045 | Verify backups include the engine profile; restore test | Spike | MIG-06 | 2 | M | S | none | Now | Done (full restore and restart not run) |
 | BL-046 | Engine push channel (SSE or websocket) instead of polling | Story | ENG-18 | Later | C | L | none | Later | Ready |
@@ -110,7 +110,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | BL-054 | Race groups on the Downloads page | Story | VER-03 | 5 | S | M | BL-053 | Next | Ready |
 | BL-055 | Verify Emby, Jellyfin and Plex multi-version conventions | Spike | VER-05 | 5 | M | S | none | Next | Ready |
 | BL-056 | Version label in file names | Task | NAM-04 | 5 | M | S | BL-050, BL-055 | Next | Ready |
-| BL-059 | Verify subtitle language, forced and SDH naming, and copy numbers | Spike | NAM-02 | 2 | S | S | none | Now | Ready |
+| BL-059 | Verify subtitle language, forced and SDH naming, and copy numbers | Spike | NAM-02 | 2 | S | S | none | Now | Done (checked against the real engine: language, forced and SDH names; copy numbers only unit-tested) |
 | BL-057 | Default version slots and race defaults in Settings | Story | SET-02 | 5 | S | M | BL-050 | Next | Ready |
 | BL-058 | Decide the maximum number of version slots (decision 6) | Decision | VER-01 | 5 | S | XS | none | Next | Decision |
 
