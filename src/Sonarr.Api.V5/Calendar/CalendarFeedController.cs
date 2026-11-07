@@ -5,7 +5,9 @@ using Ical.Net.Serialization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Movies;
 using NzbDrone.Core.Tags;
 using NzbDrone.Core.Tv;
 using Sonarr.Http;
@@ -18,9 +20,11 @@ public class CalendarFeedController : Controller
     private readonly IEpisodeService _episodeService;
     private readonly ISeriesService _seriesService;
     private readonly ITagService _tagService;
+    private readonly IMovieService _movieService;
 
-    public CalendarFeedController(IEpisodeService episodeService, ISeriesService seriesService, ITagService tagService)
+    public CalendarFeedController(IEpisodeService episodeService, ISeriesService seriesService, ITagService tagService, IMovieService movieService)
     {
+        _movieService = movieService;
         _episodeService = episodeService;
         _seriesService = seriesService;
         _tagService = tagService;
@@ -45,7 +49,7 @@ public class CalendarFeedController : Controller
             ProductId = "-//sonarr.tv//Sonarr//EN"
         };
 
-        var calendarName = "Sonarr TV Schedule";
+        var calendarName = $"{BuildInfo.AppName} Schedule";
         calendar.AddProperty(new CalendarProperty("NAME", calendarName));
         calendar.AddProperty(new CalendarProperty("X-WR-CALNAME", calendarName));
 
@@ -92,6 +96,41 @@ public class CalendarFeedController : Controller
                 default:
                     occurrence.Summary = $"{series.Title} - {episode.SeasonNumber}x{episode.EpisodeNumber:00} - {episode.Title}";
                     break;
+            }
+        }
+
+        // Movies: one all-day event per cinema, digital and physical release that falls inside the window.
+        if (!premieresOnly)
+        {
+            foreach (var movie in _movieService.GetMoviesBetweenDates(start, end, unmonitored))
+            {
+                if (parsedTags.Any() && parsedTags.None(movie.Tags.Contains))
+                {
+                    continue;
+                }
+
+                var metadata = movie.MovieMetadata.Value;
+                var releases = new[]
+                {
+                    ("cinemas", "In cinemas", metadata.InCinemas),
+                    ("digital", "Digital release", metadata.DigitalRelease),
+                    ("physical", "Physical release", metadata.PhysicalRelease)
+                };
+
+                foreach (var (key, label, date) in releases)
+                {
+                    if (!date.HasValue || date.Value < start || date.Value > end)
+                    {
+                        continue;
+                    }
+
+                    var occurrence = calendar.Create<CalendarEvent>();
+                    occurrence.Uid = $"Embarr_movie_{movie.Id}_{key}";
+                    occurrence.Status = movie.HasFile ? EventStatus.Confirmed : EventStatus.Tentative;
+                    occurrence.Description = metadata.Overview;
+                    occurrence.Summary = $"{metadata.Title} ({metadata.Year}) - {label}";
+                    occurrence.Start = new CalDateTime(date.Value, false);
+                }
             }
         }
 
