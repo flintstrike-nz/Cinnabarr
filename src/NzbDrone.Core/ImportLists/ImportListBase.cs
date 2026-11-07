@@ -4,6 +4,7 @@ using System.Linq;
 using FluentValidation.Results;
 using NLog;
 using NzbDrone.Core.Configuration;
+using NzbDrone.Core.ImportLists.Movies;
 using NzbDrone.Core.Localization;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
@@ -16,15 +17,18 @@ namespace NzbDrone.Core.ImportLists
         public ImportListFetchResult()
         {
             Series = new List<ImportListItemInfo>();
+            Movies = new List<ImportListMovieInfo>();
         }
 
         public ImportListFetchResult(IEnumerable<ImportListItemInfo> series, bool anyFailure)
         {
             Series = series.ToList();
+            Movies = new List<ImportListMovieInfo>();
             AnyFailure = anyFailure;
         }
 
         public List<ImportListItemInfo> Series { get; set; }
+        public List<ImportListMovieInfo> Movies { get; set; }
         public bool AnyFailure { get; set; }
     }
 
