@@ -50,7 +50,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 
 | ID | Item | Type | Requirements | Phase | Priority | Size | Depends on | Sequence | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| BL-001 | Fix the header and sidebar still reading Sonarr | Task | BRD-01 | 1 | M | S | none | Now | Ready |
+| BL-001 | Fix the header and sidebar still reading Sonarr | Task | BRD-01 | 1 | M | S | none | Now | Done |
 | BL-002 | Phase 1e rename to Cinnabarr (UI, strings, logos, metadata, docs) | Story | BRD-02 | 1e | M | M | BL-004, BL-005 | Next | Blocked: owner theme and icons |
 | BL-003 | Name clearance search before any public release | Task | BRD-03 | pre-release | M | S | none | Later | Ready |
 | BL-004 | Decide whether to rename the repo and docs/embarr folder | Decision | BRD-02 | 1e | S | XS | none | Next | Decision |
@@ -61,21 +61,21 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | ID | Item | Type | Requirements | Phase | Priority | Size | Depends on | Sequence | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | BL-010 | Movies straight into the final place via the engine (4e-4) | Story | ENG-15, FIL-07 | 4 | M | L | none | Now | Ready |
-| BL-011 | Movie folder rename and token picker for movie naming (4e-5) | Story | NAM-05 | 4 | S | M | none | Next | Ready |
+| BL-011 | Movie folder rename and token picker for movie naming (4e-5) | Story | NAM-05 | 4 | S | M | none | Next | Partial: moving a movie folder done; token picker and folder rename on format change open |
 | BL-012 | Movie extras: .nfo, artwork, and subtitles beside existing files on scan | Story | FIL-08 | 4 | S | M | none | Next | Ready |
 | BL-013 | Movie import lists (4f) | Story | LIB-08 | 4 | M | M | none | Next | Ready |
 | BL-014 | Series metadata from TVDB directly, replacing Skyhook (4i) | Story | MET-02, MET-06, IF-02, IF-04 | 4 | M | L | BL-094 | Now | Blocked: TVDB key and licence |
 | BL-015 | Movie metadata from TMDb directly, replacing the interim service (4i) | Story | MET-03, IF-03 | 4 | M | M | BL-095 | Next | Blocked: TMDb key |
 | BL-016 | TheXEM scene mappings plus Cinnabarr's own list (4i) | Story | MET-05, MET-04 | 4 | M | M | BL-014 | Next | Ready |
-| BL-017 | Collections and credits on movie pages | Story | MET-06, LIB-06 | 4 | S | M | none | Next | Ready |
-| BL-018 | Discover tab and one Add search for TV and movies | Story | LIB-09, UI-02 | 4 | M | L | none | Next | Ready |
-| BL-019 | Merged Activity: History and Blocklist for both media types | Story | UI-04 | 4 | M | M | none | Next | Ready |
-| BL-020 | One Wanted page for episodes and movies | Story | LIB-05 | 4 | S | M | none | Next | Ready |
-| BL-021 | Calendar grid filters, iCal feed and agenda include movies | Story | UI-03 | 4 | S | M | none | Next | Ready |
+| BL-017 | Collections and credits on movie pages | Story | MET-06, LIB-06 | 4 | S | M | none | Next | Partial: credits and collection shown; collection pages and person pages open |
+| BL-018 | Discover tab and one Add search for TV and movies | Story | LIB-09, UI-02 | 4 | M | L | none | Next | Partial: movie Discover done; one Add search for series and movies, and series Discover, open |
+| BL-019 | Merged Activity: History and Blocklist for both media types | Story | UI-04 | 4 | M | M | none | Next | Done (paging and filters for the movie sections still open) |
+| BL-020 | One Wanted page for episodes and movies | Story | LIB-05 | 4 | S | M | none | Next | Done |
+| BL-021 | Calendar grid filters, iCal feed and agenda include movies | Story | UI-03 | 4 | S | M | none | Next | Done (status colours and detail popup for movie blocks still open) |
 | BL-022 | Library bulk actions on the merged grid, and bulk tags | Story | UI-05, LIB-01 | 4 | S | M | none | Next | Ready |
-| BL-023 | Movie folder import: import all matched, re-match, nested folder formats | Story | LIB-07 | 4 | S | M | none | Next | Ready |
-| BL-024 | Movie media-info detail (audio and subtitle streams) | Task | LIB-06 | 4 | C | S | none | Later | Ready |
-| BL-025 | Search page gaps: grab titles not in the library, category and indexer filters, sortable columns | Story | IDX-11 | 4 | S | M | none | Next | Ready |
+| BL-023 | Movie folder import: import all matched, re-match, nested folder formats | Story | LIB-07 | 4 | S | M | none | Next | Partial: re-match and Import All done; nested folder formats open |
+| BL-024 | Movie media-info detail (audio and subtitle streams) | Task | LIB-06 | 4 | C | S | none | Later | Done (not checked with a real file) |
+| BL-025 | Search page gaps: grab titles not in the library, category and indexer filters, sortable columns | Story | IDX-11 | 4 | S | M | none | Next | Partial: sorting, indexer filter and add links done; category filters and grabbing without adding open |
 
 ### Indexers
 
@@ -90,13 +90,13 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | BL-032 | Verify that Dismiss works for grabs missing from the engine | Spike | ENG-07 | 2 | S | XS | none | Now | Ready |
 | BL-040 | Per-row priority, speed and share limits on the Downloads page | Story | ENG-11 | 2 | C | M | none | Later | Ready |
-| BL-041 | Health check for torrents past their seeding goal | Task | SEED-05 | 2 | S | S | none | Next | Ready |
+| BL-041 | Health check for torrents past their seeding goal | Task | SEED-05 | 2 | S | S | none | Next | Done (movie torrents are not given seeding goals yet) |
 | BL-042 | Verify removing one file from a seeding torrent (priority, delete, recheck) | Spike | SEED-04 | 2 | M | S | none | Now | Ready |
 | BL-043 | Verify pre-download and post-completion checks against sample files | Spike | FIL-02, FIL-03 | 2 | M | M | none | Now | Ready |
 | BL-044 | Sidecar: add slot label and seeding rule fields; restore test | Story | ENG-08, NFR-03 | 2, 5 | M | M | BL-050 | Next | Ready |
 | BL-045 | Verify backups include the engine profile; restore test | Spike | MIG-06 | 2 | M | S | none | Now | Ready |
 | BL-046 | Engine push channel (SSE or websocket) instead of polling | Story | ENG-18 | Later | C | L | none | Later | Ready |
-| BL-047 | Engine legal notice shown once at first run | Task | SET-03 | 2 | M | S | none | Next | Ready |
+| BL-047 | Engine legal notice shown once at first run | Task | SET-03 | 2 | M | S | none | Next | Done (wording is a placeholder; needs owner and legal review) |
 | BL-048 | Complete Downloads settings: port, UPnP, interface binding, privacy, pre-allocation | Story | SET-04 | 2 | S | M | none | Next | Ready |
 
 ### Versions
@@ -158,7 +158,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 
 | ID | Item | Type | Requirements | Phase | Priority | Size | Depends on | Sequence | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| BL-082 | Clear the 18 baseline test failures | Task | NFR-07 | all | M | M | none | Now | Ready |
+| BL-082 | Clear the 18 baseline test failures | Task | NFR-07 | all | M | M | none | Now | Done |
 | BL-083 | Confirm the CI gate: GitHub Actions or local checks only | Spike | PKG-06 | 1 | M | XS | none | Now | Ready |
 | BL-084 | Browser check for each UI step (Playwright), recorded per PR | Task | UI-09 | all | S | S | none | Now | Ready |
 

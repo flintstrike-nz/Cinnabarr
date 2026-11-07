@@ -1,36 +1,36 @@
 ID,Epic,Item,Type,Requirements,Phase,Priority,Size,Depends on,Sequence,Status
-BL-001,Rebrand,Fix the header and sidebar still reading Sonarr,Task,BRD-01,1,M,S,none,Now,Ready
+BL-001,Rebrand,Fix the header and sidebar still reading Sonarr,Task,BRD-01,1,M,S,none,Now,Done
 BL-002,Rebrand,"Phase 1e rename to Cinnabarr (UI, strings, logos, metadata, docs)",Story,BRD-02,1e,M,M,"BL-004, BL-005",Next,Blocked: owner theme and icons
 BL-003,Rebrand,Name clearance search before any public release,Task,BRD-03,pre-release,M,S,none,Later,Ready
 BL-004,Rebrand,Decide whether to rename the repo and docs/embarr folder,Decision,BRD-02,1e,S,XS,none,Next,Decision
 BL-005,Rebrand,Rename the engine binary to cinnabarr-engine and check the code,Spike,ENG-17,1e,M,S,none,Next,Ready
 BL-010,Phase 4 close-out,Movies straight into the final place via the engine (4e-4),Story,"ENG-15, FIL-07",4,M,L,none,Now,Ready
-BL-011,Phase 4 close-out,Movie folder rename and token picker for movie naming (4e-5),Story,NAM-05,4,S,M,none,Next,Ready
+BL-011,Phase 4 close-out,Movie folder rename and token picker for movie naming (4e-5),Story,NAM-05,4,S,M,none,Next,Partial: moving a movie folder done; token picker and folder rename on format change open
 BL-012,Phase 4 close-out,"Movie extras: .nfo, artwork, and subtitles beside existing files on scan",Story,FIL-08,4,S,M,none,Next,Ready
 BL-013,Phase 4 close-out,Movie import lists (4f),Story,LIB-08,4,M,M,none,Next,Ready
 BL-014,Phase 4 close-out,"Series metadata from TVDB directly, replacing Skyhook (4i)",Story,"MET-02, MET-06, IF-02, IF-04",4,M,L,BL-094,Now,Blocked: TVDB key and licence
 BL-015,Phase 4 close-out,"Movie metadata from TMDb directly, replacing the interim service (4i)",Story,"MET-03, IF-03",4,M,M,BL-095,Next,Blocked: TMDb key
 BL-016,Phase 4 close-out,TheXEM scene mappings plus Cinnabarr's own list (4i),Story,"MET-05, MET-04",4,M,M,BL-014,Next,Ready
-BL-017,Phase 4 close-out,Collections and credits on movie pages,Story,"MET-06, LIB-06",4,S,M,none,Next,Ready
-BL-018,Phase 4 close-out,Discover tab and one Add search for TV and movies,Story,"LIB-09, UI-02",4,M,L,none,Next,Ready
-BL-019,Phase 4 close-out,Merged Activity: History and Blocklist for both media types,Story,UI-04,4,M,M,none,Next,Ready
-BL-020,Phase 4 close-out,One Wanted page for episodes and movies,Story,LIB-05,4,S,M,none,Next,Ready
-BL-021,Phase 4 close-out,"Calendar grid filters, iCal feed and agenda include movies",Story,UI-03,4,S,M,none,Next,Ready
+BL-017,Phase 4 close-out,Collections and credits on movie pages,Story,"MET-06, LIB-06",4,S,M,none,Next,Partial: credits and collection shown; collection pages and person pages open
+BL-018,Phase 4 close-out,Discover tab and one Add search for TV and movies,Story,"LIB-09, UI-02",4,M,L,none,Next,"Partial: movie Discover done; one Add search for series and movies, and series Discover, open"
+BL-019,Phase 4 close-out,Merged Activity: History and Blocklist for both media types,Story,UI-04,4,M,M,none,Next,Done (paging and filters for the movie sections still open)
+BL-020,Phase 4 close-out,One Wanted page for episodes and movies,Story,LIB-05,4,S,M,none,Next,Done
+BL-021,Phase 4 close-out,"Calendar grid filters, iCal feed and agenda include movies",Story,UI-03,4,S,M,none,Next,Done (status colours and detail popup for movie blocks still open)
 BL-022,Phase 4 close-out,"Library bulk actions on the merged grid, and bulk tags",Story,"UI-05, LIB-01",4,S,M,none,Next,Ready
-BL-023,Phase 4 close-out,"Movie folder import: import all matched, re-match, nested folder formats",Story,LIB-07,4,S,M,none,Next,Ready
-BL-024,Phase 4 close-out,Movie media-info detail (audio and subtitle streams),Task,LIB-06,4,C,S,none,Later,Ready
-BL-025,Phase 4 close-out,"Search page gaps: grab titles not in the library, category and indexer filters, sortable columns",Story,IDX-11,4,S,M,none,Next,Ready
+BL-023,Phase 4 close-out,"Movie folder import: import all matched, re-match, nested folder formats",Story,LIB-07,4,S,M,none,Next,Partial: re-match and Import All done; nested folder formats open
+BL-024,Phase 4 close-out,Movie media-info detail (audio and subtitle streams),Task,LIB-06,4,C,S,none,Later,Done (not checked with a real file)
+BL-025,Phase 4 close-out,"Search page gaps: grab titles not in the library, category and indexer filters, sortable columns",Story,IDX-11,4,S,M,none,Next,"Partial: sorting, indexer filter and add links done; category filters and grabbing without adding open"
 BL-030,Indexers,Settings → Indexers: test and flags for engine indexers (3f),Story,IDX-09,3,M,S,none,Next,Ready
 BL-031,Indexers,"Native Prowlarr torrent indexers (3c), only for a tracker the definitions miss",Story,IDX-10,3,C,L,none,Later,Hold
 BL-032,Engine,Verify that Dismiss works for grabs missing from the engine,Spike,ENG-07,2,S,XS,none,Now,Ready
 BL-040,Engine,"Per-row priority, speed and share limits on the Downloads page",Story,ENG-11,2,C,M,none,Later,Ready
-BL-041,Engine,Health check for torrents past their seeding goal,Task,SEED-05,2,S,S,none,Next,Ready
+BL-041,Engine,Health check for torrents past their seeding goal,Task,SEED-05,2,S,S,none,Next,Done (movie torrents are not given seeding goals yet)
 BL-042,Engine,"Verify removing one file from a seeding torrent (priority, delete, recheck)",Spike,SEED-04,2,M,S,none,Now,Ready
 BL-043,Engine,Verify pre-download and post-completion checks against sample files,Spike,"FIL-02, FIL-03",2,M,M,none,Now,Ready
 BL-044,Engine,Sidecar: add slot label and seeding rule fields; restore test,Story,"ENG-08, NFR-03","2, 5",M,M,BL-050,Next,Ready
 BL-045,Engine,Verify backups include the engine profile; restore test,Spike,MIG-06,2,M,S,none,Now,Ready
 BL-046,Engine,Engine push channel (SSE or websocket) instead of polling,Story,ENG-18,Later,C,L,none,Later,Ready
-BL-047,Engine,Engine legal notice shown once at first run,Task,SET-03,2,M,S,none,Next,Ready
+BL-047,Engine,Engine legal notice shown once at first run,Task,SET-03,2,M,S,none,Next,Done (wording is a placeholder; needs owner and legal review)
 BL-048,Engine,"Complete Downloads settings: port, UPnP, interface binding, privacy, pre-allocation",Story,SET-04,2,S,M,none,Next,Ready
 BL-050,Versions,Version slot schema and a default slot per item,Story,VER-01,5,M,XL,BL-044,Next,Ready
 BL-051,Versions,"Per-slot Wanted, cutoff and upgrades",Story,VER-01,5,M,L,BL-050,Next,Ready
@@ -60,7 +60,7 @@ BL-078,Release,Remove the Sonarr v3 API once the frontend no longer uses it,Task
 BL-079,Release,Optional v3 compatibility shims for Overseerr and Jellyseerr,Story,API-03,7,C,M,"BL-078, BL-091",Later,Decision
 BL-080,Decisions,"Fresh migration chain, or continue Sonarr's chain at 242?",Decision,CON-03,4,M,XS,none,Now,Decision
 BL-081,Decisions,"Align the API path: /api/v1 in the roadmap, /api/v5 in code",Decision,API-01,2–4,M,XS,none,Now,Decision
-BL-082,Quality,Clear the 18 baseline test failures,Task,NFR-07,all,M,M,none,Now,Ready
+BL-082,Quality,Clear the 18 baseline test failures,Task,NFR-07,all,M,M,none,Now,Done
 BL-083,Quality,Confirm the CI gate: GitHub Actions or local checks only,Spike,PKG-06,1,M,XS,none,Now,Ready
 BL-084,Quality,"Browser check for each UI step (Playwright), recorded per PR",Task,UI-09,all,S,S,none,Now,Ready
 BL-085,Release,"User documentation for install, migration and settings",Story,PKG-05,7,S,M,BL-071,Later,Ready
