@@ -268,6 +268,13 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             }
         }
 
+        // qBittorrent 5.1 and the built-in engine require both (the global setting decides them); older servers ignore them.
+        private static void AddShareLimitModeParameters(HttpRequestBuilder request)
+        {
+            request.AddFormParameter("shareLimitAction", "Default");
+            request.AddFormParameter("shareLimitsMode", "Default");
+        }
+
         private string GetSeedingTimeLimitParameterName(QBittorrentSettings settings)
         {
             if ((QBittorrentSeedTimeType)settings.SeedTimeType == QBittorrentSeedTimeType.Total)
@@ -352,6 +359,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                                                 .AddFormParameter("hashes", hash);
 
             AddTorrentSeedingFormParameters(request, seedConfiguration, settings, true);
+            AddShareLimitModeParameters(request);
 
             try
             {
@@ -442,6 +450,8 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             {
                 request.AddFormParameter("inactiveSeedingTimeLimit", -1);
             }
+
+            AddShareLimitModeParameters(request);
 
             ProcessRequest(request, settings);
         }

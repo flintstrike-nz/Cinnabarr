@@ -281,6 +281,54 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_restore_a_movies_grab_history_from_its_link()
+        {
+            var link = new EngineLink
+            {
+                MediaType = EngineLinkService.MovieMediaType,
+                TmdbId = 348,
+                SourceTitle = "Alien.1979.1080p.WEB-DL.x264-Group",
+                Indexer = "Test",
+                Quality = new EngineLinkQuality { Id = Quality.Bluray1080p.Id, Version = 1 },
+                Grabbed = new System.DateTime(2026, 1, 2, 3, 4, 5, System.DateTimeKind.Utc)
+            };
+            _files[LinkPath] = link.ToJson();
+
+            Mocker.GetMock<IMovieService>().Setup(s => s.FindByTmdbId(348)).Returns(new Movie { Id = 6 });
+
+            var inserted = new List<MovieHistory>();
+            Mocker.GetMock<IMovieHistoryRepository>()
+                .Setup(r => r.Insert(It.IsAny<MovieHistory>()))
+                .Callback<MovieHistory>(inserted.Add);
+
+            Subject.TryRestore(_client, Hash).Should().BeTrue();
+
+            inserted.Should().ContainSingle();
+            inserted[0].EventType.Should().Be(MovieHistoryEventType.Grabbed);
+            inserted[0].MovieId.Should().Be(6);
+            inserted[0].DownloadId.Should().Be(Hash);
+            inserted[0].SourceTitle.Should().Be("Alien.1979.1080p.WEB-DL.x264-Group");
+            inserted[0].Quality.Quality.Should().Be(Quality.Bluray1080p);
+            inserted[0].Date.Should().Be(link.Grabbed);
+            inserted[0].Data[EngineLinkService.RestoredFromKey].Should().Be("EngineSidecar");
+            inserted[0].Data["DownloadClientName"].Should().Be("Embarr Engine");
+
+            Mocker.GetMock<IDownloadHistoryRepository>()
+                .Verify(r => r.Insert(It.Is<DownloadHistory>(h => h.EventType == DownloadHistoryEventType.DownloadGrabbed && h.DownloadId == Hash && h.MovieId == 6 && h.DownloadClientId == EngineClientId)), Times.Once());
+        }
+
+        [Test]
+        public void should_not_restore_a_movie_that_is_not_in_the_library()
+        {
+            var link = new EngineLink { MediaType = EngineLinkService.MovieMediaType, TmdbId = 348, SourceTitle = "Alien.1979.1080p.WEB-DL-Group" };
+            _files[LinkPath] = link.ToJson();
+
+            Subject.TryRestore(_client, Hash).Should().BeFalse();
+
+            Mocker.GetMock<IMovieHistoryRepository>().Verify(r => r.Insert(It.IsAny<MovieHistory>()), Times.Never());
+        }
+
+        [Test]
         public void should_not_restore_without_link()
         {
             GivenSeriesInLibrary();

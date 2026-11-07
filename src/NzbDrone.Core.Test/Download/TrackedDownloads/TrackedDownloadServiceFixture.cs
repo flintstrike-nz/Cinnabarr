@@ -153,6 +153,21 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
         }
 
         [Test]
+        public void should_not_try_to_restore_an_engine_download_that_has_a_movie_grab()
+        {
+            var client = GivenEngineClient();
+            var item = GivenEngineItem(client);
+
+            Mocker.GetMock<IMovieHistoryService>()
+                .Setup(s => s.FindByDownloadId(EngineHash))
+                .Returns([new MovieHistory { DownloadId = EngineHash, SourceTitle = item.Title, MovieId = 6, EventType = MovieHistoryEventType.Grabbed }]);
+
+            Subject.TrackDownload(client, item);
+
+            Mocker.GetMock<IEngineLinkService>().Verify(s => s.TryRestore(It.IsAny<DownloadClientDefinition>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [Test]
         public void should_link_engine_download_restored_from_its_sidecar()
         {
             var client = GivenEngineClient();

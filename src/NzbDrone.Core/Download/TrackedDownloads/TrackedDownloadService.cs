@@ -149,7 +149,8 @@ namespace NzbDrone.Core.Download.TrackedDownloads
 
                 // Embarr's database may have lost the grab (for example after restoring an older backup):
                 // rebuild it from the link sidecar the engine keeps (roadmap §4.4 rule 5).
-                if (isEngine && historyItems.Empty() && _engineLinkService.TryRestore(downloadClient, downloadItem.DownloadId))
+                // A movie's grab is in its own history, so a torrent that has one is not lost.
+                if (isEngine && historyItems.Empty() && FindMovieHistory(downloadItem.DownloadId).Empty() && _engineLinkService.TryRestore(downloadClient, downloadItem.DownloadId))
                 {
                     historyItems = FindHistory(downloadItem.DownloadId);
                 }
