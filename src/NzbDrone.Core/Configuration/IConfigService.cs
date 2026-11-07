@@ -26,6 +26,7 @@ namespace NzbDrone.Core.Configuration
         int EngineSeedingMinutes { get; set; }
         double EngineSeedingRatio { get; set; }
         bool EngineOrphanCleanupApproved { get; set; }
+        bool EngineLegalNoticeAccepted { get; set; }
         int HistoryCleanupDays { get; set; }
         string IndexerDefinitionsUrl { get; set; }
         string MovieMetadataUrl { get; set; }
