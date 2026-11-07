@@ -5,6 +5,7 @@ import AppUpdatedModal from 'App/AppUpdatedModal';
 import ConnectionLostModal from 'App/ConnectionLostModal';
 import SignalRListener from 'Components/SignalRListener';
 import AuthenticationRequiredModal from 'FirstRun/AuthenticationRequiredModal';
+import EngineLegalNoticeModal from 'FirstRun/EngineLegalNoticeModal';
 import useAppPage from 'Helpers/Hooks/useAppPage';
 import { useUiSettingsValues } from 'Settings/UI/useUiSettings';
 import { useSystemStatusData } from 'System/Status/useSystemStatus';
@@ -102,6 +103,8 @@ function Page({ children }: PageProps) {
       <ConnectionLostModal isOpen={isConnectionLostModalOpen} />
 
       <AuthenticationRequiredModal isOpen={!authenticationEnabled} />
+
+      <EngineLegalNoticeModal />
     </div>
   );
 }

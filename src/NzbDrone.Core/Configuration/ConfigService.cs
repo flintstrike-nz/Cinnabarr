@@ -225,6 +225,14 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("EngineOrphanCleanupApproved", value); }
         }
 
+        // Whether the owner has seen the engine's legal notice (roadmap SET-03); it is shown once.
+        public bool EngineLegalNoticeAccepted
+        {
+            get { return GetValueBoolean("EngineLegalNoticeAccepted", false); }
+
+            set { SetValue("EngineLegalNoticeAccepted", value); }
+        }
+
         public int EngineOrphanGraceDays
         {
             get { return GetValueInt("EngineOrphanGraceDays", 7); }
