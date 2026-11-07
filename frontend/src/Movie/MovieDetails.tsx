@@ -13,6 +13,7 @@ import { useQualityProfilesData } from 'Settings/Profiles/Quality/useQualityProf
 import formatBytes from 'Utilities/Number/formatBytes';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
+import MovieCredits from './MovieCredits';
 import MovieEditPanel from './MovieEditPanel';
 import MovieFiles from './MovieFiles';
 import MovieHistory from './MovieHistory';
@@ -228,6 +229,8 @@ function MovieDetails() {
             <div className={styles.facts}>{movie.path}</div>
 
             <div className={styles.overview}>{movie.overview}</div>
+
+            <MovieCredits movie={movie} />
 
             {isEditing ? (
               <MovieEditPanel movie={movie} onDone={handleEditToggle} />

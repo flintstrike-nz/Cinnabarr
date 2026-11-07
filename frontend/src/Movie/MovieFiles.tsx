@@ -17,7 +17,21 @@ interface MovieFileItem {
   size: number;
   releaseGroup?: string;
   quality?: QualityModel;
-  mediaInfo?: { videoCodec?: string; resolution?: string };
+  mediaInfo?: {
+    videoCodec?: string;
+    resolution?: string;
+    audioStreams?: {
+      codec?: string;
+      channels?: number;
+      language?: string;
+      title?: string;
+    }[];
+    subtitleStreams?: {
+      language?: string;
+      format?: string;
+      forced?: boolean;
+    }[];
+  };
 }
 
 const NO_FILES: MovieFileItem[] = [];
@@ -38,6 +52,26 @@ function FileRow({ file, movieId }: { file: MovieFileItem; movieId: number }) {
 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
+  const audio = file.mediaInfo?.audioStreams
+    ?.map((stream) =>
+      [
+        stream.language,
+        stream.codec,
+        stream.channels ? `${stream.channels}ch` : '',
+      ]
+        .filter(Boolean)
+        .join(' ')
+    )
+    .join(' · ');
+  const subtitles = file.mediaInfo?.subtitleStreams
+    ?.map((stream) =>
+      [stream.language, stream.forced ? translate('Forced') : '']
+        .filter(Boolean)
+        .join(' ')
+    )
+    .filter(Boolean)
+    .join(', ');
+
   const handleDeletePress = useCallback(() => {
     setIsConfirmOpen(true);
   }, []);
@@ -55,6 +89,16 @@ function FileRow({ file, movieId }: { file: MovieFileItem; movieId: number }) {
     <tr>
       <td>
         {file.relativePath}
+        {audio ? (
+          <div>
+            {translate('Audio')}: {audio}
+          </div>
+        ) : null}
+        {subtitles ? (
+          <div>
+            {translate('Subtitles')}: {subtitles}
+          </div>
+        ) : null}
         {error ? <div>{getErrorMessage(error)}</div> : null}
       </td>
       <td>{file.quality?.quality.name}</td>

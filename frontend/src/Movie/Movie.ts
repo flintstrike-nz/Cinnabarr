@@ -30,6 +30,8 @@ interface Movie extends ModelBase {
   physicalRelease?: string;
   digitalRelease?: string;
   studio?: string;
+  collectionTitle?: string;
+  collectionTmdbId?: number;
   path: string;
   rootFolderPath?: string;
   qualityProfileId: number;
