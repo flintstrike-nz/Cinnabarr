@@ -18,7 +18,12 @@ import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
 import Movie from './Movie';
 import MoviePoster from './MoviePoster';
-import { useAddMovie, useLookupMovies } from './useMovies';
+import {
+  DiscoverList,
+  useAddMovie,
+  useDiscoverMovies,
+  useLookupMovies,
+} from './useMovies';
 import styles from './Movie.module.css';
 
 interface SearchResultProps {
@@ -181,6 +186,19 @@ function AddNewMovie() {
   const [term, setTerm] = useState(initialTerm);
   const query = useDebounce(term, term ? 400 : 0);
   const { isFetching, error, data } = useLookupMovies(query);
+  const [discoverList, setDiscoverList] = useState<DiscoverList>('trending');
+  const { data: discovered, isFetching: isDiscovering } = useDiscoverMovies(
+    discoverList,
+    !term
+  );
+
+  const handleTrendingPress = useCallback(() => {
+    setDiscoverList('trending');
+  }, []);
+
+  const handlePopularPress = useCallback(() => {
+    setDiscoverList('popular');
+  }, []);
 
   const handleChange = useCallback(({ value }: InputChanged<string>) => {
     setTerm(value);
@@ -233,14 +251,44 @@ function AddNewMovie() {
         ) : null}
 
         {term ? null : (
-          <div className={addStyles.emptyState}>
-            <div className={addStyles.emptyTitle}>
-              {translate('AddNewMovie')}
+          <>
+            <div className={styles.actions}>
+              <Button
+                kind={
+                  discoverList === 'trending' ? kinds.PRIMARY : kinds.DEFAULT
+                }
+                onPress={handleTrendingPress}
+              >
+                {translate('Trending')}
+              </Button>
+
+              <Button
+                kind={
+                  discoverList === 'popular' ? kinds.PRIMARY : kinds.DEFAULT
+                }
+                onPress={handlePopularPress}
+              >
+                {translate('Popular')}
+              </Button>
             </div>
-            <div className={addStyles.emptyBody}>
-              {translate('AddNewMovieHelpText')}
-            </div>
-          </div>
+
+            {isDiscovering ? <LoadingIndicator /> : null}
+
+            {discovered.map((movie) => (
+              <SearchResult key={movie.tmdbId} movie={movie} />
+            ))}
+
+            {!isDiscovering && !discovered.length ? (
+              <div className={addStyles.emptyState}>
+                <div className={addStyles.emptyTitle}>
+                  {translate('AddNewMovie')}
+                </div>
+                <div className={addStyles.emptyBody}>
+                  {translate('AddNewMovieHelpText')}
+                </div>
+              </div>
+            ) : null}
+          </>
         )}
       </PageContentBody>
     </PageContent>
