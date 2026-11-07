@@ -15,6 +15,7 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Instrumentation.Extensions;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Datastore;
+using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Messaging.Commands;
 
 namespace NzbDrone.Core.Backup
@@ -37,9 +38,13 @@ namespace NzbDrone.Core.Backup
         private readonly IAppFolderInfo _appFolderInfo;
         private readonly IArchiveService _archiveService;
         private readonly IConfigService _configService;
+        private readonly IEngineProfileBackup _engineProfileBackup;
         private readonly Logger _logger;
 
         private string _backupTempFolder;
+
+        // The engine's settings, resume data and link records, zipped inside the backup (roadmap MIG-06).
+        public const string EngineProfileArchiveName = "engine_profile.zip";
 
         public static readonly Regex BackupFileRegex = new Regex(@"(nzbdrone|sonarr)_backup_(v[0-9.]+_)?[._0-9]+\.zip", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly byte[] SqliteHeader = Encoding.ASCII.GetBytes("SQLite format 3\0");
@@ -51,6 +56,7 @@ namespace NzbDrone.Core.Backup
                              IAppFolderInfo appFolderInfo,
                              IArchiveService archiveService,
                              IConfigService configService,
+                             IEngineProfileBackup engineProfileBackup,
                              Logger logger)
         {
             _maindDb = maindDb;
@@ -60,6 +66,7 @@ namespace NzbDrone.Core.Backup
             _appFolderInfo = appFolderInfo;
             _archiveService = archiveService;
             _configService = configService;
+            _engineProfileBackup = engineProfileBackup;
             _logger = logger;
 
             _backupTempFolder = Path.Combine(_appFolderInfo.TempFolder, "sonarr_backup");
@@ -92,6 +99,7 @@ namespace NzbDrone.Core.Backup
 
             BackupConfigFile();
             BackupDatabase();
+            BackupEngineProfile();
             CreateVersionInfo(dateNow);
 
             _logger.ProgressDebug("Creating backup zip");
@@ -155,6 +163,10 @@ namespace NzbDrone.Core.Backup
 
                     configFiles.ForEach(RestoreConfigFile);
                     databaseFiles.ForEach(RestoreDatabase);
+
+                    files.Where(f => Path.GetFileName(f).Equals(EngineProfileArchiveName, StringComparison.OrdinalIgnoreCase))
+                         .ToList()
+                         .ForEach(_engineProfileBackup.StageRestore);
                 }
                 finally
                 {
@@ -208,6 +220,22 @@ namespace NzbDrone.Core.Backup
                 _logger.ProgressDebug("Backing up database");
 
                 _makeDatabaseBackup.BackupDatabase(_maindDb, _backupTempFolder);
+            }
+        }
+
+        private void BackupEngineProfile()
+        {
+            try
+            {
+                if (_engineProfileBackup.CreateArchive(Path.Combine(_backupTempFolder, EngineProfileArchiveName)))
+                {
+                    _logger.ProgressDebug("Backed up the engine profile");
+                }
+            }
+            catch (Exception ex)
+            {
+                // The database and settings are the backup; a profile that can't be read is reported, not fatal.
+                _logger.Warn(ex, "Unable to back up the engine profile");
             }
         }
 
