@@ -126,7 +126,8 @@ namespace NzbDrone.Core.Download.Engine
                 var downloadId = torrent.Hash.ToUpperInvariant();
                 var link = EngineLinkService.IsInfoHash(downloadId) ? _engineLinkService.Get(downloadId) : null;
 
-                if (link?.Files == null)
+                // A movie's link is imported by EngineMovieFileImportService.
+                if (link?.Files == null || link.MediaType == EngineLinkService.MovieMediaType)
                 {
                     continue;
                 }

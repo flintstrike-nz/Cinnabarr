@@ -139,7 +139,8 @@ namespace NzbDrone.Core.MediaFiles.MovieImport
 
                     localMovie.Movie.MovieFile = movieFile;
 
-                    if (!localMovie.ScriptImported || localMovie.ShouldImportExtras)
+                    // An in-place file's folder is the library folder; Embarr handles its subtitles itself.
+                    if (!localMovie.InPlace && (!localMovie.ScriptImported || localMovie.ShouldImportExtras))
                     {
                         _extraService.ImportMovie(localMovie, movieFile, copyOnly);
                     }

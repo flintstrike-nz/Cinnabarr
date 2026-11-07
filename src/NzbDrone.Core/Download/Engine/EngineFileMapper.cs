@@ -11,6 +11,7 @@ using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Download.Clients.QBittorrent;
 using NzbDrone.Core.Languages;
 using NzbDrone.Core.MediaFiles;
+using NzbDrone.Core.Movies;
 using NzbDrone.Core.Organizer;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
@@ -36,6 +37,12 @@ namespace NzbDrone.Core.Download.Engine
         // Rebuilds a video's final name (and its subtitles') from what the import checks learned about the file,
         // such as its media info. Returns true if any final name changed.
         bool UpdateFinalPaths(EngineLink link, EngineLinkFile video, Series series, LocalEpisode localEpisode);
+
+        // The same for a movie: its torrent's biggest video (not a sample) becomes the movie's file, and the subtitles
+        // beside it follow it. Returns null when the torrent holds no video.
+        EngineFileMap MapMovie(string downloadId, Movie movie, QualityModel quality, string releaseTitle, List<QBittorrentTorrentFile> files);
+
+        bool UpdateFinalPaths(EngineLink link, EngineLinkFile video, Movie movie, LocalMovie localMovie);
     }
 
     public class EngineFileMapper : IEngineFileMapper
@@ -61,15 +68,17 @@ namespace NzbDrone.Core.Download.Engine
 
         private readonly IParsingService _parsingService;
         private readonly IBuildFileNames _buildFileNames;
+        private readonly IBuildMovieFileNames _buildMovieFileNames;
         private readonly IConfigService _configService;
         private readonly IRootFolderService _rootFolderService;
         private readonly IDiskProvider _diskProvider;
         private readonly Logger _logger;
 
-        public EngineFileMapper(IParsingService parsingService, IBuildFileNames buildFileNames, IConfigService configService, IRootFolderService rootFolderService, IDiskProvider diskProvider, Logger logger)
+        public EngineFileMapper(IParsingService parsingService, IBuildFileNames buildFileNames, IBuildMovieFileNames buildMovieFileNames, IConfigService configService, IRootFolderService rootFolderService, IDiskProvider diskProvider, Logger logger)
         {
             _parsingService = parsingService;
             _buildFileNames = buildFileNames;
+            _buildMovieFileNames = buildMovieFileNames;
             _configService = configService;
             _rootFolderService = rootFolderService;
             _diskProvider = diskProvider;
@@ -165,12 +174,93 @@ namespace NzbDrone.Core.Download.Engine
                 return null;
             }
 
+            return BuildMap(downloadId, pendingSuffix, indexed, mappedVideos, series.Path);
+        }
+
+        public EngineFileMap MapMovie(string downloadId, Movie movie, QualityModel quality, string releaseTitle, List<QBittorrentTorrentFile> files)
+        {
+            var pendingSuffix = "." + downloadId.Substring(0, 8).ToLowerInvariant() + PendingSuffix;
+
+            var indexed = files.Select((file, index) => (File: file, Index: index)).ToList();
+            var videos = indexed.Where(f => EngineFileWhitelist.IsVideo(f.File.Name)).ToList();
+
+            // A sample is never wanted when there is a real video next to it.
+            var candidates = videos.Count > 1
+                ? videos.Where(v => !SampleRegex.IsMatch(Path.GetFileNameWithoutExtension(GetFileName(v.File.Name)))).ToList()
+                : videos;
+
+            if (candidates.Count == 0)
+            {
+                return null;
+            }
+
+            // A movie is one file: the biggest video is the movie.
+            var (file, index) = candidates.OrderByDescending(v => v.File.Size).First();
+
+            var releaseInfo = MovieParser.ParseMovieTitle(releaseTitle);
+            var fileInfo = MovieParser.ParseMovieTitle(Path.GetFileNameWithoutExtension(GetFileName(file.Name)));
+
+            var movieFile = new MovieFile
+            {
+                Quality = quality,
+                ReleaseGroup = fileInfo?.ReleaseGroup ?? releaseInfo?.ReleaseGroup,
+                Edition = fileInfo?.Edition ?? releaseInfo?.Edition,
+                SceneName = releaseTitle,
+                RelativePath = GetFileName(file.Name),
+                Languages = releaseInfo?.Languages ?? new(),
+                Size = file.Size
+            };
+
+            var finalPath = BuildMovieFinalPath(movie, movieFile, Path.GetExtension(GetFileName(file.Name)), null);
+
+            var video = new MappedVideo
+            {
+                File = file,
+                Index = index,
+                Episodes = new List<Episode>(),
+                FinalPath = finalPath,
+                SceneName = releaseTitle,
+                OriginalName = movieFile.RelativePath
+            };
+
+            return BuildMap(downloadId, pendingSuffix, indexed, new List<MappedVideo> { video }, movie.Path);
+        }
+
+        public bool UpdateFinalPaths(EngineLink link, EngineLinkFile video, Movie movie, LocalMovie localMovie)
+        {
+            var movieFile = new MovieFile
+            {
+                Quality = localMovie.Quality,
+                ReleaseGroup = localMovie.ReleaseGroup,
+                Edition = localMovie.Edition,
+                SceneName = video.SceneName,
+                RelativePath = video.OriginalName,
+                Languages = localMovie.Languages,
+                MediaInfo = localMovie.MediaInfo,
+                IndexerFlags = localMovie.IndexerFlags,
+                Size = localMovie.Size
+            };
+
+            return RebuildFinalPaths(link, video, extension => BuildMovieFinalPath(movie, movieFile, extension, localMovie.CustomFormats));
+        }
+
+        private string BuildMovieFinalPath(Movie movie, MovieFile movieFile, string extension, List<CustomFormats.CustomFormat> customFormats)
+        {
+            var name = _buildMovieFileNames.BuildFileName(movie, movieFile, null, customFormats);
+
+            return _buildMovieFileNames.BuildFilePath(movie, name, extension);
+        }
+
+        // Shared by series and movies: the folder the torrent saves into, then the pending and final names of the
+        // videos and of the subtitles that go with them.
+        private EngineFileMap BuildMap(string downloadId, string pendingSuffix, List<(QBittorrentTorrentFile File, int Index)> indexed, List<MappedVideo> mappedVideos, string mediaPath)
+        {
             var savePath = GetCommonFolder(mappedVideos.Select(v => Path.GetDirectoryName(v.FinalPath)).ToList());
 
             // With staging (roadmap §4.8), files download into <root>/.embarr-staging/<torrent>/ and the torrent saves
             // into the root folder, so moving a finished file to its final path is a rename on the same drive.
             string stagingFolder = null;
-            var root = _configService.EngineUseStagingFolder ? GetStagingRoot(series, savePath, mappedVideos.Select(v => Path.GetDirectoryName(v.FinalPath)).Distinct().ToList()) : null;
+            var root = _configService.EngineUseStagingFolder ? GetStagingRoot(mediaPath, savePath, mappedVideos.Select(v => Path.GetDirectoryName(v.FinalPath)).Distinct().ToList()) : null;
 
             if (root != null)
             {
@@ -278,6 +368,12 @@ namespace NzbDrone.Core.Download.Engine
                 Size = localEpisode.Size
             };
 
+            return RebuildFinalPaths(link, video, extension => BuildFinalPath(localEpisode.Episodes, series, episodeFile, extension, localEpisode.CustomFormats));
+        }
+
+        // Rebuilds a video's final name (and its subtitles') with the given builder; true if the name changed.
+        private bool RebuildFinalPaths(EngineLink link, EngineLinkFile video, Func<string, string> buildRawPath)
+        {
             var oldStem = Path.GetFileNameWithoutExtension(video.FinalPath);
             var extension = Path.GetExtension(video.FinalPath);
             var subtitles = link.Files
@@ -287,7 +383,7 @@ namespace NzbDrone.Core.Download.Engine
                 .Select(f => (f.File, Suffix: f.Name.Substring(oldStem.Length)))
                 .ToList();
 
-            var rawPath = BuildFinalPath(localEpisode.Episodes, series, episodeFile, extension, localEpisode.CustomFormats);
+            var rawPath = buildRawPath(extension);
             var newFolder = Path.GetDirectoryName(rawPath);
             var newStem = FitStem(Path.GetFileNameWithoutExtension(rawPath), subtitles.Select(s => s.Suffix).Append(extension));
             var finalPath = Path.Combine(newFolder, newStem + extension);
@@ -514,11 +610,11 @@ namespace NzbDrone.Core.Download.Engine
             }
         }
 
-        private string GetStagingRoot(Series series, string savePath, List<string> finalFolders)
+        private string GetStagingRoot(string mediaPath, string savePath, List<string> finalFolders)
         {
             try
             {
-                var root = _rootFolderService.GetBestRootFolderPath(series.Path);
+                var root = _rootFolderService.GetBestRootFolderPath(mediaPath);
 
                 if (root.IsNullOrWhiteSpace() || !root.IsParentPath(savePath))
                 {

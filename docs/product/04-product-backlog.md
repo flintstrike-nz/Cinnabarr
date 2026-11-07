@@ -60,7 +60,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 
 | ID | Item | Type | Requirements | Phase | Priority | Size | Depends on | Sequence | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| BL-010 | Movies straight into the final place via the engine (4e-4) | Story | ENG-15, FIL-07 | 4 | M | L | none | Now | Ready |
+| BL-010 | Movies straight into the final place via the engine (4e-4) | Story | ENG-15, FIL-07 | 4 | M | L | none | Now | Done for one movie video with its subtitles (checked against the real engine); upgrade replacement only unit-tested; restoring a movie link after a database restore is still open |
 | BL-011 | Movie folder rename and token picker for movie naming (4e-5) | Story | NAM-05 | 4 | S | M | none | Next | Partial: moving a movie folder and renaming it to the folder format from Organize done; token picker open |
 | BL-012 | Movie extras: .nfo, artwork, and subtitles beside existing files on scan | Story | FIL-08 | 4 | S | M | none | Next | Done (checked in the real app; folder-wide artwork such as poster.jpg is not linked) |
 | BL-013 | Movie import lists (4f) | Story | LIB-08 | 4 | M | M | none | Next | Partial: Done for two sources (custom JSON list, TMDb trending/popular); other sources, exclusions and the UI language field open |
@@ -90,7 +90,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | BL-032 | Verify that Dismiss works for grabs missing from the engine | Spike | ENG-07 | 2 | S | XS | none | Now | Done (checked against the real engine) |
 | BL-040 | Per-row priority, speed and share limits on the Downloads page | Story | ENG-11 | 2 | C | M | none | Later | Ready |
-| BL-041 | Health check for torrents past their seeding goal | Task | SEED-05 | 2 | S | S | none | Next | Done (movie torrents are not given seeding goals yet) |
+| BL-041 | Health check for torrents past their seeding goal | Task | SEED-05 | 2 | S | S | none | Next | Done (movie torrents follow the global and tracker goals; there is no per-movie rule) |
 | BL-042 | Verify removing one file from a seeding torrent (priority, delete, recheck) | Spike | SEED-04 | 2 | M | S | none | Now | Ready |
 | BL-043 | Verify pre-download and post-completion checks against sample files | Spike | FIL-02, FIL-03 | 2 | M | M | none | Now | Ready |
 | BL-044 | Sidecar: add slot label and seeding rule fields; restore test | Story | ENG-08, NFR-03 | 2, 5 | M | M | BL-050 | Next | Ready |

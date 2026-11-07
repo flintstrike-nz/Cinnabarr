@@ -55,7 +55,13 @@ namespace NzbDrone.Core.MediaFiles
                 var subfolder = rootFolder.GetRelativePath(_diskProvider.GetParentFolder(movieFilePath));
                 string recycleBinPath = null;
 
-                if (_diskProvider.FileExists(movieFilePath))
+                if (localMovie.InPlace && movieFilePath.PathEquals(localMovie.Path))
+                {
+                    // The built-in engine already moved the old file out of the way and put the new one at its path:
+                    // only the old record goes.
+                    _logger.Debug("Existing movie file was replaced in place: {0}", existingFile);
+                }
+                else if (_diskProvider.FileExists(movieFilePath))
                 {
                     _logger.Debug("Removing existing movie file: {0}", existingFile);
                     recycleBinPath = _recycleBinProvider.DeleteFile(movieFilePath, subfolder);

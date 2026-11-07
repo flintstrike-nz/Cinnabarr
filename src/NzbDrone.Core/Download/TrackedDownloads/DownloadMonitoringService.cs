@@ -35,6 +35,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         private readonly IEngineReconcileService _engineReconcileService;
         private readonly IEngineTorrentPreparationService _engineTorrentPreparationService;
         private readonly IEngineFileImportService _engineFileImportService;
+        private readonly IEngineMovieFileImportService _engineMovieFileImportService;
         private readonly IEngineSeedingService _engineSeedingService;
         private readonly Logger _logger;
         private readonly Debouncer _refreshDebounce;
@@ -51,6 +52,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                                          IEngineReconcileService engineReconcileService,
                                          IEngineTorrentPreparationService engineTorrentPreparationService,
                                          IEngineFileImportService engineFileImportService,
+                                         IEngineMovieFileImportService engineMovieFileImportService,
                                          IEngineSeedingService engineSeedingService,
                                          Logger logger)
         {
@@ -66,6 +68,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             _engineReconcileService = engineReconcileService;
             _engineTorrentPreparationService = engineTorrentPreparationService;
             _engineFileImportService = engineFileImportService;
+            _engineMovieFileImportService = engineMovieFileImportService;
             _engineSeedingService = engineSeedingService;
             _logger = logger;
 
@@ -196,6 +199,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             try
             {
                 _engineFileImportService.Process(downloadClient);
+                _engineMovieFileImportService.Process(downloadClient);
             }
             catch (Exception ex)
             {

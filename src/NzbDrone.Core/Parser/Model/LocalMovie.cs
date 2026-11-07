@@ -26,6 +26,10 @@ namespace NzbDrone.Core.Parser.Model
         public IndexerFlags IndexerFlags { get; set; }
         public MediaInfoModel MediaInfo { get; set; }
         public bool ExistingFile { get; set; }
+
+        // The built-in engine wrote the file straight to its final library path and is still seeding it, so it is recorded
+        // where it is instead of being moved.
+        public bool InPlace { get; set; }
         public bool SceneSource { get; set; }
         public string ReleaseGroup { get; set; }
         public string Edition { get; set; }

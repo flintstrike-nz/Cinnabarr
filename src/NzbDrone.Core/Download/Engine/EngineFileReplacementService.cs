@@ -6,6 +6,7 @@ using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Download.Clients.QBittorrent;
 using NzbDrone.Core.MediaFiles;
+using NzbDrone.Core.Movies;
 using NzbDrone.Core.Tv;
 
 namespace NzbDrone.Core.Download.Engine
@@ -28,6 +29,11 @@ namespace NzbDrone.Core.Download.Engine
 
         // Rechecks the torrents files were detached from, once the old files are gone, so they stop offering them.
         void Recheck(IQBittorrentProxy proxy, QBittorrentSettings settings, IEnumerable<string> hashes);
+
+        // The same for a movie's file (its torrents are the movie links, so a movie file id never meets an episode file id).
+        List<string> FindHolders(string replacingDownloadId, Movie movie, MovieFile existingFile);
+        bool IsReserved(IQBittorrentProxy proxy, QBittorrentSettings settings, string replacingDownloadId, string finalPath, MovieFile existingFile);
+        void Detach(IQBittorrentProxy proxy, QBittorrentSettings settings, string replacingDownloadId, Movie movie, MovieFile existingFile, string finalPath);
     }
 
     public class EngineFileReplacementService : IEngineFileReplacementService
@@ -47,14 +53,24 @@ namespace NzbDrone.Core.Download.Engine
 
         public List<string> FindHolders(string replacingDownloadId, Series series, List<EpisodeFile> existingFiles)
         {
-            var links = GetLinks(replacingDownloadId);
+            return FindHolders(replacingDownloadId, series.Path, existingFiles.Select(f => (f.Id, f.RelativePath)).ToList(), false);
+        }
+
+        public List<string> FindHolders(string replacingDownloadId, Movie movie, MovieFile existingFile)
+        {
+            return FindHolders(replacingDownloadId, movie.Path, new List<(int, string)> { (existingFile.Id, existingFile.RelativePath) }, true);
+        }
+
+        private List<string> FindHolders(string replacingDownloadId, string mediaPath, List<(int Id, string RelativePath)> existingFiles, bool movies)
+        {
+            var links = GetLinks(replacingDownloadId, movies);
             var holders = new List<string>();
 
             foreach (var existingFile in existingFiles)
             {
                 foreach (var (downloadId, link) in links)
                 {
-                    var video = FindVideo(link, Path.Combine(series.Path, existingFile.RelativePath), existingFile.Id);
+                    var video = FindVideo(link, Path.Combine(mediaPath, existingFile.RelativePath), existingFile.Id);
 
                     if (video == null)
                     {
@@ -74,10 +90,19 @@ namespace NzbDrone.Core.Download.Engine
 
         public bool IsReserved(IQBittorrentProxy proxy, QBittorrentSettings settings, string replacingDownloadId, string finalPath, List<EpisodeFile> existingFiles)
         {
-            var fileIds = existingFiles.Select(f => f.Id).ToHashSet();
+            return IsReserved(proxy, settings, replacingDownloadId, finalPath, existingFiles.Select(f => f.Id).ToHashSet(), false);
+        }
+
+        public bool IsReserved(IQBittorrentProxy proxy, QBittorrentSettings settings, string replacingDownloadId, string finalPath, MovieFile existingFile)
+        {
+            return IsReserved(proxy, settings, replacingDownloadId, finalPath, new HashSet<int> { existingFile.Id }, true);
+        }
+
+        private bool IsReserved(IQBittorrentProxy proxy, QBittorrentSettings settings, string replacingDownloadId, string finalPath, HashSet<int> fileIds, bool movies)
+        {
             var inEngine = proxy.GetTorrents(settings).Select(t => t.Hash.ToUpperInvariant()).ToHashSet();
 
-            return GetLinks(replacingDownloadId)
+            return GetLinks(replacingDownloadId, movies)
                 .Where(l => inEngine.Contains(l.Key))
                 .SelectMany(l => l.Value.Files.Where(f => !f.IsSubtitle).Select(f => (Link: l.Value, File: f)))
                 .Any(x => (x.File.State == EngineLinkFileState.Renamed || (x.File.State == EngineLinkFileState.Pending && x.File.ReplacesFileIds != null)) &&
@@ -86,13 +111,23 @@ namespace NzbDrone.Core.Download.Engine
 
         public void Detach(IQBittorrentProxy proxy, QBittorrentSettings settings, string replacingDownloadId, Series series, List<EpisodeFile> existingFiles, string finalPath)
         {
-            var links = GetLinks(replacingDownloadId);
+            Detach(proxy, settings, replacingDownloadId, series.Path, existingFiles.Select(f => (f.Id, f.RelativePath)).ToList(), finalPath, false);
+        }
+
+        public void Detach(IQBittorrentProxy proxy, QBittorrentSettings settings, string replacingDownloadId, Movie movie, MovieFile existingFile, string finalPath)
+        {
+            Detach(proxy, settings, replacingDownloadId, movie.Path, new List<(int, string)> { (existingFile.Id, existingFile.RelativePath) }, finalPath, true);
+        }
+
+        private void Detach(IQBittorrentProxy proxy, QBittorrentSettings settings, string replacingDownloadId, string mediaPath, List<(int Id, string RelativePath)> existingFiles, string finalPath, bool movies)
+        {
+            var links = GetLinks(replacingDownloadId, movies);
             var inEngine = proxy.GetTorrents(settings).Select(t => t.Hash.ToUpperInvariant()).ToHashSet();
-            var rootFolder = _diskProvider.GetParentFolder(series.Path);
+            var rootFolder = _diskProvider.GetParentFolder(mediaPath);
 
             foreach (var existingFile in existingFiles)
             {
-                var path = Path.Combine(series.Path, existingFile.RelativePath);
+                var path = Path.Combine(mediaPath, existingFile.RelativePath);
 
                 foreach (var (downloadId, link) in links)
                 {
@@ -151,9 +186,12 @@ namespace NzbDrone.Core.Download.Engine
             }
         }
 
-        private List<KeyValuePair<string, EngineLink>> GetLinks(string replacingDownloadId)
+        // Movie files and episode files share no id space, so each kind only meets the links of its own kind.
+        private List<KeyValuePair<string, EngineLink>> GetLinks(string replacingDownloadId, bool movies)
         {
-            return _engineLinkService.GetAll().Where(l => l.Key != replacingDownloadId && l.Value.Files != null).ToList();
+            return _engineLinkService.GetAll()
+                .Where(l => l.Key != replacingDownloadId && l.Value.Files != null && (l.Value.MediaType == EngineLinkService.MovieMediaType) == movies)
+                .ToList();
         }
 
         // The video a link holds at the path of an existing file. A Renamed video counts when the record is its own

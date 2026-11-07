@@ -32,7 +32,8 @@ namespace NzbDrone.Core.MediaFiles.MovieImport.Specifications
 
             try
             {
-                if (localMovie.ExistingFile)
+                // An in-place file already sits in its final folder; making it final is a rename, not a copy.
+                if (localMovie.ExistingFile || localMovie.InPlace)
                 {
                     _logger.Debug("Skipping free space check for existing movie");
                     return ImportSpecDecision.Accept();
