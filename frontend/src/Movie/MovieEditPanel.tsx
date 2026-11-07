@@ -1,11 +1,13 @@
 import React, { useCallback, useState } from 'react';
+import TextInput from 'Components/Form/TextInput';
 import Button from 'Components/Link/Button';
 import { kinds } from 'Helpers/Props';
 import { useQualityProfilesData } from 'Settings/Profiles/Quality/useQualityProfiles';
+import { InputChanged } from 'typings/inputs';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
 import Movie, { MovieStatus } from './Movie';
-import { useUpdateMovie } from './useMovies';
+import { useSaveMovie } from './useMovies';
 import styles from './Movie.module.css';
 
 const AVAILABILITY_OPTIONS: { value: MovieStatus; label: () => string }[] = [
@@ -22,7 +24,9 @@ interface MovieEditPanelProps {
 // Changes what the movie is searched for with: its quality profile and when it counts as available.
 function MovieEditPanel({ movie, onDone }: MovieEditPanelProps) {
   const profiles = useQualityProfilesData();
-  const { updateMovie, isUpdating, updateError } = useUpdateMovie();
+  const { saveMovie, isSaving, saveError } = useSaveMovie();
+  const [path, setPath] = useState(movie.path);
+  const [moveFiles, setMoveFiles] = useState(true);
   const [qualityProfileId, setQualityProfileId] = useState(
     movie.qualityProfileId
   );
@@ -44,12 +48,34 @@ function MovieEditPanel({ movie, onDone }: MovieEditPanelProps) {
     []
   );
 
+  const handlePathChange = useCallback(({ value }: InputChanged<string>) => {
+    setPath(value);
+  }, []);
+
+  const handleMoveFilesChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setMoveFiles(event.target.checked);
+    },
+    []
+  );
+
   const handleSavePress = useCallback(() => {
-    updateMovie(
-      { ...movie, qualityProfileId, minimumAvailability },
+    saveMovie(
+      {
+        movie: { ...movie, qualityProfileId, minimumAvailability, path },
+        moveFiles: moveFiles && path !== movie.path,
+      },
       { onSuccess: onDone }
     );
-  }, [movie, qualityProfileId, minimumAvailability, updateMovie, onDone]);
+  }, [
+    movie,
+    qualityProfileId,
+    minimumAvailability,
+    path,
+    moveFiles,
+    saveMovie,
+    onDone,
+  ]);
 
   return (
     <div className={styles.actions}>
@@ -79,9 +105,22 @@ function MovieEditPanel({ movie, onDone }: MovieEditPanelProps) {
         ))}
       </select>
 
+      <TextInput name="moviePath" value={path} onChange={handlePathChange} />
+
+      {path === movie.path ? null : (
+        <label>
+          <input
+            type="checkbox"
+            checked={moveFiles}
+            onChange={handleMoveFilesChange}
+          />{' '}
+          {translate('MoveFiles')}
+        </label>
+      )}
+
       <Button
         kind={kinds.SUCCESS}
-        isDisabled={isUpdating}
+        isDisabled={isSaving}
         onPress={handleSavePress}
       >
         {translate('Save')}
@@ -89,7 +128,7 @@ function MovieEditPanel({ movie, onDone }: MovieEditPanelProps) {
 
       <Button onPress={onDone}>{translate('Cancel')}</Button>
 
-      {updateError ? <p>{getErrorMessage(updateError)}</p> : null}
+      {saveError ? <p>{getErrorMessage(saveError)}</p> : null}
     </div>
   );
 }

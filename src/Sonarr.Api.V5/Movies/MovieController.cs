@@ -7,8 +7,10 @@ using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Datastore.Events;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.Events;
+using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Movies;
+using NzbDrone.Core.Movies.Commands;
 using NzbDrone.Core.Movies.Events;
 using NzbDrone.Core.RootFolders;
 using NzbDrone.Core.Validation;
@@ -31,11 +33,13 @@ public class MovieController : RestControllerWithSignalR<MovieResource, Movie>,
     private readonly IMovieService _movieService;
     private readonly IAddMovieService _addMovieService;
     private readonly IRootFolderService _rootFolderService;
+    private readonly IManageCommandQueue _commandQueueManager;
 
     public MovieController(IBroadcastSignalRMessage signalRBroadcaster,
                            IMovieService movieService,
                            IAddMovieService addMovieService,
                            IRootFolderService rootFolderService,
+                           IManageCommandQueue commandQueueManager,
                            RootFolderValidator rootFolderValidator,
                            MappedNetworkDriveValidator mappedNetworkDriveValidator,
                            MoviePathValidator moviePathValidator,
@@ -48,6 +52,7 @@ public class MovieController : RestControllerWithSignalR<MovieResource, Movie>,
     {
         _movieService = movieService;
         _addMovieService = addMovieService;
+        _commandQueueManager = commandQueueManager;
         _rootFolderService = rootFolderService;
 
         SharedValidator.RuleFor(m => m.Path).Cascade(CascadeMode.Stop)
@@ -122,11 +127,24 @@ public class MovieController : RestControllerWithSignalR<MovieResource, Movie>,
     [RestPutById]
     [Consumes("application/json")]
     [Produces("application/json")]
-    public Results<Accepted<MovieResource>, NotFound> UpdateMovie([FromBody] MovieResource movieResource)
+    public Results<Accepted<MovieResource>, NotFound> UpdateMovie([FromBody] MovieResource movieResource, [FromQuery] bool moveFiles = false)
     {
         var movie = _movieService.GetMovie(movieResource.Id);
+        var sourcePath = movie.Path;
+        var destinationPath = movieResource.Path;
 
         _movieService.UpdateMovie(movieResource.ToModel(movie));
+
+        // The movie already holds the new path; the command moves its folder there (and puts the old path back on failure).
+        if (moveFiles && destinationPath.IsNotNullOrWhiteSpace() && !sourcePath.PathEquals(destinationPath))
+        {
+            _commandQueueManager.Push(new MoveMovieCommand
+            {
+                MovieId = movie.Id,
+                SourcePath = sourcePath,
+                DestinationPath = destinationPath
+            });
+        }
 
         return TypedAccepted(movieResource.Id);
     }

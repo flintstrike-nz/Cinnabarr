@@ -139,3 +139,29 @@ export const useRefreshMovie = () => {
       mutate({ name: 'RefreshMovie', movieIds: [movieId] }),
   };
 };
+
+// Saves the movie; with moveFiles a changed path also moves the folder on disk.
+export const useSaveMovie = () => {
+  const queryClient = useQueryClient();
+
+  const { isPending, error, mutate } = useApiMutation<
+    Movie,
+    Movie,
+    { movie: Movie; moveFiles: boolean }
+  >({
+    path: '/movie',
+    method: 'PUT',
+    getRequest: ({ movie, moveFiles }) => ({
+      body: movie,
+      queryParams: { moveFiles },
+    }),
+    mutationOptions: {
+      onSuccess: (movie) => {
+        queryClient.setQueryData([`/movie/${movie.id}`], movie);
+        queryClient.invalidateQueries({ queryKey: ['/movie'] });
+      },
+    },
+  });
+
+  return { isSaving: isPending, saveError: error, saveMovie: mutate };
+};
