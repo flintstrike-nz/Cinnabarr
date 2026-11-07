@@ -1,24 +1,36 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using NLog;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Common.Messaging;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Download.Clients;
 using NzbDrone.Core.Download.Clients.QBittorrent;
 using NzbDrone.Core.Download.History;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.Indexers;
+using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Tv;
 
 namespace NzbDrone.Core.Download.Engine
 {
+    // Published when the set of overdue torrents changed, so the health check re-runs.
+    public class EngineSeedingProcessedEvent : IEvent
+    {
+    }
+
     public interface IEngineSeedingService
     {
         // Applies the seeding goals (roadmap §4.10) to every finished built-in engine torrent: the engine's own share
         // limits are kept in step, and once every file still in the torrent has met its goal the torrent is removed
         // from the engine, keeping its files.
         void Process(IDownloadClient downloadClient);
+
+        // Names of torrents past their seeding goal that the engine would not let go of (roadmap SEED-05). A health check
+        // lists them; an entry goes away as soon as the torrent is removed.
+        List<string> OverdueTorrents { get; }
 
         // The goals the files of the download have to meet: each video's most specific goal (episode, season, series,
         // then global) and the tracker's minimum.
@@ -30,6 +42,8 @@ namespace NzbDrone.Core.Download.Engine
 
     public class EngineSeedingService : IEngineSeedingService
     {
+        private readonly ConcurrentDictionary<string, string> _overdue = new();
+
         private readonly IQBittorrentProxySelector _proxySelector;
         private readonly IEngineLinkService _engineLinkService;
         private readonly IDownloadHistoryService _downloadHistoryService;
@@ -38,6 +52,7 @@ namespace NzbDrone.Core.Download.Engine
         private readonly ITrackedDownloadService _trackedDownloadService;
         private readonly ISeriesService _seriesService;
         private readonly IEpisodeService _episodeService;
+        private readonly IEventAggregator _eventAggregator;
         private readonly Logger _logger;
 
         public EngineSeedingService(IQBittorrentProxySelector proxySelector,
@@ -48,6 +63,7 @@ namespace NzbDrone.Core.Download.Engine
                                     ITrackedDownloadService trackedDownloadService,
                                     ISeriesService seriesService,
                                     IEpisodeService episodeService,
+                                    IEventAggregator eventAggregator,
                                     Logger logger)
         {
             _proxySelector = proxySelector;
@@ -57,9 +73,12 @@ namespace NzbDrone.Core.Download.Engine
             _configService = configService;
             _trackedDownloadService = trackedDownloadService;
             _seriesService = seriesService;
+            _eventAggregator = eventAggregator;
             _episodeService = episodeService;
             _logger = logger;
         }
+
+        public List<string> OverdueTorrents => _overdue.Values.OrderBy(n => n).ToList();
 
         public void Process(IDownloadClient downloadClient)
         {
@@ -70,7 +89,16 @@ namespace NzbDrone.Core.Download.Engine
 
             var proxy = _proxySelector.GetProxy(settings);
 
-            foreach (var torrent in proxy.GetTorrents(settings))
+            var torrents = proxy.GetTorrents(settings);
+            var overdueBefore = OverdueTorrents;
+
+            // A torrent that has left the engine can no longer be overdue.
+            foreach (var key in _overdue.Keys.Where(k => torrents.All(t => !string.Equals(t.Hash, k, StringComparison.OrdinalIgnoreCase))).ToList())
+            {
+                _overdue.TryRemove(key, out _);
+            }
+
+            foreach (var torrent in torrents)
             {
                 var downloadId = torrent.Hash.ToUpperInvariant();
 
@@ -82,6 +110,11 @@ namespace NzbDrone.Core.Download.Engine
                 {
                     _logger.Warn(ex, "Unable to apply seeding goals to '{0}'", torrent.Name);
                 }
+            }
+
+            if (!overdueBefore.SequenceEqual(OverdueTorrents))
+            {
+                _eventAggregator.PublishEvent(new EngineSeedingProcessedEvent());
             }
         }
 
@@ -210,7 +243,19 @@ namespace NzbDrone.Core.Download.Engine
             {
                 // Seeding never costs a file: the torrent goes, its files stay in the library.
                 _logger.Info("'{0}' has met its seeding goals; removing it from the engine and keeping its files", torrent.Name);
-                proxy.RemoveTorrent(torrent.Hash.ToLowerInvariant(), false, settings);
+
+                try
+                {
+                    proxy.RemoveTorrent(torrent.Hash.ToLowerInvariant(), false, settings);
+                    _overdue.TryRemove(torrent.Hash.ToLowerInvariant(), out _);
+                }
+                catch
+                {
+                    // Past its goal but still in the engine: remembered so a health check can say so.
+                    _overdue[torrent.Hash.ToLowerInvariant()] = torrent.Name;
+
+                    throw;
+                }
 
                 return;
             }

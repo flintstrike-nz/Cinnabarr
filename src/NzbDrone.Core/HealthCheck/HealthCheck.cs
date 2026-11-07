@@ -67,6 +67,7 @@ namespace NzbDrone.Core.HealthCheck
         EngineNotFound,
         EngineNotRunning,
         EngineOrphansAwaitingReview,
+        EngineSeedingOverdue,
         ImportListRootFolderMissing,
         ImportListRootFolderMultipleMissing,
         ImportListStatusAllUnavailable,

@@ -814,6 +814,7 @@
   "EngineSeedingModeNone": "Don't seed",
   "EngineSeedingModeRatio": "Until a ratio",
   "EngineSeedingModeTime": "For a time",
+  "EngineSeedingOverdueHealthCheckMessage": "{count} torrent(s) are past their seeding goal but the engine did not let them go: {names}. They are retried every minute.",
   "EngineSeedingProgress": "{time}, ratio {ratio}",
   "EngineSeedingRatio": "Seed Ratio",
   "EngineSeedingRatioValue": "ratio {ratio}",
