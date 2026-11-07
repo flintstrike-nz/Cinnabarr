@@ -28,6 +28,7 @@ public class MovieHistoryResource : RestResource
 public class MovieBlocklistResource : RestResource
 {
     public int MovieId { get; set; }
+    public string? MovieTitle { get; set; }
     public required string SourceTitle { get; set; }
     public required List<Language> Languages { get; set; }
     public required QualityModel Quality { get; set; }
@@ -86,25 +87,32 @@ public class MovieHistoryController : Controller
 public class MovieBlocklistController : Controller
 {
     private readonly IMovieBlocklistService _blocklistService;
+    private readonly IMovieService _movieService;
 
-    public MovieBlocklistController(IMovieBlocklistService blocklistService)
+    public MovieBlocklistController(IMovieBlocklistService blocklistService, IMovieService movieService)
     {
         _blocklistService = blocklistService;
+        _movieService = movieService;
     }
 
+    // With a movieId: that movie's blocklisted releases. Without one: all of them, newest first.
     [HttpGet]
     [Produces("application/json")]
-    public Ok<List<MovieBlocklistResource>> GetMovieBlocklist(int movieId)
+    public Ok<List<MovieBlocklistResource>> GetMovieBlocklist(int? movieId)
     {
-        if (movieId <= 0)
-        {
-            throw new BadRequestException("movieId must be provided");
-        }
+        var items = movieId.HasValue ? _blocklistService.GetByMovieId(movieId.Value) : _blocklistService.GetAll();
 
-        return TypedResults.Ok(_blocklistService.GetByMovieId(movieId).Select(b => new MovieBlocklistResource
+        var titles = items.Select(b => b.MovieId).Distinct().ToList() switch
+        {
+            { Count: > 0 } ids => _movieService.GetMovies(ids).ToDictionary(m => m.Id, m => m.Title),
+            _ => new Dictionary<int, string>()
+        };
+
+        return TypedResults.Ok(items.Select(b => new MovieBlocklistResource
         {
             Id = b.Id,
             MovieId = b.MovieId,
+            MovieTitle = titles.GetValueOrDefault(b.MovieId),
             SourceTitle = b.SourceTitle,
             Languages = b.Languages ?? [],
             Quality = b.Quality,

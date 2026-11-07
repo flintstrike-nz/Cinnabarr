@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import React, { useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import Button from 'Components/Link/Button';
 import useApiMutation from 'Helpers/Hooks/useApiMutation';
 import useApiQuery from 'Helpers/Hooks/useApiQuery';
@@ -18,8 +19,10 @@ export interface MovieHistoryItem {
   data: Record<string, string>;
 }
 
-interface MovieBlocklistItem {
+export interface MovieBlocklistItem {
   id: number;
+  movieId?: number;
+  movieTitle?: string;
   sourceTitle: string;
   quality: QualityModel;
   date: string;
@@ -49,12 +52,12 @@ export function getEventLabel(eventType: string) {
   }
 }
 
-function BlocklistRow({
+export function BlocklistRow({
   item,
-  movieId,
+  showMovie = false,
 }: {
   item: MovieBlocklistItem;
-  movieId: number;
+  showMovie?: boolean;
 }) {
   const queryClient = useQueryClient();
   const { mutate, isPending } = useApiMutation<unknown, void>({
@@ -62,9 +65,7 @@ function BlocklistRow({
     method: 'DELETE',
     mutationOptions: {
       onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: ['/blocklist/movie', { movieId }],
-        });
+        queryClient.invalidateQueries({ queryKey: ['/blocklist/movie'] });
       },
     },
   });
@@ -75,6 +76,11 @@ function BlocklistRow({
 
   return (
     <tr>
+      {showMovie ? (
+        <td>
+          <Link to={`/movie/${item.movieId}`}>{item.movieTitle}</Link>
+        </td>
+      ) : null}
       <td>{item.sourceTitle}</td>
       <td>{item.indexer}</td>
       <td>{item.message}</td>
@@ -144,7 +150,7 @@ function MovieHistory({ movieId }: { movieId: number }) {
             </thead>
             <tbody>
               {blocklist.map((item) => (
-                <BlocklistRow key={item.id} item={item} movieId={movieId} />
+                <BlocklistRow key={item.id} item={item} />
               ))}
             </tbody>
           </table>

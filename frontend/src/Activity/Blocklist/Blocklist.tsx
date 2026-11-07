@@ -20,6 +20,7 @@ import TablePager from 'Components/Table/TablePager';
 import { useCustomFiltersList } from 'Filters/useCustomFilters';
 import { align, icons, kinds } from 'Helpers/Props';
 import { SortDirection } from 'Helpers/Props/sortDirections';
+import { MovieBlocklistSection } from 'Movie/MovieActivity';
 import BlockListModel from 'typings/Blocklist';
 import { CheckInputChanged } from 'typings/inputs';
 import { TableOptionsChangePayload } from 'typings/Table';
@@ -269,6 +270,8 @@ function BlocklistContent() {
             />
           </div>
         ) : null}
+
+        <MovieBlocklistSection />
       </PageContentBody>
 
       <ConfirmModal
