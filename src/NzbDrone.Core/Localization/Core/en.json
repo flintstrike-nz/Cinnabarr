@@ -2406,6 +2406,7 @@
   "SeedingGoalOverrideHelpText": "Overrides the next level's goal for these files (episode, then season, then series, then the global goal in Settings → Download Clients). A private tracker's minimum always applies as well.",
   "SeedingGoalUseGlobal": "Use the global goal",
   "SeedingGoalUseSeries": "Use the series' goal",
+  "Select": "Select",
   "SelectAll": "Select All",
   "SelectDownloadClientModalTitle": "{modalTitle} - Select Download Client",
   "SelectDropdown": "Select...",
