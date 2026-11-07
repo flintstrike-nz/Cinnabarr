@@ -147,13 +147,13 @@ export const useSaveMovie = () => {
   const { isPending, error, mutate } = useApiMutation<
     Movie,
     Movie,
-    { movie: Movie; moveFiles: boolean }
+    { movie: Movie; moveFiles: boolean; renameFileIds?: number[] }
   >({
     path: '/movie',
     method: 'PUT',
-    getRequest: ({ movie, moveFiles }) => ({
+    getRequest: ({ movie, moveFiles, renameFileIds }) => ({
       body: movie,
-      queryParams: { moveFiles },
+      queryParams: { moveFiles, renameFileIds },
     }),
     mutationOptions: {
       onSuccess: (movie) => {

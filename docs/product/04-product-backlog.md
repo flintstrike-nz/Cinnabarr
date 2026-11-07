@@ -61,7 +61,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | ID | Item | Type | Requirements | Phase | Priority | Size | Depends on | Sequence | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | BL-010 | Movies straight into the final place via the engine (4e-4) | Story | ENG-15, FIL-07 | 4 | M | L | none | Now | Ready |
-| BL-011 | Movie folder rename and token picker for movie naming (4e-5) | Story | NAM-05 | 4 | S | M | none | Next | Partial: moving a movie folder done; token picker and folder rename on format change open |
+| BL-011 | Movie folder rename and token picker for movie naming (4e-5) | Story | NAM-05 | 4 | S | M | none | Next | Partial: moving a movie folder and renaming it to the folder format from Organize done; token picker open |
 | BL-012 | Movie extras: .nfo, artwork, and subtitles beside existing files on scan | Story | FIL-08 | 4 | S | M | none | Next | Done (checked in the real app; folder-wide artwork such as poster.jpg is not linked) |
 | BL-013 | Movie import lists (4f) | Story | LIB-08 | 4 | M | M | none | Next | Partial: Done for two sources (custom JSON list, TMDb trending/popular); other sources, exclusions and the UI language field open |
 | BL-014 | Series metadata from TVDB directly, replacing Skyhook (4i) | Story | MET-02, MET-06, IF-02, IF-04 | 4 | M | L | BL-094 | Now | Blocked: TVDB key and licence |

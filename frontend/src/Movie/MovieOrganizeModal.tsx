@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { SelectProvider, useSelect } from 'App/Select/SelectContext';
 import CommandNames from 'Commands/CommandNames';
 import { useExecuteCommand } from 'Commands/useCommands';
@@ -20,7 +20,9 @@ import { CheckInputChanged } from 'typings/inputs';
 import translate from 'Utilities/String/translate';
 import useMovieRenamePreview, {
   MovieRenamePreview,
+  useMovieFolderPreview,
 } from './useMovieRenamePreview';
+import { useMovie, useSaveMovie } from './useMovies';
 
 interface MovieOrganizeContentProps {
   movieId: number;
@@ -34,6 +36,10 @@ function MovieOrganizeContentInner({
   onModalClose,
 }: MovieOrganizeContentProps) {
   const executeCommand = useExecuteCommand();
+  const { data: movie } = useMovie(movieId);
+  const { data: folderPreview } = useMovieFolderPreview(movieId);
+  const { saveMovie } = useSaveMovie();
+  const [renameFolder, setRenameFolder] = useState(true);
   const {
     items,
     isFetching: isPreviewFetching,
@@ -53,6 +59,10 @@ function MovieOrganizeContentInner({
   const isPopulated = isPreviewFetched && isNamingFetched;
   const error = previewError || namingError;
   const { renameMovies, standardMovieFormat } = naming;
+  const folderChanges =
+    !!folderPreview &&
+    folderPreview.newPath !== folderPreview.existingPath &&
+    !!folderPreview.newPath;
 
   let selectAllValue: boolean | null = null;
 
@@ -73,15 +83,43 @@ function MovieOrganizeContentInner({
     [selectAll, unselectAll]
   );
 
+  const handleRenameFolderChange = useCallback(
+    ({ value }: CheckInputChanged) => {
+      setRenameFolder(!!value);
+    },
+    []
+  );
+
   const handleOrganizePress = useCallback(() => {
-    executeCommand({
-      name: CommandNames.RenameMovieFiles,
-      movieId,
-      files: getSelectedIds(),
-    });
+    const files = getSelectedIds();
+
+    if (renameFolder && folderChanges && movie) {
+      // The server renames the files after the folder has moved, so they are looked up at the new path.
+      saveMovie({
+        movie: { ...movie, path: folderPreview.newPath },
+        moveFiles: true,
+        renameFileIds: files,
+      });
+    } else if (files.length) {
+      executeCommand({
+        name: CommandNames.RenameMovieFiles,
+        movieId,
+        files,
+      });
+    }
 
     onModalClose();
-  }, [movieId, getSelectedIds, executeCommand, onModalClose]);
+  }, [
+    movieId,
+    movie,
+    folderPreview,
+    folderChanges,
+    renameFolder,
+    saveMovie,
+    getSelectedIds,
+    executeCommand,
+    onModalClose,
+  ]);
 
   return (
     <ModalContent onModalClose={onModalClose}>
@@ -94,7 +132,20 @@ function MovieOrganizeContentInner({
           <Alert kind={kinds.DANGER}>{translate('OrganizeLoadError')}</Alert>
         ) : null}
 
-        {!isFetching && isPopulated && !items.length ? (
+        {!isFetching && isPopulated && folderChanges ? (
+          <Alert>
+            <CheckInput
+              name="renameFolder"
+              value={renameFolder}
+              onChange={handleRenameFolderChange}
+            />
+            <div>{translate('OrganizeMovieFolder')}</div>
+            <div>{folderPreview.existingPath}</div>
+            <div>{folderPreview.newPath}</div>
+          </Alert>
+        ) : null}
+
+        {!isFetching && isPopulated && !items.length && !folderChanges ? (
           <div>
             {renameMovies
               ? translate('OrganizeNothingToRename')

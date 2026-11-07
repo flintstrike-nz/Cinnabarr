@@ -2008,6 +2008,7 @@
   "OrganizeLoadError": "Error loading previews",
   "OrganizeModalHeader": "Organize & Rename",
   "OrganizeModalHeaderSeason": "Organize & Rename - {season}",
+  "OrganizeMovieFolder": "Rename the movie folder to match the folder format:",
   "OrganizeNamingPattern": "Naming pattern: `{episodeFormat}`",
   "OrganizeNothingToRename": "Success! My work is done, no files to rename.",
   "OrganizeRelativePaths": "All paths are relative to: `{path}`",
