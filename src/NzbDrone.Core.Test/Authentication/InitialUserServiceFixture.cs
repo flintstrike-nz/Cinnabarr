@@ -52,6 +52,9 @@ namespace NzbDrone.Core.Test.Authentication
 
             Mocker.GetMock<IUserService>()
                 .Verify(c => c.Add("sonarr", It.Is<string>(p => p.Length == 20)), Times.Once());
+
+            // A generated password is logged as warnings so the owner can sign in.
+            ExceptionVerification.IgnoreWarns();
         }
 
         [Test]
@@ -124,6 +127,8 @@ namespace NzbDrone.Core.Test.Authentication
 
             Mocker.GetMock<IUserService>()
                 .Verify(c => c.Add("sonarr", It.Is<string>(p => p.Length == 20)), Times.Once());
+
+            ExceptionVerification.IgnoreWarns();
         }
 
         [Test]

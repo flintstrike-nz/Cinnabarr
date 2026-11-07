@@ -86,6 +86,9 @@ namespace NzbDrone.Core.Test.Datastore
 
             Assert.Throws<IOException>(() => Subject.Restore());
 
+            // The failure is logged as an error before the old database is moved back.
+            ExceptionVerification.ExpectedErrors(1);
+
             Mocker.GetMock<IDiskProvider>().Verify(v => v.MoveFile(_databasePath + ".pre-restore", _databasePath, true), Times.Once());
             Mocker.GetMock<IDiskProvider>().Verify(v => v.MoveFile(_databasePath + ".pre-restore-wal", _databasePath + "-wal", true), Times.Never());
             Mocker.GetMock<IDiskProvider>().Verify(v => v.MoveFile(_databaseRestorePath, _databasePath, It.IsAny<bool>()), Times.Never());
