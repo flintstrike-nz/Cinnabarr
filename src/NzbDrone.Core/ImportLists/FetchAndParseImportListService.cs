@@ -77,6 +77,8 @@ namespace NzbDrone.Core.ImportLists
                                  {
                                      importListReports.ForEach(s => s.ImportListId = importList.Definition.Id);
                                      result.Series.AddRange(importListReports);
+                                     fetchResult.Movies.ForEach(m => m.ImportListId = importList.Definition.Id);
+                                     result.Movies.AddRange(fetchResult.Movies);
                                      var removed = _importListItemService.SyncSeriesForList(importListReports, importList.Definition.Id);
                                      _importListStatusService.UpdateListSyncStatus(importList.Definition.Id, removed > 0);
                                  }
@@ -96,6 +98,7 @@ namespace NzbDrone.Core.ImportLists
             Task.WaitAll(taskList.ToArray());
 
             result.Series = result.Series.DistinctBy(r => new { r.TvdbId, r.TmdbId, r.ImdbId, r.Title }).ToList();
+            result.Movies = result.Movies.DistinctBy(r => new { r.ImportListId, r.TmdbId, r.ImdbId }).ToList();
 
             _logger.Debug("Found {0} total reports from {1} lists", result.Series.Count, importLists.Count);
 
@@ -134,6 +137,8 @@ namespace NzbDrone.Core.ImportLists
                         {
                             importListReports.ForEach(s => s.ImportListId = importList.Definition.Id);
                             result.Series.AddRange(importListReports);
+                            fetchResult.Movies.ForEach(m => m.ImportListId = importList.Definition.Id);
+                            result.Movies.AddRange(fetchResult.Movies);
                             var removed = _importListItemService.SyncSeriesForList(importListReports, importList.Definition.Id);
                             _importListStatusService.UpdateListSyncStatus(importList.Definition.Id, removed > 0);
                         }

@@ -63,7 +63,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | BL-010 | Movies straight into the final place via the engine (4e-4) | Story | ENG-15, FIL-07 | 4 | M | L | none | Now | Ready |
 | BL-011 | Movie folder rename and token picker for movie naming (4e-5) | Story | NAM-05 | 4 | S | M | none | Next | Partial: moving a movie folder done; token picker and folder rename on format change open |
 | BL-012 | Movie extras: .nfo, artwork, and subtitles beside existing files on scan | Story | FIL-08 | 4 | S | M | none | Next | Done (checked in the real app; folder-wide artwork such as poster.jpg is not linked) |
-| BL-013 | Movie import lists (4f) | Story | LIB-08 | 4 | M | M | none | Next | Ready |
+| BL-013 | Movie import lists (4f) | Story | LIB-08 | 4 | M | M | none | Next | Partial: Done for two sources (custom JSON list, TMDb trending/popular); other sources, exclusions and the UI language field open |
 | BL-014 | Series metadata from TVDB directly, replacing Skyhook (4i) | Story | MET-02, MET-06, IF-02, IF-04 | 4 | M | L | BL-094 | Now | Blocked: TVDB key and licence |
 | BL-015 | Movie metadata from TMDb directly, replacing the interim service (4i) | Story | MET-03, IF-03 | 4 | M | M | BL-095 | Next | Blocked: TMDb key |
 | BL-016 | TheXEM scene mappings plus Cinnabarr's own list (4i) | Story | MET-05, MET-04 | 4 | M | M | BL-014 | Next | Ready |

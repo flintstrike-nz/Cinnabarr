@@ -6,6 +6,7 @@ using NzbDrone.Common.Instrumentation.Extensions;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.ImportLists.Exclusions;
 using NzbDrone.Core.ImportLists.ImportListItems;
+using NzbDrone.Core.ImportLists.Movies;
 using NzbDrone.Core.Jobs;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
@@ -26,6 +27,7 @@ namespace NzbDrone.Core.ImportLists
         private readonly ISearchForNewSeries _seriesSearchService;
         private readonly ISeriesService _seriesService;
         private readonly IAddSeriesService _addSeriesService;
+        private readonly IProcessMovieImportListItems _movieItemProcessor;
         private readonly IConfigService _configService;
         private readonly ITaskManager _taskManager;
         private readonly Logger _logger;
@@ -38,6 +40,7 @@ namespace NzbDrone.Core.ImportLists
             ISearchForNewSeries seriesSearchService,
             ISeriesService seriesService,
             IAddSeriesService addSeriesService,
+            IProcessMovieImportListItems movieItemProcessor,
             IConfigService configService,
             ITaskManager taskManager,
             Logger logger)
@@ -50,6 +53,7 @@ namespace NzbDrone.Core.ImportLists
             _seriesSearchService = seriesSearchService;
             _seriesService = seriesService;
             _addSeriesService = addSeriesService;
+            _movieItemProcessor = movieItemProcessor;
             _configService = configService;
             _taskManager = taskManager;
             _logger = logger;
@@ -98,6 +102,7 @@ namespace NzbDrone.Core.ImportLists
             var listItems = result.Series.ToList();
 
             ProcessListItems(listItems);
+            _movieItemProcessor.Process(result.Movies);
 
             RemoveTagsFromSeriesNotOnLists();
 
@@ -113,6 +118,7 @@ namespace NzbDrone.Core.ImportLists
             var listItems = result.Series.ToList();
 
             ProcessListItems(listItems);
+            _movieItemProcessor.Process(result.Movies);
 
             RemoveTagsFromSeriesNotOnLists();
 
