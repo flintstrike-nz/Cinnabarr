@@ -165,3 +165,16 @@ export const useSaveMovie = () => {
 
   return { isSaving: isPending, saveError: error, saveMovie: mutate };
 };
+
+export type DiscoverList = 'trending' | 'popular';
+
+// What is trending or popular, for the Add Movie page before anything is typed.
+export const useDiscoverMovies = (list: DiscoverList, isEnabled: boolean) => {
+  const result = useApiQuery<Movie[]>({
+    path: '/movie/lookup/discover',
+    queryParams: { list },
+    queryOptions: { enabled: isEnabled, refetchOnWindowFocus: false },
+  });
+
+  return { ...result, data: result.data ?? DEFAULT_MOVIES };
+};
