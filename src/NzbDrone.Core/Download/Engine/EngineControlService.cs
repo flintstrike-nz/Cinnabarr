@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using MonoTorrent;
+using Newtonsoft.Json.Linq;
 using NLog;
 using NzbDrone.Core.Download.Clients.QBittorrent;
 using NzbDrone.Core.MediaFiles.TorrentInfo;
@@ -24,8 +25,41 @@ namespace NzbDrone.Core.Download.Engine
         public bool AlternativeSpeedLimits { get; set; }
     }
 
+    // The engine's network, speed, queue and privacy settings (roadmap SET-04). Speeds are in KiB/s, 0 meaning unlimited;
+    // queue limits of -1 mean unlimited.
+    public class EnginePreferences
+    {
+        public int ListenPort { get; set; }
+        public bool RandomPort { get; set; }
+        public bool Upnp { get; set; }
+        public string NetworkInterface { get; set; }
+
+        public int DownloadLimit { get; set; }
+        public int UploadLimit { get; set; }
+        public int AlternativeDownloadLimit { get; set; }
+        public int AlternativeUploadLimit { get; set; }
+
+        public bool QueueingEnabled { get; set; }
+        public int MaxActiveDownloads { get; set; }
+        public int MaxActiveUploads { get; set; }
+        public int MaxActiveTorrents { get; set; }
+
+        public bool Dht { get; set; }
+        public bool Pex { get; set; }
+        public bool Lsd { get; set; }
+        public bool AnonymousMode { get; set; }
+
+        // 0 prefer encryption, 1 require it, 2 turn it off.
+        public int Encryption { get; set; }
+
+        public bool PreallocateDisk { get; set; }
+    }
+
     public interface IEngineControlService
     {
+        EnginePreferences GetPreferences();
+        void SetPreferences(EnginePreferences preferences);
+
         // The engine's live transfer speeds and whether its alternative speed limits are on (roadmap §6.2).
         EngineTransferStatus GetStatus();
         void SetAlternativeSpeedLimits(bool enabled);
@@ -126,6 +160,75 @@ namespace NzbDrone.Core.Download.Engine
 
                 return hash.ToUpperInvariant();
             });
+        }
+
+        public EnginePreferences GetPreferences()
+        {
+            return Run((proxy, settings) =>
+            {
+                var json = proxy.GetPreferencesJson(settings);
+
+                return new EnginePreferences
+                {
+                    ListenPort = json.Value<int?>("listen_port") ?? 0,
+                    RandomPort = json.Value<bool?>("random_port") ?? false,
+                    Upnp = json.Value<bool?>("upnp") ?? false,
+                    NetworkInterface = json.Value<string>("current_network_interface") ?? string.Empty,
+                    DownloadLimit = (json.Value<int?>("dl_limit") ?? 0) / 1024,
+                    UploadLimit = (json.Value<int?>("up_limit") ?? 0) / 1024,
+                    AlternativeDownloadLimit = (json.Value<int?>("alt_dl_limit") ?? 0) / 1024,
+                    AlternativeUploadLimit = (json.Value<int?>("alt_up_limit") ?? 0) / 1024,
+                    QueueingEnabled = json.Value<bool?>("queueing_enabled") ?? false,
+                    MaxActiveDownloads = json.Value<int?>("max_active_downloads") ?? -1,
+                    MaxActiveUploads = json.Value<int?>("max_active_uploads") ?? -1,
+                    MaxActiveTorrents = json.Value<int?>("max_active_torrents") ?? -1,
+                    Dht = json.Value<bool?>("dht") ?? true,
+                    Pex = json.Value<bool?>("pex") ?? true,
+                    Lsd = json.Value<bool?>("lsd") ?? true,
+                    AnonymousMode = json.Value<bool?>("anonymous_mode") ?? false,
+                    Encryption = json.Value<int?>("encryption") ?? 0,
+                    PreallocateDisk = json.Value<bool?>("preallocate_all") ?? false
+                };
+            });
+        }
+
+        public void SetPreferences(EnginePreferences preferences)
+        {
+            if (preferences.ListenPort is < 0 or > 65535)
+            {
+                throw new EngineControlException("the listening port has to be between 0 and 65535");
+            }
+
+            Run((proxy, settings) =>
+            {
+                var json = new JObject
+                {
+                    ["listen_port"] = preferences.ListenPort,
+                    ["random_port"] = preferences.RandomPort,
+                    ["upnp"] = preferences.Upnp,
+                    ["current_network_interface"] = preferences.NetworkInterface ?? string.Empty,
+                    ["dl_limit"] = Math.Max(0, preferences.DownloadLimit) * 1024,
+                    ["up_limit"] = Math.Max(0, preferences.UploadLimit) * 1024,
+                    ["alt_dl_limit"] = Math.Max(0, preferences.AlternativeDownloadLimit) * 1024,
+                    ["alt_up_limit"] = Math.Max(0, preferences.AlternativeUploadLimit) * 1024,
+                    ["queueing_enabled"] = preferences.QueueingEnabled,
+                    ["max_active_downloads"] = preferences.MaxActiveDownloads,
+                    ["max_active_uploads"] = preferences.MaxActiveUploads,
+                    ["max_active_torrents"] = preferences.MaxActiveTorrents,
+                    ["dht"] = preferences.Dht,
+                    ["pex"] = preferences.Pex,
+                    ["lsd"] = preferences.Lsd,
+                    ["anonymous_mode"] = preferences.AnonymousMode,
+                    ["encryption"] = preferences.Encryption,
+                    ["preallocate_all"] = preferences.PreallocateDisk
+                };
+
+                proxy.SetPreferencesJson(json, settings);
+
+                return true;
+            });
+
+            _logger.Info("Engine network and speed settings saved");
         }
 
         public EngineTransferStatus GetStatus()

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using Newtonsoft.Json.Linq;
 using NLog;
 using NzbDrone.Common.Cache;
 using NzbDrone.Common.Extensions;
@@ -331,6 +332,16 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         public bool GetAlternativeSpeedLimitsEnabled(QBittorrentSettings settings)
         {
             throw new NotSupportedException("Engine controls require qBittorrent API v2");
+        }
+
+        public JObject GetPreferencesJson(QBittorrentSettings settings)
+        {
+            throw new NotSupportedException("Only the built-in engine's API has editable preferences.");
+        }
+
+        public void SetPreferencesJson(JObject preferences, QBittorrentSettings settings)
+        {
+            throw new NotSupportedException("Only the built-in engine's API has editable preferences.");
         }
 
         public void ToggleAlternativeSpeedLimits(QBittorrentSettings settings)
