@@ -1,8 +1,11 @@
+using System.Collections.Generic;
 using System.IO;
 using FizzWare.NBuilder;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.Disk;
+using NzbDrone.Core.MediaFiles.Commands;
+using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Movies;
 using NzbDrone.Core.Movies.Commands;
 using NzbDrone.Core.Test.Framework;
@@ -89,6 +92,40 @@ namespace NzbDrone.Core.Test.MovieTests
 
             Mocker.GetMock<IDiskTransferService>()
                   .Verify(v => v.TransferFolder(_command.SourcePath, _command.DestinationPath, TransferMode.Move), Times.Never());
+        }
+
+        [Test]
+        public void should_queue_the_file_rename_after_a_successful_move()
+        {
+            _command.RenameFileIds = new List<int> { 4, 5 };
+
+            Subject.Execute(_command);
+
+            Mocker.GetMock<IManageCommandQueue>()
+                  .Verify(v => v.Push(It.Is<RenameMovieFilesCommand>(c => c.MovieId == _movie.Id && c.Files.Count == 2), It.IsAny<CommandPriority>(), It.IsAny<CommandTrigger>()), Times.Once());
+        }
+
+        [Test]
+        public void should_not_queue_a_file_rename_when_none_was_asked_for()
+        {
+            Subject.Execute(_command);
+
+            Mocker.GetMock<IManageCommandQueue>()
+                  .Verify(v => v.Push(It.IsAny<RenameMovieFilesCommand>(), It.IsAny<CommandPriority>(), It.IsAny<CommandTrigger>()), Times.Never());
+        }
+
+        [Test]
+        public void should_not_queue_the_file_rename_when_the_move_fails()
+        {
+            GivenFailedMove();
+            _command.RenameFileIds = new List<int> { 4 };
+
+            Subject.Execute(_command);
+
+            ExceptionVerification.ExpectedErrors(1);
+
+            Mocker.GetMock<IManageCommandQueue>()
+                  .Verify(v => v.Push(It.IsAny<RenameMovieFilesCommand>(), It.IsAny<CommandPriority>(), It.IsAny<CommandTrigger>()), Times.Never());
         }
     }
 }

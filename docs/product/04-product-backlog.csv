@@ -5,7 +5,7 @@ BL-003,Rebrand,Name clearance search before any public release,Task,BRD-03,pre-r
 BL-004,Rebrand,Decide whether to rename the repo and docs/embarr folder,Decision,BRD-02,1e,S,XS,none,Next,Decision
 BL-005,Rebrand,Rename the engine binary to cinnabarr-engine and check the code,Spike,ENG-17,1e,M,S,none,Next,Ready
 BL-010,Phase 4 close-out,Movies straight into the final place via the engine (4e-4),Story,"ENG-15, FIL-07",4,M,L,none,Now,Ready
-BL-011,Phase 4 close-out,Movie folder rename and token picker for movie naming (4e-5),Story,NAM-05,4,S,M,none,Next,Partial: moving a movie folder done; token picker and folder rename on format change open
+BL-011,Phase 4 close-out,Movie folder rename and token picker for movie naming (4e-5),Story,NAM-05,4,S,M,none,Next,Partial: moving a movie folder and renaming it to the folder format from Organize done; token picker open
 BL-012,Phase 4 close-out,"Movie extras: .nfo, artwork, and subtitles beside existing files on scan",Story,FIL-08,4,S,M,none,Next,Done (checked in the real app; folder-wide artwork such as poster.jpg is not linked)
 BL-013,Phase 4 close-out,Movie import lists (4f),Story,LIB-08,4,M,M,none,Next,"Partial: Done for two sources (custom JSON list, TMDb trending/popular); other sources, exclusions and the UI language field open"
 BL-014,Phase 4 close-out,"Series metadata from TVDB directly, replacing Skyhook (4i)",Story,"MET-02, MET-06, IF-02, IF-04",4,M,L,BL-094,Now,Blocked: TVDB key and licence

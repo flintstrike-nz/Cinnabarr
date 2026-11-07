@@ -127,7 +127,7 @@ public class MovieController : RestControllerWithSignalR<MovieResource, Movie>,
     [RestPutById]
     [Consumes("application/json")]
     [Produces("application/json")]
-    public Results<Accepted<MovieResource>, NotFound> UpdateMovie([FromBody] MovieResource movieResource, [FromQuery] bool moveFiles = false)
+    public Results<Accepted<MovieResource>, NotFound> UpdateMovie([FromBody] MovieResource movieResource, [FromQuery] bool moveFiles = false, [FromQuery] List<int>? renameFileIds = null)
     {
         var movie = _movieService.GetMovie(movieResource.Id);
         var sourcePath = movie.Path;
@@ -142,7 +142,8 @@ public class MovieController : RestControllerWithSignalR<MovieResource, Movie>,
             {
                 MovieId = movie.Id,
                 SourcePath = sourcePath,
-                DestinationPath = destinationPath
+                DestinationPath = destinationPath,
+                RenameFileIds = renameFileIds
             });
         }
 

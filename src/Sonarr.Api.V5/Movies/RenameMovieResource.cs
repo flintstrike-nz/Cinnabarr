@@ -11,6 +11,13 @@ public class RenameMovieResource : RestResource
     public string? NewPath { get; set; }
 }
 
+public class RenameMovieFolderResource
+{
+    public int MovieId { get; set; }
+    public string? ExistingPath { get; set; }
+    public string? NewPath { get; set; }
+}
+
 public static class RenameMovieResourceMapper
 {
     public static RenameMovieResource ToResource(this RenameMovieFilePreview model)

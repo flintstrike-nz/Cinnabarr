@@ -3,6 +3,7 @@ using NLog;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Instrumentation.Extensions;
+using NzbDrone.Core.MediaFiles.Commands;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Movies.Commands;
@@ -17,33 +18,36 @@ namespace NzbDrone.Core.Movies
         private readonly IDiskProvider _diskProvider;
         private readonly IDiskTransferService _diskTransferService;
         private readonly IEventAggregator _eventAggregator;
+        private readonly IManageCommandQueue _commandQueueManager;
         private readonly Logger _logger;
 
         public MoveMovieService(IMovieService movieService,
                                  IDiskProvider diskProvider,
                                  IDiskTransferService diskTransferService,
                                  IEventAggregator eventAggregator,
+                                 IManageCommandQueue commandQueueManager,
                                  Logger logger)
         {
             _movieService = movieService;
             _diskProvider = diskProvider;
             _diskTransferService = diskTransferService;
             _eventAggregator = eventAggregator;
+            _commandQueueManager = commandQueueManager;
             _logger = logger;
         }
 
-        private void MoveSingleMovie(Movie movie, string sourcePath, string destinationPath, int? index = null, int? total = null)
+        private bool MoveSingleMovie(Movie movie, string sourcePath, string destinationPath, int? index = null, int? total = null)
         {
             if (!sourcePath.IsPathValid(PathValidationType.CurrentOs))
             {
                 _logger.Warn("Folder '{0}' for '{1}' is invalid, unable to move movie. Try moving files manually", sourcePath, movie.Title);
-                return;
+                return false;
             }
 
             if (!_diskProvider.FolderExists(sourcePath))
             {
                 _logger.Debug("Folder '{0}' for '{1}' does not exist, not moving.", sourcePath, movie.Title);
-                return;
+                return false;
             }
 
             if (index != null && total != null)
@@ -58,7 +62,7 @@ namespace NzbDrone.Core.Movies
             if (sourcePath.PathEquals(destinationPath))
             {
                 _logger.ProgressInfo("{0} is already in the specified location '{1}'.", movie, destinationPath);
-                return;
+                return false;
             }
 
             try
@@ -69,12 +73,16 @@ namespace NzbDrone.Core.Movies
                 _logger.ProgressInfo("{0} moved successfully to {1}", movie.Title, destinationPath);
 
                 _eventAggregator.PublishEvent(new MovieMovedEvent(movie, sourcePath, destinationPath));
+
+                return true;
             }
             catch (IOException ex)
             {
                 _logger.Error(ex, "Unable to move movie from '{0}' to '{1}'. Try moving files manually", sourcePath, destinationPath);
 
                 RevertPath(movie.Id, sourcePath);
+
+                return false;
             }
         }
 
@@ -89,7 +97,13 @@ namespace NzbDrone.Core.Movies
         public void Execute(MoveMovieCommand message)
         {
             var movie = _movieService.GetMovie(message.MovieId);
-            MoveSingleMovie(movie, message.SourcePath, message.DestinationPath);
+
+            var moved = MoveSingleMovie(movie, message.SourcePath, message.DestinationPath);
+
+            if (moved && message.RenameFileIds is { Count: > 0 })
+            {
+                _commandQueueManager.Push(new RenameMovieFilesCommand(movie.Id, message.RenameFileIds));
+            }
         }
     }
 }

@@ -8,6 +8,19 @@ export interface MovieRenamePreview extends ModelBase {
   newPath: string;
 }
 
+export interface MovieFolderPreview {
+  movieId: number;
+  existingPath: string;
+  newPath: string;
+}
+
+export const useMovieFolderPreview = (movieId: number) => {
+  return useApiQuery<MovieFolderPreview>({
+    path: '/rename/movie/folder',
+    queryParams: { movieId },
+  });
+};
+
 const DEFAULT_PREVIEWS: MovieRenamePreview[] = [];
 
 const useMovieRenamePreview = (movieId: number) => {
