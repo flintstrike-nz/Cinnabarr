@@ -9,6 +9,7 @@ import { kinds } from 'Helpers/Props';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
 import MoviePoster from './MoviePoster';
+import { useHasMovies } from './useMovies';
 import {
   useSearchWantedMovies,
   useWantedMovies,
@@ -78,6 +79,24 @@ function WantedSection({ kind, title }: WantedSectionProps) {
         </table>
       ) : null}
     </section>
+  );
+}
+
+// The movies still wanted, shown under the episodes on the Wanted pages. Nothing is shown without movies in the library.
+export function WantedMoviesSection({ kind }: { kind: WantedKind }) {
+  const hasMovies = useHasMovies();
+
+  if (!hasMovies) {
+    return null;
+  }
+
+  return (
+    <WantedSection
+      kind={kind}
+      title={`${translate('Movies')}: ${
+        kind === 'missing' ? translate('Missing') : translate('CutoffUnmet')
+      }`}
+    />
   );
 }
 

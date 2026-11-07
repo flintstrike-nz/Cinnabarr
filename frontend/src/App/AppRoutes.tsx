@@ -16,7 +16,6 @@ import MovieActivity from 'Movie/MovieActivity';
 import MovieCalendar from 'Movie/MovieCalendar';
 import MovieDetails from 'Movie/MovieDetails';
 import MoviesIndex from 'Movie/MoviesIndex';
-import WantedMovies from 'Movie/WantedMovies';
 import SearchPage from 'Search/SearchPage';
 import SeriesDetailsPage from 'Series/Details/SeriesDetailsPage';
 import SeriesIndex from 'Series/Index/SeriesIndex';
@@ -127,7 +126,10 @@ export function appRouteElements() {
 
       <Route path="/wanted/missing" element={<Missing />} />
 
-      <Route path="/wanted/movies" element={<WantedMovies />} />
+      <Route
+        path="/wanted/movies"
+        element={<Navigate to="/wanted/missing" replace={true} />}
+      />
 
       <Route path="/wanted/cutoffunmet" element={<CutoffUnmet />} />
 
