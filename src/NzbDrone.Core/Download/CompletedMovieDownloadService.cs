@@ -4,6 +4,7 @@ using System.Linq;
 using NLog;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.History;
 using NzbDrone.Core.MediaFiles;
@@ -27,6 +28,8 @@ namespace NzbDrone.Core.Download
         private readonly IProvideImportItemService _provideImportItemService;
         private readonly IDownloadedMovieImportService _downloadedMovieImportService;
         private readonly IMovieFileService _movieFileService;
+        private readonly IEngineClientRegistry _engineClientRegistry;
+        private readonly IEngineLinkService _engineLinkService;
         private readonly Logger _logger;
 
         public CompletedMovieDownloadService(IEventAggregator eventAggregator,
@@ -34,6 +37,8 @@ namespace NzbDrone.Core.Download
                                              IProvideImportItemService provideImportItemService,
                                              IDownloadedMovieImportService downloadedMovieImportService,
                                              IMovieFileService movieFileService,
+                                             IEngineClientRegistry engineClientRegistry,
+                                             IEngineLinkService engineLinkService,
                                              Logger logger)
         {
             _eventAggregator = eventAggregator;
@@ -41,6 +46,8 @@ namespace NzbDrone.Core.Download
             _provideImportItemService = provideImportItemService;
             _downloadedMovieImportService = downloadedMovieImportService;
             _movieFileService = movieFileService;
+            _engineClientRegistry = engineClientRegistry;
+            _engineLinkService = engineLinkService;
             _logger = logger;
         }
 
@@ -70,6 +77,13 @@ namespace NzbDrone.Core.Download
 
         public void Import(TrackedDownload trackedDownload)
         {
+            // Downloaded straight into the library: EngineMovieFileImportService imports it (roadmap §4.8).
+            if (_engineClientRegistry.IsEngineClient(trackedDownload.DownloadClient) &&
+                _engineLinkService.Get(trackedDownload.DownloadItem.DownloadId)?.Files != null)
+            {
+                return;
+            }
+
             SetImportItem(trackedDownload);
 
             if (!ValidatePath(trackedDownload))

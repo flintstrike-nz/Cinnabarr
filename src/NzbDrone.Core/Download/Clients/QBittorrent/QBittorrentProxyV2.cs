@@ -221,12 +221,10 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         {
             var request = BuildRequest(settings).Resource("/api/v2/torrents/delete")
                                                 .Post()
-                                                .AddFormParameter("hashes", hash);
+                                                .AddFormParameter("hashes", hash)
 
-            if (removeData)
-            {
-                request.AddFormParameter("deleteFiles", "true");
-            }
+                                                // Required by the engine and by qBittorrent itself, whichever way it is set.
+                                                .AddFormParameter("deleteFiles", removeData ? "true" : "false");
 
             ProcessRequest(request, settings);
         }

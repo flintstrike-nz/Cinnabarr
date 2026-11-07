@@ -8,6 +8,7 @@ using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.Download.Clients.QBittorrent;
 using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.MediaFiles;
+using NzbDrone.Core.Movies;
 using NzbDrone.Core.Organizer;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
@@ -442,6 +443,70 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         public void should_strip_only_the_pending_suffix(string name, string expected)
         {
             EngineFileMapper.GetNameWithoutPendingSuffix(name).Should().Be(expected);
+        }
+
+        // ---- movies ----
+
+        private Movie _movie;
+
+        private void GivenMovie()
+        {
+            _movie = new Movie { Id = 4, Path = @"C:\Movies\Alien (1979)".AsOsAgnostic() };
+
+            Mocker.GetMock<IBuildMovieFileNames>()
+                .Setup(s => s.BuildFileName(_movie, It.IsAny<MovieFile>(), null, null))
+                .Returns("Alien (1979) WEBDL-1080p");
+
+            Mocker.GetMock<IBuildMovieFileNames>()
+                .Setup(s => s.BuildFilePath(_movie, It.IsAny<string>(), It.IsAny<string>()))
+                .Returns((Movie movie, string name, string extension) => Path.Combine(movie.Path, name + extension));
+        }
+
+        private EngineFileMap MapMovie(params (string Name, long Size)[] files)
+        {
+            GivenMovie();
+
+            return Subject.MapMovie(Hash, _movie, new QualityModel(Quality.WEBDL1080p), "Alien.1979.1080p.WEB-DL.x264-Grp", files.Select(f => new QBittorrentTorrentFile { Name = f.Name, Size = f.Size }).ToList());
+        }
+
+        [Test]
+        public void should_map_a_movies_video_into_its_folder_with_a_hidden_pending_name()
+        {
+            var map = MapMovie(("Alien.1979.1080p/Alien.1979.1080p.mkv", 5000));
+
+            map.SavePath.Should().Be(_movie.Path);
+            map.Files.Should().ContainSingle();
+            map.Files[0].FinalPath.Should().Be("Alien (1979) WEBDL-1080p.mkv");
+            map.Files[0].PendingPath.Should().Be(".Alien (1979) WEBDL-1080p.mkv.abcdef01.pending");
+            map.Files[0].Episodes.Should().BeEmpty();
+            map.Files[0].OriginalName.Should().Be("Alien.1979.1080p.mkv");
+            map.Files[0].SceneName.Should().Be("Alien.1979.1080p.WEB-DL.x264-Grp");
+        }
+
+        [Test]
+        public void should_take_the_biggest_video_as_the_movie_and_skip_samples()
+        {
+            var map = MapMovie(("Alien/Sample/Alien.sample.mkv", 10),
+                               ("Alien/Alien.CD1.mkv", 1000),
+                               ("Alien/Alien.mkv", 9000));
+
+            map.Files.Should().ContainSingle();
+            map.Files[0].Index.Should().Be(2);
+        }
+
+        [Test]
+        public void should_give_a_movies_subtitles_the_videos_name()
+        {
+            var map = MapMovie(("Alien/Alien.mkv", 9000), ("Alien/Subs/English.srt", 40), ("Alien/Alien.nfo", 1));
+
+            map.Files.Select(f => f.FinalPath).Should().BeEquivalentTo("Alien (1979) WEBDL-1080p.mkv", "Alien (1979) WEBDL-1080p.en.srt");
+            map.Files.Single(f => f.IsSubtitle).VideoIndex.Should().Be(0);
+        }
+
+        [Test]
+        public void should_return_null_when_a_movies_torrent_has_no_video()
+        {
+            MapMovie(("Alien/Alien.nfo", 1), ("Alien/Alien.srt", 40)).Should().BeNull();
         }
     }
 }

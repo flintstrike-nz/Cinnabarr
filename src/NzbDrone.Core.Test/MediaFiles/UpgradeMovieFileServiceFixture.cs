@@ -128,5 +128,21 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             Mocker.GetMock<IMovieFileService>().Verify(v => v.Delete(_localMovie.Movie.MovieFile, DeleteMediaFileReason.Upgrade), Times.Never());
         }
+
+        [Test]
+        public void should_only_remove_the_record_of_a_movie_file_replaced_in_place_at_its_own_path()
+        {
+            // The built-in engine moved the old file away and put the new one at the same path: recycling that path
+            // would recycle the new file.
+            GivenSingleMovieWithSingleMovieFile();
+            _localMovie.InPlace = true;
+            _localMovie.Path = Path.Combine(_localMovie.Movie.Path, "A.Movie.2019.avi");
+
+            var result = Subject.UpgradeMovieFile(_movieFile, _localMovie);
+
+            Mocker.GetMock<IRecycleBinProvider>().Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+            Mocker.GetMock<IMovieFileService>().Verify(v => v.Delete(It.Is<MovieFile>(f => f.Id == 1), DeleteMediaFileReason.Upgrade), Times.Once());
+            result.OldFiles.Should().ContainSingle();
+        }
     }
 }

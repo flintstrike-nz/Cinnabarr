@@ -9,6 +9,7 @@ using NzbDrone.Core.Download.Clients.QBittorrent;
 using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Download.History;
 using NzbDrone.Core.History;
+using NzbDrone.Core.Movies;
 using NzbDrone.Core.Qualities;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Core.Tv;
@@ -106,6 +107,62 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             _proxy.Verify(p => p.StartTorrent(Hash, _settings), Times.Once());
             _proxy.Verify(p => p.AddTags(Hash, It.Is<IEnumerable<string>>(t => t.Contains(EngineTorrentTags.Prepared)), _settings), Times.Once());
             _proxy.Verify(p => p.SetLocation(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+        }
+
+        [Test]
+        public void should_download_a_movie_with_a_link_straight_into_its_folder()
+        {
+            var movie = new Movie { Id = 4, Path = @"C:\Movies\Alien (1979)".AsOsAgnostic() };
+            var quality = new QualityModel(Quality.WEBDL1080p);
+
+            Mocker.GetMock<IHistoryService>().Setup(s => s.FindByDownloadId(Hash.ToUpperInvariant())).Returns(new List<EpisodeHistory>());
+            Mocker.GetMock<IMovieHistoryService>()
+                  .Setup(s => s.FindByDownloadId(Hash.ToUpperInvariant()))
+                  .Returns(new List<MovieHistory> { new MovieHistory { Id = 31, MovieId = 4, Quality = quality, SourceTitle = "Show.S01", EventType = MovieHistoryEventType.Grabbed } });
+            Mocker.GetMock<IMovieService>().Setup(s => s.GetMovie(4)).Returns(movie);
+
+            var link = new EngineLink { MediaType = EngineLinkService.MovieMediaType };
+            Mocker.GetMock<IEngineLinkService>().Setup(s => s.Get(Hash.ToUpperInvariant())).Returns(link);
+
+            var map = new EngineFileMap
+            {
+                SavePath = movie.Path,
+                Files = new List<EngineLinkFile>
+                {
+                    new EngineLinkFile { Index = 0, FinalPath = "Alien (1979) WEBDL-1080p.mkv", PendingPath = ".Alien (1979) WEBDL-1080p.mkv.abcdef01.pending" }
+                }
+            };
+
+            Mocker.GetMock<IEngineFileMapper>().Setup(m => m.MapMovie(Hash.ToUpperInvariant(), movie, quality, "Show.S01", _files)).Returns(map);
+
+            Subject.Prepare(GivenClient());
+
+            // Only the mapped video is downloaded, into the movie's folder under its pending name.
+            _proxy.Verify(p => p.SetFilePriority(Hash, It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { 1, 2, 3 })), 0, _settings), Times.Once());
+            _proxy.Verify(p => p.SetLocation(Hash, movie.Path, _settings), Times.Once());
+            _proxy.Verify(p => p.RenameFile(Hash, "Show.S01/Show.S01E01.mkv", ".Alien (1979) WEBDL-1080p.mkv.abcdef01.pending", _settings), Times.Once());
+            _proxy.Verify(p => p.StartTorrent(Hash, _settings), Times.Once());
+            link.Files.Should().BeSameAs(map.Files);
+            link.SavePath.Should().Be(movie.Path);
+            Mocker.GetMock<IEngineLinkService>().Verify(s => s.Save(Hash.ToUpperInvariant(), link), Times.Once());
+        }
+
+        [Test]
+        public void should_reject_a_movie_grab_with_a_link_when_no_video_maps()
+        {
+            Mocker.GetMock<IHistoryService>().Setup(s => s.FindByDownloadId(Hash.ToUpperInvariant())).Returns(new List<EpisodeHistory>());
+            Mocker.GetMock<IMovieHistoryService>()
+                  .Setup(s => s.FindByDownloadId(Hash.ToUpperInvariant()))
+                  .Returns(new List<MovieHistory> { new MovieHistory { Id = 31, MovieId = 4, EventType = MovieHistoryEventType.Grabbed } });
+            Mocker.GetMock<IMovieService>().Setup(s => s.GetMovie(4)).Returns(new Movie { Id = 4 });
+            Mocker.GetMock<IEngineLinkService>().Setup(s => s.Get(Hash.ToUpperInvariant())).Returns(new EngineLink { MediaType = EngineLinkService.MovieMediaType });
+
+            Subject.Prepare(GivenClient());
+
+            Mocker.GetMock<IFailedDownloadService>().Verify(f => f.MarkMovieAsFailed(31, It.IsAny<string>(), "Embarr", false), Times.Once());
+            _proxy.Verify(p => p.RemoveTorrent(Hash, true, _settings), Times.Once());
+            _proxy.Verify(p => p.StartTorrent(It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]

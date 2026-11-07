@@ -1,5 +1,6 @@
 using System;
 using FizzWare.NBuilder;
+using FluentAssertions;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.Disk;
@@ -110,6 +111,21 @@ namespace NzbDrone.Core.Test.MediaFiles.MovieFileMovingServiceTests
                   .Verify(s => s.PublishEvent<MovieFolderCreatedEvent>(It.Is<MovieFolderCreatedEvent>(p =>
                       p.MovieFolder.IsNotNullOrWhiteSpace())),
                       Times.Never());
+        }
+
+        [Test]
+        public void should_record_an_in_place_movie_file_where_it_is()
+        {
+            _localMovie.InPlace = true;
+            _movieFile.Path = @"C:\Test\Movies\Movie\Engine Name.mkv".AsOsAgnostic();
+
+            var result = Subject.MoveMovieFile(_movieFile, _localMovie);
+
+            result.RelativePath.Should().Be("Engine Name.mkv");
+            Mocker.GetMock<IDiskTransferService>()
+                  .Verify(s => s.TransferFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TransferMode>(), It.IsAny<bool>()), Times.Never());
+            Mocker.GetMock<IMediaFileAttributeService>()
+                  .Verify(s => s.SetFilePermissions(_movieFile.Path), Times.Once());
         }
     }
 }

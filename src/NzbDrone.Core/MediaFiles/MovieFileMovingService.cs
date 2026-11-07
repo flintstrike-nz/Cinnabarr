@@ -109,6 +109,18 @@ namespace NzbDrone.Core.MediaFiles
                 throw new FileNotFoundException("Movie file path does not exist", movieFilePath);
             }
 
+            // The built-in engine wrote the file to its final path and is still seeding it: record it where it is.
+            if (localMovie is { InPlace: true })
+            {
+                movieFile.RelativePath = movie.Path.GetRelativePath(movieFilePath);
+                localMovie.FileNameBeforeRename = movieFile.RelativePath;
+
+                // Nothing is moved, but the file still gets the configured permissions (the engine created it).
+                _mediaFileAttributeService.SetFilePermissions(movieFilePath);
+
+                return movieFile;
+            }
+
             if (movieFilePath == destinationFilePath)
             {
                 throw new SameFilenameException("File not moved, source and destination are the same", movieFilePath);

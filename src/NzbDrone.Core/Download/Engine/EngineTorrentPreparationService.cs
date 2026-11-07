@@ -6,6 +6,7 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Download.Clients.QBittorrent;
 using NzbDrone.Core.Download.History;
 using NzbDrone.Core.History;
+using NzbDrone.Core.Movies;
 using NzbDrone.Core.Tv;
 
 namespace NzbDrone.Core.Download.Engine
@@ -34,6 +35,7 @@ namespace NzbDrone.Core.Download.Engine
         private readonly IEngineLinkService _engineLinkService;
         private readonly IEngineFileMapper _engineFileMapper;
         private readonly ISeriesService _seriesService;
+        private readonly IMovieService _movieService;
         private readonly IEpisodeService _episodeService;
         private readonly Logger _logger;
 
@@ -45,6 +47,7 @@ namespace NzbDrone.Core.Download.Engine
                                                IEngineLinkService engineLinkService,
                                                IEngineFileMapper engineFileMapper,
                                                ISeriesService seriesService,
+                                               IMovieService movieService,
                                                IEpisodeService episodeService,
                                                Logger logger)
         {
@@ -56,6 +59,7 @@ namespace NzbDrone.Core.Download.Engine
             _engineLinkService = engineLinkService;
             _engineFileMapper = engineFileMapper;
             _seriesService = seriesService;
+            _movieService = movieService;
             _episodeService = episodeService;
             _logger = logger;
         }
@@ -107,8 +111,7 @@ namespace NzbDrone.Core.Download.Engine
             // else in the engine is left alone.
             if (grab == null)
             {
-                // A movie's grab is in its own history. Its files are not mapped into the library yet (that comes with the
-                // movie import), so it is prepared like one added by hand: only video and subtitles, into the engine's folder.
+                // A movie's grab is in its own history.
                 var movieGrab = _movieHistoryService.FindByDownloadId(torrent.Hash.ToUpperInvariant())
                     .Where(h => h.EventType == MovieHistoryEventType.Grabbed)
                     .MaxBy(h => h.Date);
@@ -143,6 +146,12 @@ namespace NzbDrone.Core.Download.Engine
                 return;
             }
 
+            FinishPreparation(proxy, settings, torrent, hash, downloadId, link, files, map);
+        }
+
+        // Excludes what isn't wanted, moves a mapped torrent into the library, then starts it.
+        private void FinishPreparation(IQBittorrentProxy proxy, QBittorrentSettings settings, QBittorrentTorrent torrent, string hash, string downloadId, EngineLink link, List<QBittorrentTorrentFile> files, EngineFileMap map)
+        {
             var kept = map?.Files.Select(f => f.Index).ToHashSet();
 
             var excluded = files.Select((file, index) => (file, index))
@@ -185,15 +194,27 @@ namespace NzbDrone.Core.Download.Engine
             _logger.Info("Prepared '{0}': {1} of {2} file(s) will be downloaded{3}", torrent.Name, files.Count - excluded.Count, files.Count, map == null ? string.Empty : $" into '{map.SavePath}'");
         }
 
-        // A grab for a movie: the same as one added by hand, except that a torrent with no video at all is rejected
-        // (marked failed, which blocklists it and searches again).
+        // A grab for a movie. With the grab's link its video goes straight to the movie's folder under a hidden pending
+        // name, like an episode's (roadmap §4.8); without it, it is prepared like one added by hand. A torrent with no
+        // video at all is rejected (marked failed, which blocklists it and searches again).
         private void PrepareMovieTorrent(IQBittorrentProxy proxy, QBittorrentSettings settings, QBittorrentTorrent torrent, string hash, MovieHistory grab)
         {
+            var downloadId = torrent.Hash.ToUpperInvariant();
             var files = proxy.GetTorrentFiles(hash, settings);
+            var link = _engineLinkService.Get(downloadId);
 
-            if (!files.Any(f => EngineFileWhitelist.IsVideo(f.Name)))
+            var map = link == null
+                ? null
+                : link.Files != null
+                    ? new EngineFileMap { SavePath = link.SavePath, Files = link.Files }
+                    : _engineFileMapper.MapMovie(downloadId, _movieService.GetMovie(grab.MovieId), grab.Quality, grab.SourceTitle, files);
+
+            // Once mapped, files may already carry their pending names, so the whitelist can't be re-run.
+            var noVideo = link != null ? map == null : !files.Any(f => EngineFileWhitelist.IsVideo(f.Name));
+
+            if (noVideo)
             {
-                if (_downloadHistoryService.GetLatestDownloadHistoryItem(torrent.Hash.ToUpperInvariant()) is not { EventType: DownloadHistoryEventType.DownloadFailed })
+                if (_downloadHistoryService.GetLatestDownloadHistoryItem(downloadId) is not { EventType: DownloadHistoryEventType.DownloadFailed })
                 {
                     _logger.Warn("'{0}' has no video file ({1}); rejecting it and searching again", torrent.Name, files.Select(f => f.Name).ConcatToString());
 
@@ -205,7 +226,13 @@ namespace NzbDrone.Core.Download.Engine
                 return;
             }
 
-            PrepareManualTorrent(proxy, settings, torrent, hash);
+            if (link == null)
+            {
+                PrepareManualTorrent(proxy, settings, torrent, hash);
+                return;
+            }
+
+            FinishPreparation(proxy, settings, torrent, hash, downloadId, link, files, map);
         }
 
         // A torrent added by hand: only video and subtitle files are downloaded (roadmap §4.8), into the engine's
