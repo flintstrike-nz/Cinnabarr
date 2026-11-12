@@ -24,8 +24,8 @@ namespace NzbDrone.Core.Organizer
     // The movie side of the file name builder: the same token engine as the series side, with Radarr's movie tokens.
     public partial class FileNameBuilder
     {
-        // Unlike the series pattern this one also matches the {imdb-{ImdbId}} and {edition-{Edition Tags}} forms.
-        private static readonly Regex MovieTokenRegex = new Regex(@"(?<tag>\{(?<prefix>[-{ ._\[(]*)(?:imdb(?:id)?-|edition-))?\{(?<prefix>[-{ ._\[(]*)(?<token>(?:[a-z0-9]+)(?:(?<separator>[- ._]+)(?:[a-z0-9]+))?)(?::(?<customFormat>[ ,a-z0-9|+-]+(?<![- ])))?(?<suffix>[-} ._)\]]*)\}",
+        // Unlike the series pattern this one also matches the {imdb-{ImdbId}}, {tmdb-{TmdbId}} and {edition-{Edition Tags}} forms.
+        private static readonly Regex MovieTokenRegex = new Regex(@"(?<tag>\{(?<prefix>[-{ ._\[(]*)(?:imdb(?:id)?-|tmdb(?:id)?-|edition-))?\{(?<prefix>[-{ ._\[(]*)(?<token>(?:[a-z0-9]+)(?:(?<separator>[- ._]+)(?:[a-z0-9]+))?)(?::(?<customFormat>[ ,a-z0-9|+-]+(?<![- ])))?(?<suffix>[-} ._)\]]*)\}",
                                                                   RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
         public static readonly Regex ReleaseYearRegex = new Regex(@"\{[-{ ._\[(]*Release[- ._]Year[-} ._)\]]*\}", RegexOptions.Compiled | RegexOptions.IgnoreCase);

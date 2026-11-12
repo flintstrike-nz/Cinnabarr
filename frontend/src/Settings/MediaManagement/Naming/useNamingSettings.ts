@@ -7,6 +7,7 @@ import { QueryParams } from 'Utilities/Fetch/getQueryString';
 
 const PATH = '/settings/naming';
 const EXAMPLES_PATH = '/settings/naming/examples';
+const PRESETS_PATH = '/settings/naming/presets';
 
 export interface NamingSettingsModel {
   renameEpisodes: boolean;
@@ -37,6 +38,23 @@ export interface NamingExamples {
   movieExample: string;
   movieFolderExample: string;
 }
+
+export interface NamingPreset {
+  name: string;
+  settings: NamingSettingsModel;
+}
+
+// The formats each media server's conventions call for (Jellyfin first, the default).
+export const useNamingPresets = () => {
+  const { data } = useApiQuery<NamingPreset[]>({
+    path: PRESETS_PATH,
+    method: 'GET',
+  });
+
+  return data ?? NO_PRESETS;
+};
+
+const NO_PRESETS: NamingPreset[] = [];
 
 export const useNamingSettings = () => {
   return useSettings<NamingSettingsModel>(PATH);

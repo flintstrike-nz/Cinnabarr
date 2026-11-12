@@ -2,6 +2,12 @@ using Sonarr.Http.REST;
 
 namespace Sonarr.Api.V5.Settings;
 
+public class NamingPresetResource
+{
+    public string Name { get; set; } = string.Empty;
+    public NamingSettingsResource Settings { get; set; } = new();
+}
+
 public class NamingSettingsResource : RestResource
 {
     public bool RenameEpisodes { get; set; }

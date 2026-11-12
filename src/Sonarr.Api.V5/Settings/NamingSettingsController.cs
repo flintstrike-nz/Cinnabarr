@@ -71,6 +71,16 @@ public class NamingSettingsController : RestController<NamingSettingsResource>
         return TypedAccepted(resource.Id);
     }
 
+    // The formats each media server's conventions call for (Jellyfin is the default); applying one is the client's job.
+    [HttpGet("presets")]
+    [Produces("application/json")]
+    public Ok<List<NamingPresetResource>> GetPresets()
+    {
+        return TypedResults.Ok(Enum.GetValues<NamingPreset>()
+            .Select(p => new NamingPresetResource { Name = p.ToString(), Settings = NamingPresets.Get(p).ToResource() })
+            .ToList());
+    }
+
     [HttpGet("examples")]
     [Produces("application/json")]
     public Ok<NamingExampleResource> GetExamples([FromQuery] NamingSettingsResource settings)
