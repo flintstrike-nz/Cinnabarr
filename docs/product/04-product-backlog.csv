@@ -31,7 +31,7 @@ BL-044,Engine,Sidecar: add slot label and seeding rule fields; restore test,Stor
 BL-045,Engine,Verify backups include the engine profile; restore test,Spike,MIG-06,2,M,S,none,Now,Done (full restore and restart not run)
 BL-046,Engine,Engine push channel (SSE or websocket) instead of polling,Story,ENG-18,Later,C,L,none,Later,Ready
 BL-047,Engine,Engine legal notice shown once at first run,Task,SET-03,2,M,S,none,Next,Done (wording is a placeholder; needs owner and legal review)
-BL-048,Engine,"Complete Downloads settings: port, UPnP, interface binding, privacy, pre-allocation",Story,SET-04,2,S,M,none,Next,"Partial: port, UPnP, interface, limits, privacy, encryption done; alternative-speed schedule open"
+BL-048,Engine,"Complete Downloads settings: port, UPnP, interface binding, privacy, pre-allocation",Story,SET-04,2,S,M,none,Next,"Done: port, UPnP, interface, limits, privacy, encryption and the alternative-speed schedule"
 BL-050,Versions,Version slot schema and a default slot per item,Story,VER-01,5,M,XL,BL-044,Next,"Partial: movie version slots stored (table, file slot id, API with a limit of 8 versions, default slot is the movie itself); nothing uses them yet (BL-051)"
 BL-051,Versions,"Per-slot Wanted, cutoff and upgrades",Story,VER-01,5,M,L,BL-050,Next,"Partial: the movie page lists the versions (profile, monitored, file), adds, changes and deletes them, and searches each (automatic and interactive); the Wanted lists and RSS per version, Search page and series are still to do"
 BL-052,Versions,Download another version from Search,Story,VER-02,5,S,M,BL-050,Next,"Done: a movie release in Search can be grabbed for an existing version or a new one (label + profile)"

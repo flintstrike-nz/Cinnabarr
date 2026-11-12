@@ -1343,3 +1343,5 @@ Backlog BL-054 (race groups on the Downloads page): queue rows that are racing f
 Backlog BL-057 (default versions): `Settings → Media Management → Default Versions` holds a list of versions (a label and a quality profile) that every movie gets when it is added or imported (`settings/movieversions`; labels must be different, the profile must exist, at most 7). Movies already in the library are not changed. The race defaults are in `Settings → Download Clients` (BL-053). Checked by adding a movie through the API and in the browser.
 
 Backlog BL-022 (bulk tags): the movie library's select mode has Add Tag and Remove Tag drop-downs that change the tags of every selected movie. Checked in the browser (add then remove on one movie).
+
+Backlog BL-048 (alternative-speed schedule): Settings → Download Clients → Engine Network has a schedule for the alternative limits (start and end time, and every day, weekdays, weekends or one day), saved to the engine's own scheduler. Checked against the real engine (saved through the API and read back from the engine).

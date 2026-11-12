@@ -97,7 +97,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | BL-045 | Verify backups include the engine profile; restore test | Spike | MIG-06 | 2 | M | S | none | Now | Done (full restore and restart not run) |
 | BL-046 | Engine push channel (SSE or websocket) instead of polling | Story | ENG-18 | Later | C | L | none | Later | Ready |
 | BL-047 | Engine legal notice shown once at first run | Task | SET-03 | 2 | M | S | none | Next | Done (wording is a placeholder; needs owner and legal review) |
-| BL-048 | Complete Downloads settings: port, UPnP, interface binding, privacy, pre-allocation | Story | SET-04 | 2 | S | M | none | Next | Partial: port, UPnP, interface, limits, privacy, encryption done; alternative-speed schedule open |
+| BL-048 | Complete Downloads settings: port, UPnP, interface binding, privacy, pre-allocation | Story | SET-04 | 2 | S | M | none | Next | Done: port, UPnP, interface, limits, privacy, encryption and the alternative-speed schedule |
 
 ### Versions
 

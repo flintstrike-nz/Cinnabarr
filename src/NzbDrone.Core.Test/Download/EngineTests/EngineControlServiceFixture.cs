@@ -79,6 +79,42 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_read_and_write_the_alternative_speed_schedule()
+        {
+            _proxy.Setup(p => p.GetPreferencesJson(_settings)).Returns(JObject.Parse(
+                "{\"scheduler_enabled\": true, \"schedule_from_hour\": 8, \"schedule_from_min\": 30, \"schedule_to_hour\": 22, \"schedule_to_min\": 5, \"scheduler_days\": 1}"));
+
+            var preferences = Subject.GetPreferences();
+
+            preferences.SchedulerEnabled.Should().BeTrue();
+            preferences.ScheduleFromHour.Should().Be(8);
+            preferences.ScheduleFromMinute.Should().Be(30);
+            preferences.ScheduleToHour.Should().Be(22);
+            preferences.ScheduleToMinute.Should().Be(5);
+            preferences.SchedulerDays.Should().Be(1);
+
+            JObject sent = null;
+            _proxy.Setup(p => p.SetPreferencesJson(It.IsAny<JObject>(), _settings)).Callback<JObject, QBittorrentSettings>((json, _) => sent = json);
+
+            Subject.SetPreferences(preferences);
+
+            sent.Value<bool>("scheduler_enabled").Should().BeTrue();
+            sent.Value<int>("schedule_from_hour").Should().Be(8);
+            sent.Value<int>("schedule_to_min").Should().Be(5);
+            sent.Value<int>("scheduler_days").Should().Be(1);
+        }
+
+        [Test]
+        public void should_refuse_schedule_times_and_days_that_are_not_real()
+        {
+            Assert.Throws<EngineControlException>(() => Subject.SetPreferences(new EnginePreferences { ScheduleFromHour = 24 }));
+            Assert.Throws<EngineControlException>(() => Subject.SetPreferences(new EnginePreferences { ScheduleToMinute = 60 }));
+            Assert.Throws<EngineControlException>(() => Subject.SetPreferences(new EnginePreferences { SchedulerDays = 10 }));
+
+            _proxy.Verify(p => p.SetPreferencesJson(It.IsAny<JObject>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+        }
+
+        [Test]
         public void should_refuse_a_listening_port_out_of_range()
         {
             Assert.Throws<EngineControlException>(() => Subject.SetPreferences(new EnginePreferences { ListenPort = 70000 }));

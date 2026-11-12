@@ -39,6 +39,15 @@ namespace NzbDrone.Core.Download.Engine
         public int AlternativeDownloadLimit { get; set; }
         public int AlternativeUploadLimit { get; set; }
 
+        // Turns the alternative limits on by the clock: from the start time to the end time (it may pass midnight), on
+        // the chosen days. Days: 0 every day, 1 weekdays, 2 weekends, 3 Monday through 9 Sunday.
+        public bool SchedulerEnabled { get; set; }
+        public int ScheduleFromHour { get; set; }
+        public int ScheduleFromMinute { get; set; }
+        public int ScheduleToHour { get; set; }
+        public int ScheduleToMinute { get; set; }
+        public int SchedulerDays { get; set; }
+
         public bool QueueingEnabled { get; set; }
         public int MaxActiveDownloads { get; set; }
         public int MaxActiveUploads { get; set; }
@@ -178,6 +187,12 @@ namespace NzbDrone.Core.Download.Engine
                     UploadLimit = (json.Value<int?>("up_limit") ?? 0) / 1024,
                     AlternativeDownloadLimit = (json.Value<int?>("alt_dl_limit") ?? 0) / 1024,
                     AlternativeUploadLimit = (json.Value<int?>("alt_up_limit") ?? 0) / 1024,
+                    SchedulerEnabled = json.Value<bool?>("scheduler_enabled") ?? false,
+                    ScheduleFromHour = json.Value<int?>("schedule_from_hour") ?? 0,
+                    ScheduleFromMinute = json.Value<int?>("schedule_from_min") ?? 0,
+                    ScheduleToHour = json.Value<int?>("schedule_to_hour") ?? 0,
+                    ScheduleToMinute = json.Value<int?>("schedule_to_min") ?? 0,
+                    SchedulerDays = json.Value<int?>("scheduler_days") ?? 0,
                     QueueingEnabled = json.Value<bool?>("queueing_enabled") ?? false,
                     MaxActiveDownloads = json.Value<int?>("max_active_downloads") ?? -1,
                     MaxActiveUploads = json.Value<int?>("max_active_uploads") ?? -1,
@@ -199,6 +214,17 @@ namespace NzbDrone.Core.Download.Engine
                 throw new EngineControlException("the listening port has to be between 0 and 65535");
             }
 
+            if (preferences.ScheduleFromHour is < 0 or > 23 || preferences.ScheduleToHour is < 0 or > 23 ||
+                preferences.ScheduleFromMinute is < 0 or > 59 || preferences.ScheduleToMinute is < 0 or > 59)
+            {
+                throw new EngineControlException("the schedule times have to be real times of day");
+            }
+
+            if (preferences.SchedulerDays is < 0 or > 9)
+            {
+                throw new EngineControlException("the schedule days have to be a value from 0 to 9");
+            }
+
             Run((proxy, settings) =>
             {
                 var json = new JObject
@@ -211,6 +237,12 @@ namespace NzbDrone.Core.Download.Engine
                     ["up_limit"] = Math.Max(0, preferences.UploadLimit) * 1024,
                     ["alt_dl_limit"] = Math.Max(0, preferences.AlternativeDownloadLimit) * 1024,
                     ["alt_up_limit"] = Math.Max(0, preferences.AlternativeUploadLimit) * 1024,
+                    ["scheduler_enabled"] = preferences.SchedulerEnabled,
+                    ["schedule_from_hour"] = preferences.ScheduleFromHour,
+                    ["schedule_from_min"] = preferences.ScheduleFromMinute,
+                    ["schedule_to_hour"] = preferences.ScheduleToHour,
+                    ["schedule_to_min"] = preferences.ScheduleToMinute,
+                    ["scheduler_days"] = preferences.SchedulerDays,
                     ["queueing_enabled"] = preferences.QueueingEnabled,
                     ["max_active_downloads"] = preferences.MaxActiveDownloads,
                     ["max_active_uploads"] = preferences.MaxActiveUploads,
