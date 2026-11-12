@@ -55,6 +55,7 @@ interface QueueRowProps {
   movieId?: number;
   movieTitle?: string;
   versionLabel?: string;
+  racingSources?: number;
   episodeIds: number[];
   downloadId: string;
   title: string;
@@ -93,6 +94,7 @@ function QueueRow(props: QueueRowProps) {
     movieId,
     movieTitle,
     versionLabel,
+    racingSources,
     episodeIds,
     downloadId,
     title,
@@ -256,6 +258,11 @@ function QueueRow(props: QueueRowProps) {
                   <>
                     <Link to={`/movie/${movieId}`}>{movieTitle}</Link>
                     {versionLabel ? ` · ${versionLabel}` : null}
+                    {racingSources
+                      ? ` · ${translate('RacingSources', {
+                          count: racingSources,
+                        })}`
+                      : null}
                   </>
                 ) : null}
 

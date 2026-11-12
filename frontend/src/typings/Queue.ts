@@ -52,6 +52,8 @@ interface Queue extends ModelBase {
   seriesId?: number;
   movieId?: number;
   movieTitle?: string;
+  versionSlotId?: number;
+  versionLabel?: string;
   episodeIds: number[];
   seasons: QueueSeason[];
   downloadClientHasPostImportCategory: boolean;
