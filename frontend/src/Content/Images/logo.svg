@@ -1,5 +1,18 @@
-<svg height="216" viewBox="0 0 216 216" width="216" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="108" cy="108" fill="#1d2230" r="108"/>
-  <circle cx="108" cy="108" fill="none" r="94" stroke="#2bb8a6" stroke-width="12"/>
-  <path d="M138 78 A42 42 0 1 0 138 138" fill="none" stroke="#ffffff" stroke-linecap="round" stroke-width="22"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="cinnabarr-grad" x1="15%" y1="15%" x2="85%" y2="85%">
+      <stop offset="0%" stop-color="#AA5CC3" />
+      <stop offset="50%" stop-color="#D9386A" />
+      <stop offset="100%" stop-color="#E34234" />
+    </linearGradient>
+    <linearGradient id="facet-grad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#E34234" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#FF7A59" stop-opacity="1" />
+    </linearGradient>
+  </defs>
+  <path d="M 256 76 L 412 166 L 364 194 L 256 131 L 148 194 L 148 318 L 256 381 L 364 318 L 412 346 L 256 436 L 100 346 L 100 166 Z" fill="url(#cinnabarr-grad)" />
+  <g>
+    <path d="M 216 184 L 348 256 L 216 328 Z" fill="url(#facet-grad)" />
+    <path d="M 216 184 L 348 256 L 248 256 Z" fill="#FFFFFF" fill-opacity="0.16" />
+  </g>
 </svg>

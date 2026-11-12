@@ -1,6 +1,6 @@
 ID,Epic,Item,Type,Requirements,Phase,Priority,Size,Depends on,Sequence,Status
 BL-001,Rebrand,Fix the header and sidebar still reading Sonarr,Task,BRD-01,1,M,S,none,Now,Done
-BL-002,Rebrand,"Phase 1e rename to Cinnabarr (UI, strings, logos, metadata, docs)",Story,BRD-02,1e,M,M,"BL-004, BL-005",Next,"Partial: names, strings, login pages, metadata and docs now say Cinnabarr; logo, theme and icons need the owner"
+BL-002,Rebrand,"Phase 1e rename to Cinnabarr (UI, strings, logos, metadata, docs)",Story,BRD-02,1e,M,M,"BL-004, BL-005",Next,"Done: names, strings, login pages, metadata, docs, logo, theme and icons (from the owner's logo and brand spec)"
 BL-003,Rebrand,Name clearance search before any public release,Task,BRD-03,pre-release,M,S,none,Later,Ready
 BL-004,Rebrand,Decide whether to rename the repo and docs/cinnabarr folder,Decision,BRD-02,1e,S,XS,none,Next,"Done: docs folder is docs/cinnabarr; renaming the GitHub repositories is left to the owner"
 BL-005,Rebrand,Rename the engine binary to cinnabarr-engine and check the code,Spike,ENG-17,1e,M,S,none,Next,"Done (engine builds as cinnabarr-engine; CINNABARR_ENGINE_* variables)"
