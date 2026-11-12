@@ -103,7 +103,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 
 | ID | Item | Type | Requirements | Phase | Priority | Size | Depends on | Sequence | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| BL-050 | Version slot schema and a default slot per item | Story | VER-01 | 5 | M | XL | BL-044 | Next | Ready |
+| BL-050 | Version slot schema and a default slot per item | Story | VER-01 | 5 | M | XL | BL-044 | Next | Partial: movie version slots stored (table, file slot id, API with a limit of 8 versions, default slot is the movie itself); nothing uses them yet (BL-051) |
 | BL-051 | Per-slot Wanted, cutoff and upgrades | Story | VER-01 | 5 | M | L | BL-050 | Next | Ready |
 | BL-052 | Download another version from Search | Story | VER-02 | 5 | S | M | BL-050 | Next | Ready |
 | BL-053 | Race mode per file, with winner rules and loser cleanup | Story | VER-03, VER-04 | 5 | S | XL | BL-050, BL-093 | Next | Ready |
@@ -112,7 +112,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | BL-056 | Version label in file names | Task | NAM-04 | 5 | M | S | BL-050, BL-055 | Next | Partial: naming presets (Jellyfin default, Emby, Plex) done; the {Version} label waits for version slots (BL-050) |
 | BL-059 | Verify subtitle language, forced and SDH naming, and copy numbers | Spike | NAM-02 | 2 | S | S | none | Now | Done (checked against the real engine: language, forced and SDH names; copy numbers only unit-tested) |
 | BL-057 | Default version slots and race defaults in Settings | Story | SET-02 | 5 | S | M | BL-050 | Next | Ready |
-| BL-058 | Decide the maximum number of version slots (decision 6) | Decision | VER-01 | 5 | S | XS | none | Next | Decision |
+| BL-058 | Decide the maximum number of version slots (decision 6) | Decision | VER-01 | 5 | S | XS | none | Next | Decided for now: at most 8 versions per movie (adjustable) |
 
 ### Migration
 
@@ -152,7 +152,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | BL-090 | Decision 1: when to rename NzbDrone.* namespaces | Decision | NFR-12 | 4+ | S | XS | none | Later | Decision |
 | BL-091 | Decision 3: support an external torrent client? | Decision | CON-05 | later | S | XS | none | Later | Decided: external torrent clients are out of scope |
 | BL-092 | Decision 7: Plex naming template | Decision | VER-05 | 5 | S | XS | BL-055 | Next | Decided: Jellyfin naming is the default, Emby and Plex are presets (the preset work is BL-056) |
-| BL-093 | Decision 5: how a race winner is chosen | Decision | VER-03 | 5 | S | XS | none | Next | Decision |
+| BL-093 | Decision 5: how a race winner is chosen | Decision | VER-03 | 5 | S | XS | none | Next | Decided for now: the first valid copy wins (as in the roadmap) |
 
 ### Quality
 
@@ -215,7 +215,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | BL-004 | Decide whether to rename the repo and docs/cinnabarr folder | Done: docs folder is docs/cinnabarr; renaming the GitHub repositories is left to the owner |
 | BL-014 | Series metadata from TVDB directly, replacing Skyhook (4i) | Not needed: decided to keep Sonarr's metadata service for series |
 | BL-015 | Movie metadata from TMDb directly, replacing the interim service (4i) | Blocked: TMDb key |
-| BL-058 | Decide the maximum number of version slots (decision 6) | Decision |
+| BL-058 | Decide the maximum number of version slots (decision 6) | Decided for now: at most 8 versions per movie (adjustable) |
 | BL-070 | Ownership marker and start-up protection before Phase 7 | Decision |
 | BL-079 | Optional v3 compatibility shims for Overseerr and Jellyseerr | Decision |
 | BL-080 | Fresh migration chain, or continue Sonarr's chain at 242? | Decision |
@@ -223,7 +223,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | BL-090 | Decision 1: when to rename NzbDrone.* namespaces | Decision |
 | BL-091 | Decision 3: support an external torrent client? | Decided: external torrent clients are out of scope |
 | BL-092 | Decision 7: Plex naming template | Decided: Jellyfin naming is the default, Emby and Plex are presets (the preset work is BL-056) |
-| BL-093 | Decision 5: how a race winner is chosen | Decision |
+| BL-093 | Decision 5: how a race winner is chosen | Decided for now: the first valid copy wins (as in the roadmap) |
 | BL-094 | Obtain a TVDB v4 project key and check its licence terms | Not needed: no TVDB key is required while Sonarr's service is used |
 | BL-095 | Obtain a TMDb key and confirm attribution | Blocked: owner |
 | BL-096 | Decide whether the ownership marker ships in an earlier release | Decision |
