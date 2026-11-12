@@ -47,6 +47,10 @@ namespace NzbDrone.Core.Download.Engine
 
         // Set once every video in the torrent has been imported or rejected and the download is recorded as done.
         public bool Completed { get; set; }
+
+        // The seeding goals of the series, season or episode (not the tracker's minimum) as they were when last read, so a
+        // restored link whose series isn't in the library yet keeps them instead of falling back to the global goal.
+        public List<EngineSeedingRule> SeedingRules { get; set; }
     }
 
     public enum EngineLinkFileState
