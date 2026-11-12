@@ -10,6 +10,7 @@ using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.DecisionEngine.Movies;
 using NzbDrone.Core.DecisionEngine.Movies.Specifications;
 using NzbDrone.Core.Movies;
+using NzbDrone.Core.Movies.Versions;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Test.Framework;
@@ -37,6 +38,10 @@ namespace NzbDrone.Core.Test.DecisionEngineTests.Movies
 
             _pass = Spec(SpecificationPriority.Default, DownloadSpecDecision.Accept());
             _fail = Spec(SpecificationPriority.Default, DownloadSpecDecision.Reject(DownloadRejectionReason.MinimumAge, "Too new"));
+
+            Mocker.GetMock<IVersionSlotService>()
+                .Setup(v => v.GetByMovie(It.IsAny<int>()))
+                .Returns(new List<VersionSlot>());
 
             Mocker.GetMock<ICustomFormatCalculationService>()
                 .Setup(c => c.ParseCustomFormat(It.IsAny<RemoteMovie>(), It.IsAny<long>()))
@@ -74,6 +79,68 @@ namespace NzbDrone.Core.Test.DecisionEngineTests.Movies
             decision.RemoteMovie.Release.Should().Be(_reports[0]);
             decision.RemoteMovie.ReleaseSource.Should().Be(ReleaseSourceType.Rss);
             decision.RemoteEpisode.Should().BeNull();
+        }
+
+        private void GivenAVersion(int slotId)
+        {
+            Mocker.GetMock<IVersionSlotService>()
+                .Setup(v => v.GetByMovie(_matrix.Id))
+                .Returns(new List<VersionSlot> { new VersionSlot { Id = slotId, MovieId = _matrix.Id, Label = "UHD", QualityProfileId = 2, Monitored = true } });
+
+            Mocker.GetMock<IVersionSlotService>()
+                .Setup(v => v.GetView(_matrix, slotId))
+                .Returns(() =>
+                {
+                    var view = _matrix.ShallowCopy();
+                    view.Slot = new VersionSlot { Id = slotId, MovieId = _matrix.Id, Label = "UHD", QualityProfileId = 2, Monitored = true };
+
+                    return view;
+                });
+        }
+
+        [Test]
+        public void should_also_decide_an_rss_release_for_each_version_of_the_movie()
+        {
+            GivenSpecs(_pass);
+            GivenAVersion(7);
+
+            var decisions = Subject.GetRssDecision(_reports);
+
+            decisions.Should().HaveCount(2);
+            decisions[0].RemoteMovie.Movie.VersionSlotId.Should().Be(0);
+            decisions[1].RemoteMovie.Movie.VersionSlotId.Should().Be(7);
+            decisions[1].RemoteMovie.Movie.Id.Should().Be(_matrix.Id);
+            decisions[1].RemoteMovie.Release.Should().Be(_reports[0]);
+            decisions[1].Approved.Should().BeTrue();
+        }
+
+        [Test]
+        public void should_not_decide_a_pushed_or_searched_release_for_the_versions()
+        {
+            GivenSpecs(_pass);
+            GivenAVersion(7);
+
+            Subject.GetRssDecision(_reports, true).Should().HaveCount(1);
+            Subject.GetSearchDecision(_reports, _matrix).Should().HaveCount(1);
+        }
+
+        [Test]
+        public void should_reject_for_a_version_on_its_own_when_the_specs_say_so()
+        {
+            var onlyDefault = new Mock<IMovieDecisionEngineSpecification>();
+            onlyDefault.SetupGet(s => s.Priority).Returns(SpecificationPriority.Default);
+            onlyDefault.SetupGet(s => s.Type).Returns(RejectionType.Permanent);
+            onlyDefault.Setup(s => s.IsSatisfiedBy(It.IsAny<RemoteMovie>(), It.IsAny<MovieReleaseDecisionInformation>()))
+                .Returns((RemoteMovie m, MovieReleaseDecisionInformation i) => m.Movie.VersionSlotId == 0
+                    ? DownloadSpecDecision.Accept()
+                    : DownloadSpecDecision.Reject(DownloadRejectionReason.QualityNotWanted, "Not wanted"));
+            GivenSpecs(onlyDefault);
+            GivenAVersion(7);
+
+            var decisions = Subject.GetRssDecision(_reports);
+
+            decisions[0].Approved.Should().BeTrue();
+            decisions[1].Approved.Should().BeFalse();
         }
 
         [Test]
