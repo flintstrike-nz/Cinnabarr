@@ -12,6 +12,7 @@ using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Organizer;
 using NzbDrone.Core.Tv;
+using NzbDrone.Core.Tv.Versions;
 
 namespace NzbDrone.Core.MediaFiles
 {
@@ -33,6 +34,7 @@ namespace NzbDrone.Core.MediaFiles
         private readonly IEpisodeService _episodeService;
         private readonly IBuildFileNames _filenameBuilder;
         private readonly IDiskProvider _diskProvider;
+        private readonly ISeriesVersionSlotService _versionSlotService;
         private readonly Logger _logger;
 
         public RenameEpisodeFileService(ISeriesService seriesService,
@@ -42,6 +44,7 @@ namespace NzbDrone.Core.MediaFiles
                                         IEpisodeService episodeService,
                                         IBuildFileNames filenameBuilder,
                                         IDiskProvider diskProvider,
+                                        ISeriesVersionSlotService versionSlotService,
                                         Logger logger)
         {
             _seriesService = seriesService;
@@ -51,6 +54,7 @@ namespace NzbDrone.Core.MediaFiles
             _episodeService = episodeService;
             _filenameBuilder = filenameBuilder;
             _diskProvider = diskProvider;
+            _versionSlotService = versionSlotService;
             _logger = logger;
         }
 
@@ -97,10 +101,18 @@ namespace NzbDrone.Core.MediaFiles
 
         private IEnumerable<RenameEpisodeFilePreview> GetPreviews(Series series, List<Episode> episodes, List<EpisodeFile> files)
         {
+            var views = new Dictionary<int, Series>();
+
             foreach (var f in files)
             {
                 var file = f;
-                var episodesInFile = episodes.Where(e => e.EpisodeFileId == file.Id).ToList();
+
+                // A file of an extra version is named as that version (its {Version} label) and covers the episodes
+                // recorded for it, not the ones that have it as their own file.
+                var fileSeries = ViewOf(series, file, views);
+                var episodesInFile = file.VersionSlotId == 0
+                    ? episodes.Where(e => e.EpisodeFileId == file.Id).ToList()
+                    : episodes.Where(e => file.Episodes.Value.Any(x => x.Id == e.Id)).ToList();
                 var episodeFilePath = Path.Combine(series.Path, file.RelativePath);
 
                 if (!episodesInFile.Any())
@@ -110,7 +122,7 @@ namespace NzbDrone.Core.MediaFiles
                 }
 
                 var seasonNumber = episodesInFile.First().SeasonNumber;
-                var newPath = _filenameBuilder.BuildFilePath(episodesInFile, series, file, Path.GetExtension(episodeFilePath));
+                var newPath = _filenameBuilder.BuildFilePath(episodesInFile, fileSeries, file, Path.GetExtension(episodeFilePath));
 
                 if (!episodeFilePath.PathEquals(newPath, StringComparison.Ordinal))
                 {
@@ -127,9 +139,26 @@ namespace NzbDrone.Core.MediaFiles
             }
         }
 
+        private Series ViewOf(Series series, EpisodeFile file, Dictionary<int, Series> views)
+        {
+            if (file.VersionSlotId == 0)
+            {
+                return series;
+            }
+
+            if (!views.TryGetValue(file.VersionSlotId, out var view))
+            {
+                view = _versionSlotService.GetView(series, file.VersionSlotId);
+                views[file.VersionSlotId] = view;
+            }
+
+            return view;
+        }
+
         private List<RenamedEpisodeFile> RenameFiles(List<EpisodeFile> episodeFiles, Series series)
         {
             var renamed = new List<RenamedEpisodeFile>();
+            var views = new Dictionary<int, Series>();
 
             foreach (var episodeFile in episodeFiles)
             {
@@ -139,7 +168,7 @@ namespace NzbDrone.Core.MediaFiles
                 try
                 {
                     _logger.Debug("Renaming episode file: {0}", episodeFile);
-                    _episodeFileMover.MoveEpisodeFile(episodeFile, series);
+                    _episodeFileMover.MoveEpisodeFile(episodeFile, ViewOf(series, episodeFile, views));
 
                     _mediaFileService.Update(episodeFile);
 
