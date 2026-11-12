@@ -52,8 +52,8 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | BL-001 | Fix the header and sidebar still reading Sonarr | Task | BRD-01 | 1 | M | S | none | Now | Done |
 | BL-002 | Phase 1e rename to Cinnabarr (UI, strings, logos, metadata, docs) | Story | BRD-02 | 1e | M | M | BL-004, BL-005 | Next | Done: names, strings, login pages, metadata, docs, logo, theme and icons (from the owner's logo and brand spec) |
-| BL-003 | Name clearance search before any public release | Task | BRD-03 | pre-release | M | S | none | Later | Done as a web search (nothing found, see docs/cinnabarr/NAME_CLEARANCE.md); a trademark register search by the owner is still needed before release |
-| BL-004 | Decide whether to rename the repo and docs/cinnabarr folder | Decision | BRD-02 | 1e | S | XS | none | Next | Done: docs folder is docs/cinnabarr; renaming the GitHub repositories is left to the owner |
+| BL-003 | Name clearance search before any public release | Task | BRD-03 | pre-release | M | S | none | Later | Out of scope for the build work (the owner handles trademark searches); a quick web search found nothing, see docs/cinnabarr/NAME_CLEARANCE.md |
+| BL-004 | Decide whether to rename the repo and docs/cinnabarr folder | Decision | BRD-02 | 1e | S | XS | none | Next | Done: docs folder is docs/cinnabarr; the main repository is now flintstrike-nz/Cinnabarr (the engine and the Radarr and Prowlarr source forks keep their EmbarrPre names for now) |
 | BL-005 | Rename the engine binary to cinnabarr-engine and check the code | Spike | ENG-17 | 1e | M | S | none | Next | Done (engine builds as cinnabarr-engine; CINNABARR_ENGINE_* variables) |
 
 ### Phase 4 close-out
@@ -65,7 +65,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | BL-012 | Movie extras: .nfo, artwork, and subtitles beside existing files on scan | Story | FIL-08 | 4 | S | M | none | Next | Done (checked in the real app; folder-wide artwork such as poster.jpg is not linked) |
 | BL-013 | Movie import lists (4f) | Story | LIB-08 | 4 | M | M | none | Next | Partial: Done for two sources (custom JSON list, TMDb trending/popular); other sources, exclusions and the UI language field open |
 | BL-014 | Series metadata from TVDB directly, replacing Skyhook (4i) | Story | MET-02, MET-06, IF-02, IF-04 | 4 | M | L | BL-094 | Now | Not needed: decided to keep Sonarr's metadata service for series |
-| BL-015 | Movie metadata from TMDb directly, replacing the interim service (4i) | Story | MET-03, IF-03 | 4 | M | M | BL-095 | Next | Blocked: TMDb key |
+| BL-015 | Movie metadata from TMDb directly, replacing the interim service (4i) | Story | MET-03, IF-03 | 4 | M | M | BL-095 | Next | Not needed: like the TVDB key, no key is available, so movie metadata stays on Radarr's service (decided by the owner) |
 | BL-016 | TheXEM scene mappings plus Cinnabarr's own list (4i) | Story | MET-05, MET-04 | 4 | M | M | BL-014 | Next | Not needed: decided to keep Sonarr's scene mapping service |
 | BL-017 | Collections and credits on movie pages | Story | MET-06, LIB-06 | 4 | S | M | none | Next | Partial: credits and collection shown; collection pages and person pages open |
 | BL-018 | Discover tab and one Add search for TV and movies | Story | LIB-09, UI-02 | 4 | M | L | none | Next | Partial: movie Discover done; one Add search for series and movies, and series Discover, open |
@@ -173,7 +173,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | ID | Item | Type | Requirements | Phase | Priority | Size | Depends on | Sequence | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | BL-094 | Obtain a TVDB v4 project key and check its licence terms | Task | MET-06 | 4 | M | S | none | Now | Not needed: no TVDB key is required while Sonarr's service is used |
-| BL-095 | Obtain a TMDb key and confirm attribution | Task | MET-06 | 4 | M | S | none | Now | Blocked: owner |
+| BL-095 | Obtain a TMDb key and confirm attribution | Task | MET-06 | 4 | M | S | none | Now | Not needed: no TMDb key is available; movie metadata stays on Radarr's service (decided by the owner) |
 | BL-096 | Decide whether the ownership marker ships in an earlier release | Decision | MIG-05 | 1e | M | XS | none | Now | Decision |
 
 ### Addendum A
@@ -199,7 +199,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | ID | Item | Type | Requirements | Phase | Priority | Size | Depends on | Sequence | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | BL-120 | Re-run NHKollector against the live NHK site and test yt-dlp listing | Spike | C-01 | after 4 | M | S | none | Now | Ready |
-| BL-121 | Create the private cinnabarr-definitions repository | Task | C-04 | Future | M | XS | none | Next | Blocked: owner |
+| BL-121 | Create the private cinnabarr-definitions repository | Task | C-04 | Future | M | XS | none | Next | Done by the owner: the private cinnabarr-definitions repository exists |
 | BL-122 | yt-dlp download engine wrapper: JSON output, progress, errors, pinned version | Story | C-02, C-03 | Future | S | L | BL-010 | Future | Future |
 | BL-123 | YouTube channel source, opt-in, via Atom feed | Story | C-05, C-06 | Future | S | M | BL-122 | Future | Future |
 | BL-124 | Definition loader, schema, fixtures and zero-results alert | Story | C-04, C-07 | Future | M | M | BL-121 | Future | Future |
@@ -212,9 +212,9 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | ID | Item | Status |
 | --- | --- | --- |
 | BL-002 | Phase 1e rename to Cinnabarr (UI, strings, logos, metadata, docs) | Done: names, strings, login pages, metadata, docs, logo, theme and icons (from the owner's logo and brand spec) |
-| BL-004 | Decide whether to rename the repo and docs/cinnabarr folder | Done: docs folder is docs/cinnabarr; renaming the GitHub repositories is left to the owner |
+| BL-004 | Decide whether to rename the repo and docs/cinnabarr folder | Done: docs folder is docs/cinnabarr; the main repository is now flintstrike-nz/Cinnabarr (the engine and the Radarr and Prowlarr source forks keep their EmbarrPre names for now) |
 | BL-014 | Series metadata from TVDB directly, replacing Skyhook (4i) | Not needed: decided to keep Sonarr's metadata service for series |
-| BL-015 | Movie metadata from TMDb directly, replacing the interim service (4i) | Blocked: TMDb key |
+| BL-015 | Movie metadata from TMDb directly, replacing the interim service (4i) | Not needed: like the TVDB key, no key is available, so movie metadata stays on Radarr's service (decided by the owner) |
 | BL-058 | Decide the maximum number of version slots (decision 6) | Decided for now: at most 8 versions per movie (adjustable) |
 | BL-070 | Ownership marker and start-up protection before Phase 7 | Decision |
 | BL-079 | Optional v3 compatibility shims for Overseerr and Jellyseerr | Decision |
@@ -225,6 +225,6 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | BL-092 | Decision 7: Plex naming template | Decided: Jellyfin naming is the default, Emby and Plex are presets (the preset work is BL-056) |
 | BL-093 | Decision 5: how a race winner is chosen | Decided for now: the first valid copy wins (as in the roadmap) |
 | BL-094 | Obtain a TVDB v4 project key and check its licence terms | Not needed: no TVDB key is required while Sonarr's service is used |
-| BL-095 | Obtain a TMDb key and confirm attribution | Blocked: owner |
+| BL-095 | Obtain a TMDb key and confirm attribution | Not needed: no TMDb key is available; movie metadata stays on Radarr's service (decided by the owner) |
 | BL-096 | Decide whether the ownership marker ships in an earlier release | Decision |
-| BL-121 | Create the private cinnabarr-definitions repository | Blocked: owner |
+| BL-121 | Create the private cinnabarr-definitions repository | Done by the owner: the private cinnabarr-definitions repository exists |
