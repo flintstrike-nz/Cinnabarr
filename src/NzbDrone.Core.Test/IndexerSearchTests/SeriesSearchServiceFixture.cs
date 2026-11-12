@@ -36,7 +36,7 @@ namespace NzbDrone.Core.Test.IndexerSearchTests
                   .Returns(_series);
 
             Mocker.GetMock<ISearchForReleases>()
-                  .Setup(s => s.SeasonSearch(_series.Id, It.IsAny<int>(), false, false, true, false))
+                  .Setup(s => s.SeasonSearch(_series.Id, 0, It.IsAny<int>(), false, false, true, false))
                   .ReturnsAsync(new List<DownloadDecision>());
 
             Mocker.GetMock<IProcessDownloadDecisions>()
@@ -56,7 +56,7 @@ namespace NzbDrone.Core.Test.IndexerSearchTests
             Subject.Execute(new SeriesSearchCommand { SeriesId = _series.Id, Trigger = CommandTrigger.Manual });
 
             Mocker.GetMock<ISearchForReleases>()
-                .Verify(v => v.SeasonSearch(_series.Id, It.IsAny<int>(), false, true, true, false), Times.Exactly(_series.Seasons.Count(s => s.Monitored)));
+                .Verify(v => v.SeasonSearch(_series.Id, 0, It.IsAny<int>(), false, true, true, false), Times.Exactly(_series.Seasons.Count(s => s.Monitored)));
         }
 
         [Test]
@@ -73,7 +73,7 @@ namespace NzbDrone.Core.Test.IndexerSearchTests
             Subject.Execute(new SeriesSearchCommand { SeriesId = _series.Id, Trigger = CommandTrigger.Manual });
 
             Mocker.GetMock<ISearchForReleases>()
-                .Verify(v => v.SeasonSearch(_series.Id, It.IsAny<int>(), true, true, true, false), Times.Exactly(_series.Seasons.Count(s => s.Monitored)));
+                .Verify(v => v.SeasonSearch(_series.Id, 0, It.IsAny<int>(), true, true, true, false), Times.Exactly(_series.Seasons.Count(s => s.Monitored)));
         }
 
         [Test]
@@ -89,9 +89,9 @@ namespace NzbDrone.Core.Test.IndexerSearchTests
                               };
 
             Mocker.GetMock<ISearchForReleases>()
-                  .Setup(s => s.SeasonSearch(_series.Id, It.IsAny<int>(), false, true, true, false))
+                  .Setup(s => s.SeasonSearch(_series.Id, 0, It.IsAny<int>(), false, true, true, false))
                   .ReturnsAsync(new List<DownloadDecision>())
-                  .Callback<int, int, bool, bool, bool, bool>((seriesId, seasonNumber, missingOnly, monitoredOnly, userInvokedSearch, interactiveSearch) => seasonOrder.Add(seasonNumber));
+                  .Callback<int, int, int, bool, bool, bool, bool>((seriesId, slotId, seasonNumber, missingOnly, monitoredOnly, userInvokedSearch, interactiveSearch) => seasonOrder.Add(seasonNumber));
 
             Subject.Execute(new SeriesSearchCommand { SeriesId = _series.Id, Trigger = CommandTrigger.Manual });
 

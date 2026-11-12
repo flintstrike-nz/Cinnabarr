@@ -29,7 +29,7 @@ namespace NzbDrone.Core.DecisionEngine
 
             // Each series or movie is ordered on its own, best first; decisions that matched nothing come last.
             var seriesDecisions = decisions.Where(c => c.RemoteEpisode?.Series != null)
-                                           .GroupBy(c => c.RemoteEpisode.Series.Id)
+                                           .GroupBy(c => (c.RemoteEpisode.Series.Id, c.RemoteEpisode.Series.VersionSlotId))
                                            .SelectMany(g => g.OrderByDescending(decision => decision, episodeComparer));
 
             var movieDecisions = decisions.Where(c => c.RemoteMovie?.Movie != null)

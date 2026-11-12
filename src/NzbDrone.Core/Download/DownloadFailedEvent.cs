@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using NzbDrone.Common.Messaging;
 using NzbDrone.Core.Download.TrackedDownloads;
+using NzbDrone.Core.History;
 using NzbDrone.Core.Languages;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
@@ -27,5 +28,8 @@ namespace NzbDrone.Core.Download
         public List<Language> Languages { get; set; }
         public bool SkipRedownload { get; set; }
         public ReleaseSourceType ReleaseSource { get; set; }
+
+        // The extra version of the series the download was for; 0 for the default version.
+        public int VersionSlotId => Data != null && Data.TryGetValue(EpisodeHistory.VERSION_SLOT_ID, out var id) && int.TryParse(id, out var slotId) ? slotId : 0;
     }
 }

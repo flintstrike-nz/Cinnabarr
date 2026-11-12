@@ -94,7 +94,12 @@ namespace NzbDrone.Core.Organizer
 
         private static string WithVersionLabel(string name, Movie movie, NamingConfig namingConfig)
         {
-            return movie.VersionLabel.IsNullOrWhiteSpace() ? name : $"{name} - {CleanFileName(movie.VersionLabel, namingConfig)}";
+            return WithVersionLabel(name, movie.VersionLabel, namingConfig);
+        }
+
+        private static string WithVersionLabel(string name, string label, NamingConfig namingConfig)
+        {
+            return label.IsNullOrWhiteSpace() ? name : $"{name} - {CleanFileName(label, namingConfig)}";
         }
 
         public string BuildFilePath(Movie movie, string fileName, string extension)

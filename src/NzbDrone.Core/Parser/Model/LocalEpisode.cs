@@ -110,7 +110,8 @@ namespace NzbDrone.Core.Parser.Model
                 IndexerFlags = IndexerFlags,
                 ReleaseType = ReleaseType,
                 SceneName = SceneName,
-                OriginalFilePath = GetOriginalFilePath()
+                OriginalFilePath = GetOriginalFilePath(),
+                VersionSlotId = Series.VersionSlotId
             };
 
             if (Series.Path.IsParentPath(episodeFile.Path))

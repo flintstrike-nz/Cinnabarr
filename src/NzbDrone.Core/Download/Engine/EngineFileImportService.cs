@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using NLog;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Download.Clients.QBittorrent;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.Extras.Subtitles;
@@ -18,6 +19,7 @@ using NzbDrone.Core.MediaFiles.EpisodeImport.Aggregation;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Tv;
+using NzbDrone.Core.Tv.Versions;
 
 namespace NzbDrone.Core.Download.Engine
 {
@@ -52,6 +54,7 @@ namespace NzbDrone.Core.Download.Engine
         private readonly IEngineLinkService _engineLinkService;
         private readonly IHistoryService _historyService;
         private readonly ISeriesService _seriesService;
+        private readonly ISeriesVersionSlotService _versionSlotService;
         private readonly IEpisodeService _episodeService;
         private readonly IAggregationService _aggregationService;
         private readonly ILocalEpisodeCustomFormatCalculationService _formatCalculator;
@@ -77,6 +80,7 @@ namespace NzbDrone.Core.Download.Engine
                                        IEngineLinkService engineLinkService,
                                        IHistoryService historyService,
                                        ISeriesService seriesService,
+                                       ISeriesVersionSlotService versionSlotService,
                                        IEpisodeService episodeService,
                                        IAggregationService aggregationService,
                                        ILocalEpisodeCustomFormatCalculationService formatCalculator,
@@ -96,6 +100,7 @@ namespace NzbDrone.Core.Download.Engine
             _engineLinkService = engineLinkService;
             _historyService = historyService;
             _seriesService = seriesService;
+            _versionSlotService = versionSlotService;
             _episodeService = episodeService;
             _aggregationService = aggregationService;
             _formatCalculator = formatCalculator;
@@ -203,6 +208,23 @@ namespace NzbDrone.Core.Download.Engine
             var engineFiles = proxy.GetTorrentFiles(hash, settings);
             var series = _seriesService.GetSeries(grabs.First().SeriesId);
             var seriesEpisodes = _episodeService.GetEpisodeBySeries(series.Id);
+
+            // A download for one of the series' extra versions imports into that version: its profile, its files.
+            var slotId = grabs.MaxBy(g => g.Date).VersionSlotId;
+
+            if (slotId != 0)
+            {
+                try
+                {
+                    series = _versionSlotService.GetView(series, slotId);
+                    seriesEpisodes = _versionSlotService.GetEpisodeViews(seriesEpisodes, slotId);
+                }
+                catch (ModelNotFoundException)
+                {
+                    _logger.Warn("The version of '{0}' that '{1}' was grabbed for no longer exists; leaving it for Manual Import", series.Title, torrent.Name);
+                    return;
+                }
+            }
 
             void Save() => _engineLinkService.Save(downloadId, link);
 
@@ -489,12 +511,20 @@ namespace NzbDrone.Core.Download.Engine
                     save();
 
                     // The import changed the episodes' files: read them again before recording the subtitles.
-                    RecordPublishedSubtitles(series, _episodeService.GetEpisodes(episodes.Select(e => e.Id)), link, file);
+                    RecordPublishedSubtitles(series, GetFreshEpisodes(series, episodes), link, file);
                     RecheckDetached(proxy, settings, file, save);
 
                     return;
                 }
             }
+        }
+
+        // The episodes as the database has them now (for a version of the series, as that version sees them).
+        private List<Episode> GetFreshEpisodes(Series series, List<Episode> episodes)
+        {
+            var fresh = _episodeService.GetEpisodes(episodes.Select(e => e.Id));
+
+            return series.VersionSlotId == 0 ? fresh : _versionSlotService.GetEpisodeViews(fresh, series.VersionSlotId);
         }
 
         // Subtitles already published for a video that is (again) recorded, for example after a restore.
@@ -697,7 +727,7 @@ namespace NzbDrone.Core.Download.Engine
             }
 
             var episodes = imported.SelectMany(f => GetEpisodes(f, seriesEpisodes) ?? new List<Episode>()).DistinctBy(e => e.Id).ToList();
-            var episodeFiles = _episodeService.GetEpisodes(episodes.Select(e => e.Id))
+            var episodeFiles = GetFreshEpisodes(series, episodes)
                 .Where(e => e.EpisodeFileId > 0)
                 .Select(e => e.EpisodeFile.Value)
                 .Where(f => f != null)

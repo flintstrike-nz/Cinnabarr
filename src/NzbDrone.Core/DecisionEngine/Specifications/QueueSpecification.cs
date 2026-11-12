@@ -39,6 +39,7 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
             var queue = _queueService.GetQueue().Where(q => q.IsTrackable);
             var matchingEpisode = queue.Where(q => q.RemoteEpisode?.Series != null &&
                                                    q.RemoteEpisode.Series.Id == subject.Series.Id &&
+                                                   q.RemoteEpisode.Series.VersionSlotId == subject.Series.VersionSlotId &&
                                                    q.RemoteEpisode.Episodes.Select(e => e.Id).Intersect(subject.Episodes.Select(e => e.Id)).Any())
                                        .ToList();
 

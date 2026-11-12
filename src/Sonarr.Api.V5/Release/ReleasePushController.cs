@@ -83,7 +83,17 @@ public class ReleasePushController : RestController<ReleasePushResource>
 
         lock (PushLock)
         {
-            if (release.VersionSlotId != 0)
+            if (release.VersionSlotId != 0 && release.SeriesId != 0)
+            {
+                // A release for one version of a series is decided as that version (its profile and files).
+                decision = _downloadDecisionMaker.GetVersionDecision(new List<ReleaseInfo> { info }, release.VersionSlotId, true).FirstOrDefault();
+
+                if (decision?.RemoteEpisode?.Series != null && decision.RemoteEpisode.Series.Id != release.SeriesId)
+                {
+                    throw new ValidationException(new List<ValidationFailure> { new("SeriesId", "The release is for another series", release.SeriesId) });
+                }
+            }
+            else if (release.VersionSlotId != 0)
             {
                 // A release for one version of a movie is decided as that version (its profile and file), as a search for it would be.
                 var view = _versionSlotService.GetView(_movieService.GetMovie(release.MovieId), release.VersionSlotId);

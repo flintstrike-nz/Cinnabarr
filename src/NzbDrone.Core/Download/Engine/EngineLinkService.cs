@@ -162,6 +162,11 @@ namespace NzbDrone.Core.Download.Engine
                 history.Data.Add("TorrentInfoHash", downloadId);
                 history.Data.Add(RestoredFromKey, "EngineSidecar");
 
+                if (link.VersionSlotId != 0)
+                {
+                    history.Data.Add(EpisodeHistory.VERSION_SLOT_ID, link.VersionSlotId.ToString());
+                }
+
                 historyItems.Add(history);
             }
 
@@ -295,6 +300,7 @@ namespace NzbDrone.Core.Download.Engine
                 TrackerSeedMinutes = remoteEpisode.SeedConfiguration?.SeedTime is { } seedTime ? (int)seedTime.TotalMinutes : null,
                 Quality = FromQualityModel(remoteEpisode.ParsedEpisodeInfo?.Quality),
                 Grabbed = DateTime.UtcNow,
+                VersionSlotId = remoteEpisode.Series.VersionSlotId,
 
                 // A re-grab of the same torrent (a re-add) keeps the v2 hash its earlier preparation recorded: its old
                 // part file is named after it, and it may be a while before the torrent is prepared again.

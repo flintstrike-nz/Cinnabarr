@@ -16,6 +16,7 @@ using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Profiles.Qualities;
 using NzbDrone.Core.Tv;
+using NzbDrone.Core.Tv.Versions;
 using NzbDrone.Core.Validation;
 using Sonarr.Http;
 using Sonarr.Http.REST;
@@ -34,6 +35,7 @@ public class ReleaseController : RestController<ReleaseResource>
     private readonly ISeriesService _seriesService;
     private readonly IEpisodeService _episodeService;
     private readonly IParsingService _parsingService;
+    private readonly ISeriesVersionSlotService _versionSlotService;
     private readonly IHistoryService _historyService;
     private readonly Logger _logger;
 
@@ -48,6 +50,7 @@ public class ReleaseController : RestController<ReleaseResource>
                          ISeriesService seriesService,
                          IEpisodeService episodeService,
                          IParsingService parsingService,
+                         ISeriesVersionSlotService versionSlotService,
                          IHistoryService historyService,
                          ICacheManager cacheManager,
                          IQualityProfileService qualityProfileService,
@@ -61,6 +64,7 @@ public class ReleaseController : RestController<ReleaseResource>
         _seriesService = seriesService;
         _episodeService = episodeService;
         _parsingService = parsingService;
+        _versionSlotService = versionSlotService;
         _historyService = historyService;
         _logger = logger;
 
@@ -95,6 +99,9 @@ public class ReleaseController : RestController<ReleaseResource>
 
             throw new NzbDroneClientException(HttpStatusCode.NotFound, "Couldn't find requested release in cache, try searching again");
         }
+
+        // A release found by a search for one of the series' extra versions is grabbed for that version.
+        var versionSlotId = remoteEpisode.Series?.VersionSlotId ?? release.SearchInfo?.VersionSlotId ?? 0;
 
         try
         {
@@ -176,6 +183,12 @@ public class ReleaseController : RestController<ReleaseResource>
                 throw new NzbDroneClientException(HttpStatusCode.NotFound, "Unable to parse episodes in the release, will need to be manually provided");
             }
 
+            if (versionSlotId != 0 && remoteEpisode.Series.VersionSlotId == 0)
+            {
+                remoteEpisode.Series = _versionSlotService.GetView(remoteEpisode.Series, versionSlotId);
+                remoteEpisode.Episodes = _versionSlotService.GetEpisodeViews(remoteEpisode.Episodes, versionSlotId);
+            }
+
             await _downloadService.DownloadReport(remoteEpisode, release.Override?.DownloadClientId);
         }
         catch (ReleaseDownloadException ex)
@@ -189,16 +202,16 @@ public class ReleaseController : RestController<ReleaseResource>
 
     [HttpGet]
     [Produces("application/json")]
-    public async Task<Results<Ok<List<ReleaseResource>>, BadRequest>> GetReleases(int? seriesId, int? episodeId, int? seasonNumber)
+    public async Task<Results<Ok<List<ReleaseResource>>, BadRequest>> GetReleases(int? seriesId, int? episodeId, int? seasonNumber, int versionSlotId = 0)
     {
         if (episodeId.HasValue)
         {
-            return TypedResults.Ok(await GetEpisodeReleases(episodeId.Value));
+            return TypedResults.Ok(await GetEpisodeReleases(episodeId.Value, versionSlotId));
         }
 
         if (seriesId.HasValue && seasonNumber.HasValue)
         {
-            return TypedResults.Ok(await GetSeasonReleases(seriesId.Value, seasonNumber.Value));
+            return TypedResults.Ok(await GetSeasonReleases(seriesId.Value, seasonNumber.Value, versionSlotId));
         }
 
         if (seriesId.HasValue || seasonNumber.HasValue)
@@ -209,13 +222,13 @@ public class ReleaseController : RestController<ReleaseResource>
         return TypedResults.Ok(await GetRss());
     }
 
-    private async Task<List<ReleaseResource>> GetEpisodeReleases(int episodeId)
+    private async Task<List<ReleaseResource>> GetEpisodeReleases(int episodeId, int versionSlotId)
     {
         try
         {
-            var decisions = await _releaseSearchService.EpisodeSearch(episodeId, true, true);
+            var decisions = await _releaseSearchService.EpisodeSearch(episodeId, versionSlotId, true, true);
             var prioritizedDecisions = _prioritizeDownloadDecision.PrioritizeDecisions(decisions);
-            var history = _historyService.FindByEpisodeId(episodeId);
+            var history = _historyService.FindByEpisodeId(episodeId).Where(h => h.VersionSlotId == versionSlotId).ToList();
 
             return MapDecisions(prioritizedDecisions, history);
         }
@@ -230,13 +243,13 @@ public class ReleaseController : RestController<ReleaseResource>
         }
     }
 
-    private async Task<List<ReleaseResource>> GetSeasonReleases(int seriesId, int seasonNumber)
+    private async Task<List<ReleaseResource>> GetSeasonReleases(int seriesId, int seasonNumber, int versionSlotId)
     {
         try
         {
-            var decisions = await _releaseSearchService.SeasonSearch(seriesId, seasonNumber, false, false, true, true);
+            var decisions = await _releaseSearchService.SeasonSearch(seriesId, versionSlotId, seasonNumber, false, false, true, true);
             var prioritizedDecisions = _prioritizeDownloadDecision.PrioritizeDecisions(decisions);
-            var history = _historyService.GetBySeason(seriesId, seasonNumber, null);
+            var history = _historyService.GetBySeason(seriesId, seasonNumber, null).Where(h => h.VersionSlotId == versionSlotId).ToList();
 
             return MapDecisions(prioritizedDecisions, history);
         }
@@ -254,7 +267,9 @@ public class ReleaseController : RestController<ReleaseResource>
     private async Task<List<ReleaseResource>> GetRss()
     {
         var reports = await _rssFetcherAndParser.Fetch();
-        var decisions = _downloadDecisionMaker.GetRssDecision(reports);
+
+        // The RSS decisions also hold one per extra version of each series; the list shows each release once.
+        var decisions = _downloadDecisionMaker.GetRssDecision(reports).Where(d => (d.RemoteEpisode?.Series?.VersionSlotId ?? 0) == 0).ToList();
         var prioritizedDecisions = _prioritizeDownloadDecision.PrioritizeDecisions(decisions);
 
         return MapDecisions(prioritizedDecisions, new List<EpisodeHistory>());

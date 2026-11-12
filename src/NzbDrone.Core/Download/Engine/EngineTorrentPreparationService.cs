@@ -9,6 +9,7 @@ using NzbDrone.Core.History;
 using NzbDrone.Core.Movies;
 using NzbDrone.Core.Movies.Versions;
 using NzbDrone.Core.Tv;
+using NzbDrone.Core.Tv.Versions;
 
 namespace NzbDrone.Core.Download.Engine
 {
@@ -38,6 +39,7 @@ namespace NzbDrone.Core.Download.Engine
         private readonly ISeriesService _seriesService;
         private readonly IMovieService _movieService;
         private readonly IVersionSlotService _versionSlotService;
+        private readonly ISeriesVersionSlotService _seriesVersionSlotService;
         private readonly IEpisodeService _episodeService;
         private readonly Logger _logger;
 
@@ -51,6 +53,7 @@ namespace NzbDrone.Core.Download.Engine
                                                ISeriesService seriesService,
                                                IMovieService movieService,
                                                IVersionSlotService versionSlotService,
+                                               ISeriesVersionSlotService seriesVersionSlotService,
                                                IEpisodeService episodeService,
                                                Logger logger)
         {
@@ -64,6 +67,7 @@ namespace NzbDrone.Core.Download.Engine
             _seriesService = seriesService;
             _movieService = movieService;
             _versionSlotService = versionSlotService;
+            _seriesVersionSlotService = seriesVersionSlotService;
             _episodeService = episodeService;
             _logger = logger;
         }
@@ -280,6 +284,13 @@ namespace NzbDrone.Core.Download.Engine
                 .ToHashSet();
 
             var episodes = _episodeService.GetEpisodeBySeries(series.Id).Where(e => episodeIds.Contains(e.Id)).ToList();
+
+            // A grab for one of the series' extra versions is named and placed as that version (its {Version} label).
+            if (grab.VersionSlotId != 0 && episodes.Any())
+            {
+                series = _seriesVersionSlotService.GetView(series, grab.VersionSlotId);
+                episodes = _seriesVersionSlotService.GetEpisodeViews(episodes, grab.VersionSlotId);
+            }
 
             return episodes.Any() ? _engineFileMapper.Map(downloadId, series, episodes, grab.Quality, grab.SourceTitle, files) : null;
         }
