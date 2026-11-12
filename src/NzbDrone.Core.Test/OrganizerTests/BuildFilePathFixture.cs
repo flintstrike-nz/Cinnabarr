@@ -20,6 +20,7 @@ namespace NzbDrone.Core.Test.OrganizerTests
         public void Setup()
         {
             _namingConfig = NamingConfig.Default;
+            _namingConfig.RenameEpisodes = false;
 
             Mocker.GetMock<INamingConfigService>()
                   .Setup(c => c.GetConfig()).Returns(_namingConfig);

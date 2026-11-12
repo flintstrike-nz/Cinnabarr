@@ -4,23 +4,8 @@ namespace NzbDrone.Core.Organizer
 {
     public class NamingConfig : ModelBase
     {
-        public static NamingConfig Default => new NamingConfig
-        {
-            RenameEpisodes = false,
-            ReplaceIllegalCharacters = true,
-            ColonReplacementFormat = ColonReplacementFormat.Smart,
-            CustomColonReplacementFormat = string.Empty,
-            MultiEpisodeStyle = MultiEpisodeStyle.PrefixedRange,
-            StandardEpisodeFormat = "{Series Title} - S{season:00}E{episode:00} - {Episode Title} {Quality Full}",
-            DailyEpisodeFormat = "{Series Title} - {Air-Date} - {Episode Title} {Quality Full}",
-            AnimeEpisodeFormat = "{Series Title} - S{season:00}E{episode:00} - {Episode Title} {Quality Full}",
-            SeriesFolderFormat = "{Series Title}",
-            SeasonFolderFormat = "Season {season}",
-            SpecialsFolderFormat = "Specials",
-            RenameMovies = false,
-            StandardMovieFormat = "{Movie Title} ({Release Year}) {Quality Full}",
-            MovieFolderFormat = "{Movie Title} ({Release Year})"
-        };
+        // Jellyfin's conventions (roadmap §4.11); the other presets are in NamingPresets.
+        public static NamingConfig Default => NamingPresets.Get(NamingPreset.Jellyfin);
 
         public bool RenameEpisodes { get; set; }
         public bool ReplaceIllegalCharacters { get; set; }

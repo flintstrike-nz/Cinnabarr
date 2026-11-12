@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Alert from 'Components/Alert';
 import FieldSet from 'Components/FieldSet';
 import Form from 'Components/Form/Form';
@@ -19,6 +19,7 @@ import {
   NamingSettingsModel,
   useManageNamingSettings,
   useNamingExamples,
+  useNamingPresets,
 } from './useNamingSettings';
 import styles from './Naming.module.css';
 
@@ -42,6 +43,16 @@ function Naming({ setChildSave, onChildStateChange }: NamingProps) {
     saveSettings,
   } = useManageNamingSettings();
 
+  const presets = useNamingPresets();
+
+  const presetOptions = useMemo(
+    () => [
+      { key: '', value: translate('ChooseNamingPreset') },
+      ...presets.map((preset) => ({ key: preset.name, value: preset.name })),
+    ],
+    [presets]
+  );
+
   const debouncedSettings = useDebounce(settings, 300);
   const { examples } = useNamingExamples(debouncedSettings);
   const examplesPopulated = !!examples;
@@ -50,6 +61,24 @@ function Naming({ setChildSave, onChildStateChange }: NamingProps) {
     useModalOpenState(false);
   const [namingModalOptions, setNamingModalOptions] =
     useState<NamingModalOptions | null>(null);
+
+  // Fills in every format; nothing is saved until the page is.
+  const handlePresetChange = useCallback(
+    ({ value }: InputChanged<string>) => {
+      const preset = presets.find((p) => p.name === value);
+
+      if (!preset) {
+        return;
+      }
+
+      (Object.keys(preset.settings) as (keyof NamingSettingsModel)[]).forEach(
+        (key) => {
+          updateSetting(key, preset.settings[key]);
+        }
+      );
+    },
+    [presets, updateSetting]
+  );
 
   const handleInputChange = useCallback(
     (change: InputChanged) => {
@@ -284,6 +313,18 @@ function Naming({ setChildSave, onChildStateChange }: NamingProps) {
       ) : null}
       {hasSettings && !isFetching && !error ? (
         <Form>
+          <FormRow size={sizes.MEDIUM}>
+            <FormLabel>{translate('NamingPreset')}</FormLabel>
+            <FormInputHelpText text={translate('NamingPresetHelpText')} />
+            <FormInput
+              type={inputTypes.SELECT}
+              name="namingPreset"
+              values={presetOptions}
+              value=""
+              onChange={handlePresetChange}
+            />
+          </FormRow>
+
           <FormRow size={sizes.MEDIUM}>
             <FormLabel>{translate('RenameEpisodes')}</FormLabel>
             <FormInputHelpText text={translate('RenameEpisodesHelpText')} />
