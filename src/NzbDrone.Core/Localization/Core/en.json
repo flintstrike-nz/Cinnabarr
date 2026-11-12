@@ -2165,6 +2165,7 @@
   "QueueLoadError": "Failed to load Queue",
   "Queued": "Queued",
   "QuickSearch": "Quick Search",
+  "RacingSources": "Racing {count} sources",
   "Range": "Range",
   "Rating": "Rating",
   "RatingVotes": "Rating Votes",

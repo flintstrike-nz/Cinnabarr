@@ -57,6 +57,9 @@ import useQueue, {
   useRemoveQueueItems,
 } from './useQueue';
 
+const getRaceKey = (item: QueueModel) =>
+  `${item.movieId}-${item.versionSlotId ?? 0}`;
+
 function QueueContent() {
   const executeCommand = useExecuteCommand();
 
@@ -81,6 +84,30 @@ function QueueContent() {
   const { isGrabbing, grabQueueItems } = useGrabQueueItems();
 
   const { count } = useQueueStatus();
+
+  // Several downloads of one movie version are a race: the first one imported wins and the rest are removed.
+  const racing = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    records
+      .filter(
+        (item) =>
+          item.movieId &&
+          item.trackedDownloadState !== 'imported' &&
+          item.status !== 'completed'
+      )
+      .forEach((item) => {
+        counts.set(getRaceKey(item), (counts.get(getRaceKey(item)) ?? 0) + 1);
+      });
+
+    [...counts.entries()].forEach(([key, count]) => {
+      if (count < 2) {
+        counts.delete(key);
+      }
+    });
+
+    return counts;
+  }, [records]);
 
   const episodeIds = useMemo(() => {
     return selectUniqueIds<QueueModel, number>(records, 'episodeIds');
@@ -291,6 +318,7 @@ function QueueContent() {
                     <QueueRow
                       key={item.id}
                       columns={columns}
+                      racingSources={racing.get(getRaceKey(item)) ?? 0}
                       {...item}
                       onQueueRowModalOpenOrClose={
                         handleQueueRowModalOpenOrClose
