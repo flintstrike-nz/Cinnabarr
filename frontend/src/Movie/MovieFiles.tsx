@@ -13,6 +13,7 @@ import styles from './Movie.module.css';
 
 interface MovieFileItem {
   id: number;
+  versionSlotId?: number;
   relativePath: string;
   size: number;
   releaseGroup?: string;

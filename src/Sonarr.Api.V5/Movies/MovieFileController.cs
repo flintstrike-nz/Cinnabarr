@@ -14,6 +14,7 @@ namespace Sonarr.Api.V5.Movies;
 public class MovieFileResource : RestResource
 {
     public int MovieId { get; set; }
+    public int VersionSlotId { get; set; }
     public string? RelativePath { get; set; }
     public string? Path { get; set; }
     public long Size { get; set; }
@@ -75,6 +76,7 @@ public class MovieFileController : Controller
         {
             Id = file.Id,
             MovieId = file.MovieId,
+            VersionSlotId = file.VersionSlotId,
             RelativePath = file.RelativePath,
             Path = global::System.IO.Path.Combine(movie.Path, file.RelativePath),
             Size = file.Size,
