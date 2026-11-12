@@ -7,7 +7,7 @@ Cinnabarr is in early development, and some names inside it (the program file is
 1. Build or unpack Cinnabarr, and run `Sonarr.dll` with .NET 10: `dotnet Sonarr.dll --nobrowser --data=<folder>`. The data folder holds the database, settings, logs and the engine's own profile; give it a folder of its own.
 2. The built-in download engine is a separate program, `cinnabarr-engine`. Put it next to the app, or set `CINNABARR_ENGINE_PATH` to its full path. Cinnabarr starts it, restarts it if it stops, and stops it on exit.
 3. Open `http://<host>:8989`. On a fresh data folder you create a user name and password first.
-4. The first time, the engine asks you to accept its legal notice (**Downloads** page or **Settings → Download Clients**). Nothing is downloaded until you do.
+4. The first time, a dialog shows the engine's legal notice and asks you to accept it. Nothing is downloaded until you do.
 
 ## First set-up
 
