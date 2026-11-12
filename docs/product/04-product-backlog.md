@@ -118,7 +118,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 
 | ID | Item | Type | Requirements | Phase | Priority | Size | Depends on | Sequence | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| BL-060 | Library reorganisation tool with preview, journal and undo | Story | MIG-01, NFR-02, FIL-09 | 6 | M | XL | BL-010 | Later | Ready |
+| BL-060 | Library reorganisation tool with preview, journal and undo | Story | MIG-01, NFR-02, FIL-09 | 6 | M | XL | BL-010 | Later | Done in a simple form for file names (movies and episodes): Library → Reorganise lists the files that do not follow the naming format, renames them with the Organize code, journals each rename and can undo a whole run. Folder moves, duplicates, junk files and cross-drive moves are not part of it yet (the movie Organize dialog still moves folders) |
 | BL-061 | Importer for the Sonarr database | Story | MIG-02 | 6 | M | L | BL-080 | Later | Done in a simple form: reads the other install's database (a copy) and adds the series with their path, monitoring, type, quality profile (by name) and tags; episodes' own monitoring is not read, and files are found again by the scan |
 | BL-062 | Importer for the Radarr database | Story | MIG-02 | 6 | M | M | BL-061 | Later | Done in a simple form: the same for movies (path, monitoring, minimum availability, profile by name, tags) |
 | BL-063 | Importer for the Prowlarr database | Story | MIG-02 | 6 | M | M | BL-061 | Later | Done for Torznab indexers; other kinds (Cardigann trackers) are reported as skipped |
