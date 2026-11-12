@@ -17,6 +17,12 @@ interface EnginePreferences {
   uploadLimit: number;
   alternativeDownloadLimit: number;
   alternativeUploadLimit: number;
+  schedulerEnabled: boolean;
+  scheduleFromHour: number;
+  scheduleFromMinute: number;
+  scheduleToHour: number;
+  scheduleToMinute: number;
+  schedulerDays: number;
   queueingEnabled: boolean;
   maxActiveDownloads: number;
   maxActiveUploads: number;
@@ -35,6 +41,11 @@ type NumberKey =
   | 'uploadLimit'
   | 'alternativeDownloadLimit'
   | 'alternativeUploadLimit'
+  | 'scheduleFromHour'
+  | 'scheduleFromMinute'
+  | 'scheduleToHour'
+  | 'scheduleToMinute'
+  | 'schedulerDays'
   | 'maxActiveDownloads'
   | 'maxActiveUploads'
   | 'maxActiveTorrents'
@@ -43,6 +54,7 @@ type NumberKey =
 type BooleanKey =
   | 'randomPort'
   | 'upnp'
+  | 'schedulerEnabled'
   | 'queueingEnabled'
   | 'dht'
   | 'pex'
@@ -64,6 +76,10 @@ const NUMBER_FIELDS: { key: NumberKey; label: string; help?: string }[] = [
   },
   { key: 'alternativeDownloadLimit', label: 'EngineNetworkAltDownloadLimit' },
   { key: 'alternativeUploadLimit', label: 'EngineNetworkAltUploadLimit' },
+  { key: 'scheduleFromHour', label: 'EngineNetworkScheduleFromHour' },
+  { key: 'scheduleFromMinute', label: 'EngineNetworkScheduleFromMinute' },
+  { key: 'scheduleToHour', label: 'EngineNetworkScheduleToHour' },
+  { key: 'scheduleToMinute', label: 'EngineNetworkScheduleToMinute' },
   {
     key: 'maxActiveDownloads',
     label: 'EngineNetworkMaxActiveDownloads',
@@ -73,9 +89,23 @@ const NUMBER_FIELDS: { key: NumberKey; label: string; help?: string }[] = [
   { key: 'maxActiveTorrents', label: 'EngineNetworkMaxActiveTorrents' },
 ];
 
+const SCHEDULE_DAYS = [
+  'EngineNetworkScheduleEveryDay',
+  'EngineNetworkScheduleWeekdays',
+  'EngineNetworkScheduleWeekends',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+];
+
 const BOOLEAN_FIELDS: { key: BooleanKey; label: string }[] = [
   { key: 'randomPort', label: 'EngineNetworkRandomPort' },
   { key: 'upnp', label: 'EngineNetworkUpnp' },
+  { key: 'schedulerEnabled', label: 'EngineNetworkScheduler' },
   { key: 'queueingEnabled', label: 'EngineNetworkQueueing' },
   { key: 'dht', label: 'EngineNetworkDht' },
   { key: 'pex', label: 'EngineNetworkPex' },
@@ -149,6 +179,17 @@ function EngineNetworkOptions() {
     []
   );
 
+  const handleDaysChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      const schedulerDays = Number(event.target.value);
+
+      setValues((current) =>
+        current ? { ...current, schedulerDays } : current
+      );
+    },
+    []
+  );
+
   const handleEncryptionChange = useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) => {
       const encryption = Number(event.target.value);
@@ -205,6 +246,19 @@ function EngineNetworkOptions() {
             />
           </label>{' '}
           <small>{translate('EngineNetworkInterfaceHelpText')}</small>
+        </p>
+
+        <p>
+          <label>
+            {translate('EngineNetworkScheduleDays')}{' '}
+            <select value={values.schedulerDays} onChange={handleDaysChange}>
+              {SCHEDULE_DAYS.map((day, index) => (
+                <option key={day} value={index}>
+                  {translate(day)}
+                </option>
+              ))}
+            </select>
+          </label>
         </p>
 
         <p>
