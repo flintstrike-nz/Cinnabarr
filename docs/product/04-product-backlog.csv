@@ -43,9 +43,9 @@ BL-059,Versions,"Verify subtitle language, forced and SDH naming, and copy numbe
 BL-057,Versions,Default version slots and race defaults in Settings,Story,SET-02,5,S,M,BL-050,Next,"Done for movies: Media Management lists the default versions every new movie gets; race defaults are in Download Clients settings (BL-053)"
 BL-058,Versions,Decide the maximum number of version slots (decision 6),Decision,VER-01,5,S,XS,none,Next,"Decided for now: at most 8 versions per movie (adjustable)"
 BL-060,Migration,"Library reorganisation tool with preview, journal and undo",Story,"MIG-01, NFR-02, FIL-09",6,M,XL,BL-010,Later,Ready
-BL-061,Migration,Importer for the Sonarr database,Story,MIG-02,6,M,L,BL-080,Later,Ready
-BL-062,Migration,Importer for the Radarr database,Story,MIG-02,6,M,M,BL-061,Later,Ready
-BL-063,Migration,Importer for the Prowlarr database,Story,MIG-02,6,M,M,BL-061,Later,Ready
+BL-061,Migration,Importer for the Sonarr database,Story,MIG-02,6,M,L,BL-080,Later,"Done in a simple form: reads the other install's database (a copy) and adds the series with their path, monitoring, type, quality profile (by name) and tags; episodes' own monitoring is not read, and files are found again by the scan"
+BL-062,Migration,Importer for the Radarr database,Story,MIG-02,6,M,M,BL-061,Later,"Done in a simple form: the same for movies (path, monitoring, minimum availability, profile by name, tags)"
+BL-063,Migration,Importer for the Prowlarr database,Story,MIG-02,6,M,M,BL-061,Later,"Done for Torznab indexers; other kinds (Cardigann trackers) are reported as skipped"
 BL-064,Migration,"Importer for qBittorrent BT_backup, keeping seeding",Story,MIG-02,6,M,L,BL-060,Later,Ready
 BL-065,Migration,Settings review for duplication and wording,Task,UI-08,6,S,M,none,Later,Ready
 BL-070,Release,Ownership marker and start-up protection before Phase 7,Story,MIG-05,1e–7,M,M,BL-096,Next,Decision

@@ -119,9 +119,9 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | ID | Item | Type | Requirements | Phase | Priority | Size | Depends on | Sequence | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | BL-060 | Library reorganisation tool with preview, journal and undo | Story | MIG-01, NFR-02, FIL-09 | 6 | M | XL | BL-010 | Later | Ready |
-| BL-061 | Importer for the Sonarr database | Story | MIG-02 | 6 | M | L | BL-080 | Later | Ready |
-| BL-062 | Importer for the Radarr database | Story | MIG-02 | 6 | M | M | BL-061 | Later | Ready |
-| BL-063 | Importer for the Prowlarr database | Story | MIG-02 | 6 | M | M | BL-061 | Later | Ready |
+| BL-061 | Importer for the Sonarr database | Story | MIG-02 | 6 | M | L | BL-080 | Later | Done in a simple form: reads the other install's database (a copy) and adds the series with their path, monitoring, type, quality profile (by name) and tags; episodes' own monitoring is not read, and files are found again by the scan |
+| BL-062 | Importer for the Radarr database | Story | MIG-02 | 6 | M | M | BL-061 | Later | Done in a simple form: the same for movies (path, monitoring, minimum availability, profile by name, tags) |
+| BL-063 | Importer for the Prowlarr database | Story | MIG-02 | 6 | M | M | BL-061 | Later | Done for Torznab indexers; other kinds (Cardigann trackers) are reported as skipped |
 | BL-064 | Importer for qBittorrent BT_backup, keeping seeding | Story | MIG-02 | 6 | M | L | BL-060 | Later | Ready |
 | BL-065 | Settings review for duplication and wording | Task | UI-08 | 6 | S | M | none | Later | Ready |
 
