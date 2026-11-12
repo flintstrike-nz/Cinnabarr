@@ -249,6 +249,13 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("DefaultMovieVersions", value); }
         }
 
+        public string DefaultSeriesVersions
+        {
+            get { return GetValue("DefaultSeriesVersions", string.Empty); }
+
+            set { SetValue("DefaultSeriesVersions", value); }
+        }
+
         public int EngineRaceMaxSources
         {
             get { return GetValueInt("EngineRaceMaxSources", 1); }

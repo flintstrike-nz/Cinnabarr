@@ -39,6 +39,9 @@ namespace NzbDrone.Core.Configuration
 
         // The versions every new movie gets, as JSON (see DefaultVersionService); empty for none.
         string DefaultMovieVersions { get; set; }
+
+        // The same for new series, as JSON (see DefaultSeriesVersionService); empty for none.
+        string DefaultSeriesVersions { get; set; }
         bool AutoRedownloadFailed { get; set; }
         bool AutoRedownloadFailedFromInteractiveSearch { get; set; }
 

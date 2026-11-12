@@ -28,6 +28,7 @@ namespace NzbDrone.Core.IndexerSearch
         // decided with the version's profile, monitored state and files.
         Task<List<DownloadDecision>> EpisodeSearch(int episodeId, int versionSlotId, bool userInvokedSearch, bool interactiveSearch);
         Task<List<DownloadDecision>> SeasonSearch(int seriesId, int versionSlotId, int seasonNumber, bool missingOnly, bool monitoredOnly, bool userInvokedSearch, bool interactiveSearch);
+        Task<List<DownloadDecision>> SeasonSearch(int seriesId, int versionSlotId, int seasonNumber, List<Episode> episodes, bool monitoredOnly, bool userInvokedSearch, bool interactiveSearch);
         Task<List<DownloadDecision>> SeasonSearch(int seriesId, int seasonNumber, bool missingOnly, bool monitoredOnly, bool userInvokedSearch, bool interactiveSearch);
         Task<List<DownloadDecision>> SeasonSearch(int seriesId, int seasonNumber, List<Episode> episodes, bool monitoredOnly, bool userInvokedSearch, bool interactiveSearch);
     }
@@ -162,7 +163,7 @@ namespace NzbDrone.Core.IndexerSearch
         }
 
         // The episodes are views of the version when versionSlotId isn't 0.
-        private async Task<List<DownloadDecision>> SeasonSearch(int seriesId, int versionSlotId, int seasonNumber, List<Episode> episodes, bool monitoredOnly, bool userInvokedSearch, bool interactiveSearch)
+        public async Task<List<DownloadDecision>> SeasonSearch(int seriesId, int versionSlotId, int seasonNumber, List<Episode> episodes, bool monitoredOnly, bool userInvokedSearch, bool interactiveSearch)
         {
             var series = GetVersionView(_seriesService.GetSeries(seriesId), versionSlotId);
 

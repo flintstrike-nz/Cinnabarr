@@ -8,6 +8,7 @@ using NzbDrone.Core.DecisionEngine.Specifications;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.History;
 using NzbDrone.Core.Tv;
+using NzbDrone.Core.Tv.Versions;
 using Sonarr.Api.V5.Episodes;
 using Sonarr.Api.V5.Series;
 using Sonarr.Http;
@@ -24,13 +25,16 @@ public class HistoryController : Controller
     private readonly IFailedDownloadService _failedDownloadService;
     private readonly ISeriesService _seriesService;
     private readonly IEpisodeService _episodeService;
+    private readonly ISeriesVersionSlotService _versionSlotService;
+    private readonly Dictionary<int, string?> _versionLabels = new();
 
     public HistoryController(IHistoryService historyService,
                          ICustomFormatCalculationService formatCalculator,
                          IUpgradableSpecification upgradableSpecification,
                          IFailedDownloadService failedDownloadService,
                          ISeriesService seriesService,
-                         IEpisodeService episodeService)
+                         IEpisodeService episodeService,
+                         ISeriesVersionSlotService versionSlotService)
     {
         _historyService = historyService;
         _formatCalculator = formatCalculator;
@@ -38,11 +42,17 @@ public class HistoryController : Controller
         _failedDownloadService = failedDownloadService;
         _seriesService = seriesService;
         _episodeService = episodeService;
+        _versionSlotService = versionSlotService;
     }
 
     protected HistoryResource MapToResource(EpisodeHistory model, bool includeSeries, bool includeEpisode)
     {
         var resource = model.ToResource(_formatCalculator);
+
+        if (resource.VersionSlotId != 0)
+        {
+            resource.VersionLabel = GetVersionLabel(resource.VersionSlotId);
+        }
 
         if (includeSeries)
         {
@@ -60,6 +70,26 @@ public class HistoryController : Controller
         }
 
         return resource;
+    }
+
+    // A version that has been deleted since has no label any more.
+    private string? GetVersionLabel(int slotId)
+    {
+        if (!_versionLabels.TryGetValue(slotId, out var label))
+        {
+            try
+            {
+                label = _versionSlotService.Get(slotId).Label;
+            }
+            catch (ModelNotFoundException)
+            {
+                label = null;
+            }
+
+            _versionLabels[slotId] = label;
+        }
+
+        return label;
     }
 
     [HttpGet]

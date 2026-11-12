@@ -38,6 +38,7 @@ interface HistoryRowProps {
   sourceTitle: string;
   date: string;
   data: HistoryData;
+  versionLabel?: string;
   downloadId?: string;
   isMarkingAsFailed?: boolean;
   markAsFailedError?: object;
@@ -58,6 +59,7 @@ function HistoryRow(props: HistoryRowProps) {
     sourceTitle,
     date,
     data,
+    versionLabel,
     downloadId,
     columns,
   } = props;
@@ -108,6 +110,8 @@ function HistoryRow(props: HistoryRowProps) {
                 titleSlug={series.titleSlug}
                 title={series.title}
               />
+
+              {versionLabel ? ` · ${versionLabel}` : null}
             </TableRowCell>
           );
         }

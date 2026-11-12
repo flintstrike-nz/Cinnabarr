@@ -35,12 +35,13 @@ In Docker, see [DOCKER.md](DOCKER.md): one image holds the app and the engine. W
 
 ## Versions
 
-A movie can have several versions, such as HD and 4K, each with its own quality profile and its own file.
+A movie or a series can have several versions, such as HD and 4K, each with its own quality profile and its own file (for a series, one file for each episode).
 
-- On a movie's page, **Versions** adds, changes and removes versions. Each can be searched for on its own (automatic or interactive).
-- **Settings → Media Management → Default Versions** gives every movie you add a set of versions.
-- In **Search**, a movie release can be grabbed for any version, or for a new one.
-- Version names go into file names as ` - HD` (token `{Version}` in the movie file format).
+- On a movie's or series' page, **Versions** adds, changes and removes versions. Each can be searched for on its own. For a series, **Search** looks for the version's missing episodes, and **Interactive Search** (with a season picker) lets you choose a release.
+- **Settings → Media Management** has **Default Series Versions** and **Default Movie Versions**: every movie or series you add gets those versions.
+- The automatic searches (RSS, Missing, Cutoff Unmet) cover every monitored version. A version of a series is missing an episode that is monitored, has aired and has no file for that version. **Wanted** lists these under **Series Versions**.
+- In **Search**, a release can be grabbed for any version, or for a new one. The queue and history show the version after the title.
+- Version names go into file names as ` - HD` (token `{Version}` in the file format).
 - **Race mode:** *Settings → Download Clients → Race Sources per Movie Version* (1 is off) lets several releases download one movie version at once; the first one imported wins and the rest are stopped and removed without being blocklisted. Only releases from indexers that have *Allow racing* on take part, because stopping a download early can cost ratio on a private tracker.
 
 ## Keeping the library tidy

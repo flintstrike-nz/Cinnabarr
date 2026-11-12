@@ -16,7 +16,6 @@ interface DefaultVersion {
   qualityProfileId: number;
 }
 
-const PATH = '/settings/movieversions';
 const NO_VERSIONS: DefaultVersion[] = [];
 
 interface RowProps {
@@ -78,12 +77,18 @@ function DefaultVersionRow({ index, version, onChange, onRemove }: RowProps) {
   );
 }
 
-// The versions every newly added movie gets (roadmap Phase 5), saved on their own.
-function DefaultMovieVersions() {
+interface DefaultVersionsProps {
+  path: string;
+  legend: string;
+  caption: string;
+}
+
+// The versions every newly added movie or series gets (roadmap Phase 5), saved on their own.
+function DefaultVersions({ path, legend, caption }: DefaultVersionsProps) {
   const queryClient = useQueryClient();
   const profiles = useQualityProfilesData();
   const { data, error: loadError } = useApiQuery<DefaultVersion[]>({
-    path: PATH,
+    path,
   });
   const [versions, setVersions] = useState<DefaultVersion[]>(NO_VERSIONS);
   const [isDirty, setIsDirty] = useState(false);
@@ -92,12 +97,12 @@ function DefaultMovieVersions() {
     DefaultVersion[],
     DefaultVersion[]
   >({
-    path: PATH,
+    path,
     method: 'PUT',
     mutationOptions: {
       onSuccess: () => {
         setIsDirty(false);
-        queryClient.invalidateQueries({ queryKey: [PATH] });
+        queryClient.invalidateQueries({ queryKey: [path] });
       },
     },
   });
@@ -133,10 +138,7 @@ function DefaultMovieVersions() {
   }, [mutate, versions]);
 
   return (
-    <FieldSet
-      legend={translate('DefaultVersions')}
-      caption={translate('DefaultVersionsCaption')}
-    >
+    <FieldSet legend={legend} caption={caption}>
       {versions.map((version, index) => (
         <DefaultVersionRow
           // eslint-disable-next-line react/no-array-index-key
@@ -164,4 +166,4 @@ function DefaultMovieVersions() {
   );
 }
 
-export default DefaultMovieVersions;
+export default DefaultVersions;

@@ -32,9 +32,23 @@ namespace NzbDrone.Core.Tv.Versions
         // The files of one slot, by episode id.
         Dictionary<int, EpisodeFile> GetFiles(List<int> episodeIds, int slotId);
 
+        // The episodes that the monitored versions of monitored series are missing (monitored, aired, no file for the
+        // version) and those whose file for the version is below the version's profile cutoff, for the automatic searches
+        // and the Wanted lists. Each entry is one version of one series (a view) with its episodes (views). The series'
+        // own (default) versions are not among them. Limited to one series when seriesIds is given.
+        List<SeriesVersionWanted> GetMissing(ICollection<int> seriesIds = null);
+        List<SeriesVersionWanted> GetCutoffUnmet(ICollection<int> seriesIds = null);
+
         SeriesVersionSlot Add(SeriesVersionSlot slot);
         SeriesVersionSlot Update(SeriesVersionSlot slot);
         void Delete(int id);
+    }
+
+    // One version of one series and the episodes it wants.
+    public class SeriesVersionWanted
+    {
+        public Series Series { get; set; }
+        public List<Episode> Episodes { get; set; }
     }
 
     public class SeriesVersionSlotService : ISeriesVersionSlotService,
@@ -49,16 +63,22 @@ namespace NzbDrone.Core.Tv.Versions
         private readonly IEpisodeVersionFileRepository _linkRepository;
         private readonly IMediaFileService _mediaFileService;
         private readonly IQualityProfileService _qualityProfileService;
+        private readonly ISeriesService _seriesService;
+        private readonly IEpisodeService _episodeService;
 
         public SeriesVersionSlotService(ISeriesVersionSlotRepository slotRepository,
                                         IEpisodeVersionFileRepository linkRepository,
                                         IMediaFileService mediaFileService,
-                                        IQualityProfileService qualityProfileService)
+                                        IQualityProfileService qualityProfileService,
+                                        ISeriesService seriesService,
+                                        IEpisodeService episodeService)
         {
             _slotRepository = slotRepository;
             _linkRepository = linkRepository;
             _mediaFileService = mediaFileService;
             _qualityProfileService = qualityProfileService;
+            _seriesService = seriesService;
+            _episodeService = episodeService;
         }
 
         public List<SeriesVersionSlot> GetBySeries(int seriesId)
@@ -121,6 +141,76 @@ namespace NzbDrone.Core.Tv.Versions
             var files = _mediaFileService.Get(links.Select(l => l.EpisodeFileId).Distinct()).ToDictionary(f => f.Id);
 
             return links.Where(l => files.ContainsKey(l.EpisodeFileId)).ToDictionary(l => l.EpisodeId, l => files[l.EpisodeFileId]);
+        }
+
+        public List<SeriesVersionWanted> GetMissing(ICollection<int> seriesIds = null)
+        {
+            var now = DateTime.UtcNow;
+
+            return GetWanted(seriesIds, (slot, episode, file) => episode.AirDateUtc.HasValue && episode.AirDateUtc.Value < now && file == null);
+        }
+
+        public List<SeriesVersionWanted> GetCutoffUnmet(ICollection<int> seriesIds = null)
+        {
+            var cutoffs = new Dictionary<int, HashSet<int>>();
+
+            return GetWanted(seriesIds, (slot, episode, file) =>
+            {
+                if (file?.Quality?.Quality == null)
+                {
+                    return false;
+                }
+
+                // The qualities below the profile's cutoff (or below the best allowed one when it can't be upgraded).
+                if (!cutoffs.TryGetValue(slot.QualityProfileId, out var below))
+                {
+                    var profile = _qualityProfileService.Get(slot.QualityProfileId);
+                    var cutoff = profile.UpgradeAllowed ? profile.Cutoff : profile.FirststAllowedQuality().Id;
+
+                    below = profile.Items.Take(profile.GetIndex(cutoff).Index)
+                                         .SelectMany(i => i.GetQualities().Select(q => q.Id))
+                                         .ToHashSet();
+                    cutoffs[slot.QualityProfileId] = below;
+                }
+
+                return below.Contains(file.Quality.Quality.Id);
+            });
+        }
+
+        // The monitored episodes of the monitored versions of monitored series for which the test (given the slot, the
+        // episode and the version's file for it, if any) holds.
+        private List<SeriesVersionWanted> GetWanted(ICollection<int> seriesIds, Func<SeriesVersionSlot, Episode, EpisodeFile, bool> wanted)
+        {
+            var slots = _slotRepository.All().Where(s => s.Monitored && (seriesIds == null || seriesIds.Contains(s.SeriesId))).ToList();
+            var result = new List<SeriesVersionWanted>();
+
+            if (slots.Empty())
+            {
+                return result;
+            }
+
+            var seriesById = _seriesService.GetSeries(slots.Select(s => s.SeriesId).Distinct()).Where(s => s.Monitored).ToDictionary(s => s.Id);
+
+            foreach (var slot in slots.Where(s => seriesById.ContainsKey(s.SeriesId)))
+            {
+                var episodes = _episodeService.GetEpisodeBySeries(slot.SeriesId).Where(e => e.Monitored).ToList();
+                var files = GetFiles(episodes.Select(e => e.Id).ToList(), slot.Id);
+
+                var wantedEpisodes = episodes.Where(e => wanted(slot, e, files.GetValueOrDefault(e.Id))).ToList();
+
+                if (wantedEpisodes.Empty())
+                {
+                    continue;
+                }
+
+                result.Add(new SeriesVersionWanted
+                {
+                    Series = BuildView(seriesById[slot.SeriesId], slot),
+                    Episodes = GetEpisodeViews(wantedEpisodes, slot.Id)
+                });
+            }
+
+            return result;
         }
 
         public SeriesVersionSlot Add(SeriesVersionSlot slot)
