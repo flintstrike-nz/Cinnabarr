@@ -12,6 +12,7 @@ using NzbDrone.Core.Download.Aggregation;
 using NzbDrone.Core.IndexerSearch.Definitions;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
+using NzbDrone.Core.Tv.Versions;
 
 namespace NzbDrone.Core.DecisionEngine
 {
@@ -19,6 +20,9 @@ namespace NzbDrone.Core.DecisionEngine
     {
         List<DownloadDecision> GetRssDecision(List<ReleaseInfo> reports, bool pushedRelease = false);
         List<DownloadDecision> GetSearchDecision(List<ReleaseInfo> reports, SearchCriteriaBase searchCriteriaBase);
+
+        // The releases decided for one extra version of the series they match (a pushed release for that version).
+        List<DownloadDecision> GetVersionDecision(List<ReleaseInfo> reports, int versionSlotId, bool pushedRelease = false);
     }
 
     public class DownloadDecisionMaker : IMakeDownloadDecision
@@ -28,6 +32,7 @@ namespace NzbDrone.Core.DecisionEngine
         private readonly ICustomFormatCalculationService _formatCalculator;
         private readonly IRemoteEpisodeAggregationService _aggregationService;
         private readonly ISceneMappingService _sceneMappingService;
+        private readonly ISeriesVersionSlotService _versionSlotService;
         private readonly Logger _logger;
 
         public DownloadDecisionMaker(IEnumerable<IDownloadDecisionEngineSpecification> specifications,
@@ -35,6 +40,7 @@ namespace NzbDrone.Core.DecisionEngine
                                      ICustomFormatCalculationService formatService,
                                      IRemoteEpisodeAggregationService aggregationService,
                                      ISceneMappingService sceneMappingService,
+                                     ISeriesVersionSlotService versionSlotService,
                                      Logger logger)
         {
             _specifications = specifications;
@@ -42,6 +48,7 @@ namespace NzbDrone.Core.DecisionEngine
             _formatCalculator = formatService;
             _aggregationService = aggregationService;
             _sceneMappingService = sceneMappingService;
+            _versionSlotService = versionSlotService;
             _logger = logger;
         }
 
@@ -55,7 +62,12 @@ namespace NzbDrone.Core.DecisionEngine
             return GetDecisions(reports, false, searchCriteriaBase).ToList();
         }
 
-        private IEnumerable<DownloadDecision> GetDecisions(List<ReleaseInfo> reports, bool pushedRelease, SearchCriteriaBase searchCriteria = null)
+        public List<DownloadDecision> GetVersionDecision(List<ReleaseInfo> reports, int versionSlotId, bool pushedRelease = false)
+        {
+            return GetDecisions(reports, pushedRelease, null, versionSlotId).ToList();
+        }
+
+        private IEnumerable<DownloadDecision> GetDecisions(List<ReleaseInfo> reports, bool pushedRelease, SearchCriteriaBase searchCriteria = null, int versionSlotId = 0)
         {
             if (reports.Any())
             {
@@ -120,6 +132,20 @@ namespace NzbDrone.Core.DecisionEngine
                         }
                         else
                         {
+                            // A search for one of the series' extra versions decides the release for that version: the
+                            // slot's profile, monitored state and files.
+                            if (searchCriteria?.Series is { VersionSlotId: > 0 } searchedVersion && searchedVersion.Id == remoteEpisode.Series.Id)
+                            {
+                                remoteEpisode.Series = searchedVersion;
+                                remoteEpisode.Episodes = _versionSlotService.GetEpisodeViews(remoteEpisode.Episodes, searchedVersion.VersionSlotId);
+                            }
+                            else if (versionSlotId != 0)
+                            {
+                                // A release pushed for one version of the series it matches.
+                                remoteEpisode.Series = _versionSlotService.GetView(remoteEpisode.Series, versionSlotId);
+                                remoteEpisode.Episodes = _versionSlotService.GetEpisodeViews(remoteEpisode.Episodes, versionSlotId);
+                            }
+
                             _aggregationService.Augment(remoteEpisode);
 
                             remoteEpisode.CustomFormats = _formatCalculator.ParseCustomFormat(remoteEpisode, remoteEpisode.Release.Size);
@@ -192,8 +218,56 @@ namespace NzbDrone.Core.DecisionEngine
                     }
 
                     yield return decision;
+
+                    // A release found by RSS is also decided for each of the series' other versions, each with its own
+                    // profile; the default version's decision comes first. When more than one accepts the release, only
+                    // one of them is grabbed (the release is not downloaded twice).
+                    if (searchCriteria == null && versionSlotId == 0 && !pushedRelease && decision.RemoteEpisode?.Series != null && decision.RemoteEpisode.Episodes.Any())
+                    {
+                        foreach (var versionDecision in GetVersionDecisions(decision.RemoteEpisode, new ReleaseDecisionInformation(pushedRelease, null)))
+                        {
+                            yield return versionDecision;
+                        }
+                    }
                 }
             }
+        }
+
+        private IEnumerable<DownloadDecision> GetVersionDecisions(RemoteEpisode remoteEpisode, ReleaseDecisionInformation information)
+        {
+            var decisions = new List<DownloadDecision>();
+
+            try
+            {
+                foreach (var slot in _versionSlotService.GetBySeries(remoteEpisode.Series.Id))
+                {
+                    var view = _versionSlotService.GetView(remoteEpisode.Series, slot.Id);
+                    var forVersion = new RemoteEpisode
+                    {
+                        Release = remoteEpisode.Release,
+                        ReleaseSource = remoteEpisode.ReleaseSource,
+                        ParsedEpisodeInfo = remoteEpisode.ParsedEpisodeInfo,
+                        SeriesMatchType = remoteEpisode.SeriesMatchType,
+                        MappedSeasonNumber = remoteEpisode.MappedSeasonNumber,
+                        EpisodeRequested = remoteEpisode.EpisodeRequested,
+                        Languages = remoteEpisode.Languages,
+                        CustomFormats = remoteEpisode.CustomFormats,
+                        Series = view,
+                        Episodes = _versionSlotService.GetEpisodeViews(remoteEpisode.Episodes, slot.Id),
+                        DownloadAllowed = true
+                    };
+
+                    forVersion.CustomFormatScore = view.QualityProfile?.Value.CalculateCustomFormatScore(forVersion.CustomFormats) ?? 0;
+
+                    decisions.Add(GetDecisionForReport(forVersion, information));
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.Error(e, "Couldn't process release '{0}' for the versions of '{1}'.", remoteEpisode.Release.Title, remoteEpisode.Series.Title);
+            }
+
+            return decisions;
         }
 
         private DownloadDecision GetDecisionForReport(RemoteEpisode remoteEpisode, ReleaseDecisionInformation information)

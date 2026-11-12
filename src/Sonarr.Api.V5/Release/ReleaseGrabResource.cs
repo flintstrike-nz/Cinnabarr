@@ -25,4 +25,7 @@ public class SearchInfoResource
     public int? SeriesId { get; set; }
     public int? SeasonNumber { get; set; }
     public int? EpisodeId { get; set; }
+
+    // The extra version of the series the search was for; 0 or absent for the default version.
+    public int? VersionSlotId { get; set; }
 }

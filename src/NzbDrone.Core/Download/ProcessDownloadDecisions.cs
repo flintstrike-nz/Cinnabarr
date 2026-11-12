@@ -148,7 +148,7 @@ namespace NzbDrone.Core.Download
 
             if (decision.TemporarilyRejected)
             {
-                if (decision.RemoteMovie != null)
+                if (decision.RemoteMovie != null || decision.RemoteEpisode?.Series?.VersionSlotId > 0)
                 {
                     return ProcessedDecisionResult.Skipped;
                 }
@@ -160,7 +160,7 @@ namespace NzbDrone.Core.Download
 
             var result = await ProcessDecisionInternal(decision, downloadClientId);
 
-            if (result == ProcessedDecisionResult.Failed && decision.RemoteMovie == null)
+            if (result == ProcessedDecisionResult.Failed && decision.RemoteMovie == null && !(decision.RemoteEpisode?.Series?.VersionSlotId > 0))
             {
                 _pendingReleaseService.Add(decision, PendingReleaseReason.DownloadClientUnavailable);
             }
@@ -230,13 +230,19 @@ namespace NzbDrone.Core.Download
             }
 
             var episodeIds = report.RemoteEpisode.Episodes.Select(e => e.Id).ToList();
+            var seriesSlotId = report.RemoteEpisode.Series?.VersionSlotId ?? 0;
+            var episodeRelease = report.RemoteEpisode.Release;
 
+            // One version of an episode takes one release, and (when the release was decided for several versions of
+            // the series) one release goes to one version.
             return decisions.Where(r => r.RemoteEpisode != null)
-                            .SelectMany(r => r.RemoteEpisode.Episodes)
-                            .Select(e => e.Id)
-                            .ToList()
-                            .Intersect(episodeIds)
-                            .Any();
+                            .Any(r => (!string.IsNullOrEmpty(episodeRelease?.Guid) &&
+                                       r.RemoteEpisode.Release?.Guid == episodeRelease.Guid &&
+                                       r.RemoteEpisode.Release.IndexerId == episodeRelease.IndexerId &&
+                                       r.RemoteEpisode.Series?.Id == report.RemoteEpisode.Series?.Id &&
+                                       (r.RemoteEpisode.Series?.VersionSlotId ?? 0) != seriesSlotId) ||
+                                      ((r.RemoteEpisode.Series?.VersionSlotId ?? 0) == seriesSlotId &&
+                                       r.RemoteEpisode.Episodes.Any(e => episodeIds.Contains(e.Id))));
         }
 
         private void PreparePending(List<Tuple<DownloadDecision, PendingReleaseReason>> queue, List<DownloadDecision> grabbed, List<DownloadDecision> pending, DownloadDecision report, PendingReleaseReason reason)
@@ -249,7 +255,7 @@ namespace NzbDrone.Core.Download
 
             // Movies are not held back: there are no delay profiles for them yet, and a release the client could not
             // take is found again by the next search or RSS sync.
-            if (report.RemoteMovie != null)
+            if (report.RemoteMovie != null || report.RemoteEpisode?.Series?.VersionSlotId > 0)
             {
                 return;
             }

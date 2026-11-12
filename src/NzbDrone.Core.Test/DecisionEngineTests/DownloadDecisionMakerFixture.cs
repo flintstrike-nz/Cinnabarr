@@ -66,6 +66,10 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
             Mocker.GetMock<IParsingService>()
                   .Setup(c => c.Map(It.IsAny<ParsedEpisodeInfo>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<SearchCriteriaBase>()))
                   .Returns(_remoteEpisode);
+
+            Mocker.GetMock<NzbDrone.Core.Tv.Versions.ISeriesVersionSlotService>()
+                  .Setup(s => s.GetBySeries(It.IsAny<int>()))
+                  .Returns(new List<NzbDrone.Core.Tv.Versions.SeriesVersionSlot>());
         }
 
         private void GivenSpecifications(params Mock<IDownloadDecisionEngineSpecification>[] mocks)

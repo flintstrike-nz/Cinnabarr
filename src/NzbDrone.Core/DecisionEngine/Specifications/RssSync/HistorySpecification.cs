@@ -48,7 +48,7 @@ namespace NzbDrone.Core.DecisionEngine.Specifications.RssSync
             foreach (var episode in subject.Episodes)
             {
                 _logger.Debug("Checking current status of episode [{0}] in history", episode.Id);
-                var mostRecent = _historyService.MostRecentForEpisode(episode.Id);
+                var mostRecent = _historyService.MostRecentForEpisode(episode.Id, subject.Series.VersionSlotId);
 
                 if (mostRecent != null && mostRecent.EventType == EpisodeHistoryEventType.Grabbed)
                 {

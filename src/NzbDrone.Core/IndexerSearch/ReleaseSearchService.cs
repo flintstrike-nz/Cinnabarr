@@ -15,6 +15,7 @@ using NzbDrone.Core.IndexerSearch.Definitions;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Tv;
+using NzbDrone.Core.Tv.Versions;
 
 namespace NzbDrone.Core.IndexerSearch
 {
@@ -22,6 +23,11 @@ namespace NzbDrone.Core.IndexerSearch
     {
         Task<List<DownloadDecision>> EpisodeSearch(int episodeId, bool userInvokedSearch, bool interactiveSearch);
         Task<List<DownloadDecision>> EpisodeSearch(Episode episode, bool userInvokedSearch, bool interactiveSearch);
+
+        // The same searches for one of the series' extra versions (0 is the series' default version): the releases are
+        // decided with the version's profile, monitored state and files.
+        Task<List<DownloadDecision>> EpisodeSearch(int episodeId, int versionSlotId, bool userInvokedSearch, bool interactiveSearch);
+        Task<List<DownloadDecision>> SeasonSearch(int seriesId, int versionSlotId, int seasonNumber, bool missingOnly, bool monitoredOnly, bool userInvokedSearch, bool interactiveSearch);
         Task<List<DownloadDecision>> SeasonSearch(int seriesId, int seasonNumber, bool missingOnly, bool monitoredOnly, bool userInvokedSearch, bool interactiveSearch);
         Task<List<DownloadDecision>> SeasonSearch(int seriesId, int seasonNumber, List<Episode> episodes, bool monitoredOnly, bool userInvokedSearch, bool interactiveSearch);
     }
@@ -34,6 +40,7 @@ namespace NzbDrone.Core.IndexerSearch
         private readonly IEpisodeService _episodeService;
         private readonly IMakeDownloadDecision _makeDownloadDecision;
         private readonly IIndexerQueryService _indexerQueryService;
+        private readonly ISeriesVersionSlotService _versionSlotService;
         private readonly Logger _logger;
 
         public ReleaseSearchService(IIndexerFactory indexerFactory,
@@ -42,6 +49,7 @@ namespace NzbDrone.Core.IndexerSearch
                                 IEpisodeService episodeService,
                                 IMakeDownloadDecision makeDownloadDecision,
                                 IIndexerQueryService indexerQueryService,
+                                ISeriesVersionSlotService versionSlotService,
                                 Logger logger)
         {
             _indexerFactory = indexerFactory;
@@ -50,6 +58,7 @@ namespace NzbDrone.Core.IndexerSearch
             _seriesService = seriesService;
             _episodeService = episodeService;
             _makeDownloadDecision = makeDownloadDecision;
+            _versionSlotService = versionSlotService;
             _logger = logger;
         }
 
@@ -60,9 +69,36 @@ namespace NzbDrone.Core.IndexerSearch
             return await EpisodeSearch(episode, userInvokedSearch, interactiveSearch);
         }
 
+        private Series GetVersionView(Series series, int versionSlotId)
+        {
+            return versionSlotId == 0 ? series : _versionSlotService.GetView(series, versionSlotId);
+        }
+
+        private List<Episode> GetVersionViews(List<Episode> episodes, int versionSlotId)
+        {
+            return versionSlotId == 0 ? episodes : _versionSlotService.GetEpisodeViews(episodes, versionSlotId);
+        }
+
+        public async Task<List<DownloadDecision>> EpisodeSearch(int episodeId, int versionSlotId, bool userInvokedSearch, bool interactiveSearch)
+        {
+            var episode = _episodeService.GetEpisode(episodeId);
+
+            return await EpisodeSearch(episode, versionSlotId, userInvokedSearch, interactiveSearch);
+        }
+
         public async Task<List<DownloadDecision>> EpisodeSearch(Episode episode, bool userInvokedSearch, bool interactiveSearch)
         {
-            var series = _seriesService.GetSeries(episode.SeriesId);
+            return await EpisodeSearch(episode, 0, userInvokedSearch, interactiveSearch);
+        }
+
+        private async Task<List<DownloadDecision>> EpisodeSearch(Episode episode, int versionSlotId, bool userInvokedSearch, bool interactiveSearch)
+        {
+            var series = GetVersionView(_seriesService.GetSeries(episode.SeriesId), versionSlotId);
+
+            if (versionSlotId != 0)
+            {
+                episode = GetVersionViews(new List<Episode> { episode }, versionSlotId).Single();
+            }
 
             if (series.SeriesType == SeriesTypes.Daily)
             {
@@ -99,7 +135,12 @@ namespace NzbDrone.Core.IndexerSearch
 
         public async Task<List<DownloadDecision>> SeasonSearch(int seriesId, int seasonNumber, bool missingOnly, bool monitoredOnly, bool userInvokedSearch, bool interactiveSearch)
         {
-            var episodes = _episodeService.GetEpisodesBySeason(seriesId, seasonNumber);
+            return await SeasonSearch(seriesId, 0, seasonNumber, missingOnly, monitoredOnly, userInvokedSearch, interactiveSearch);
+        }
+
+        public async Task<List<DownloadDecision>> SeasonSearch(int seriesId, int versionSlotId, int seasonNumber, bool missingOnly, bool monitoredOnly, bool userInvokedSearch, bool interactiveSearch)
+        {
+            var episodes = GetVersionViews(_episodeService.GetEpisodesBySeason(seriesId, seasonNumber), versionSlotId);
 
             if (missingOnly)
             {
@@ -112,12 +153,18 @@ namespace NzbDrone.Core.IndexerSearch
                 return new List<DownloadDecision>();
             }
 
-            return await SeasonSearch(seriesId, seasonNumber, episodes, monitoredOnly, userInvokedSearch, interactiveSearch);
+            return await SeasonSearch(seriesId, versionSlotId, seasonNumber, episodes, monitoredOnly, userInvokedSearch, interactiveSearch);
         }
 
         public async Task<List<DownloadDecision>> SeasonSearch(int seriesId, int seasonNumber, List<Episode> episodes, bool monitoredOnly, bool userInvokedSearch, bool interactiveSearch)
         {
-            var series = _seriesService.GetSeries(seriesId);
+            return await SeasonSearch(seriesId, 0, seasonNumber, episodes, monitoredOnly, userInvokedSearch, interactiveSearch);
+        }
+
+        // The episodes are views of the version when versionSlotId isn't 0.
+        private async Task<List<DownloadDecision>> SeasonSearch(int seriesId, int versionSlotId, int seasonNumber, List<Episode> episodes, bool monitoredOnly, bool userInvokedSearch, bool interactiveSearch)
+        {
+            var series = GetVersionView(_seriesService.GetSeries(seriesId), versionSlotId);
 
             if (series.SeriesType == SeriesTypes.Anime)
             {

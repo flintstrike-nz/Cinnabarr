@@ -17,6 +17,7 @@ using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Tv;
 using NzbDrone.Core.Tv.Events;
+using NzbDrone.Core.Tv.Versions;
 
 namespace NzbDrone.Core.Download.TrackedDownloads
 {
@@ -47,6 +48,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         private readonly IMovieParsingService _movieParsingService;
         private readonly IMovieHistoryService _movieHistoryService;
         private readonly IVersionSlotService _versionSlotService;
+        private readonly ISeriesVersionSlotService _seriesVersionSlotService;
         private readonly IHistoryService _historyService;
         private readonly ISeriesService _seriesService;
         private readonly IEpisodeService _episodeService;
@@ -64,6 +66,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                                       IMovieParsingService movieParsingService,
                                       IMovieHistoryService movieHistoryService,
                                       IVersionSlotService versionSlotService,
+                                      ISeriesVersionSlotService seriesVersionSlotService,
                                       IHistoryService historyService,
                                       ISeriesService seriesService,
                                       IEpisodeService episodeService,
@@ -80,6 +83,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             _movieParsingService = movieParsingService;
             _movieHistoryService = movieHistoryService;
             _versionSlotService = versionSlotService;
+            _seriesVersionSlotService = seriesVersionSlotService;
             _historyService = historyService;
             _seriesService = seriesService;
             _episodeService = episodeService;
@@ -544,6 +548,27 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             var episodes = series == null
                 ? new List<Episode>()
                 : _episodeService.GetEpisodeBySeries(series.Id).Where(e => episodeIds.Contains(e.Id)).ToList();
+
+            // A download for one of the series' extra versions is that version of it: the slot's profile and files.
+            var slotId = historyItems.Where(h => h.EventType == EpisodeHistoryEventType.Grabbed)
+                                     .Select(h => h.VersionSlotId)
+                                     .FirstOrDefault(id => id != 0);
+
+            if (series != null && slotId != 0)
+            {
+                try
+                {
+                    series = _seriesVersionSlotService.GetView(series, slotId);
+                    episodes = _seriesVersionSlotService.GetEpisodeViews(episodes, slotId);
+                }
+                catch (Exception ex)
+                {
+                    // The version was deleted while it downloaded: nothing to import into.
+                    _logger.Debug(ex, "Unable to find the version of the series for download '{0}'", title);
+                    series = null;
+                    episodes = new List<Episode>();
+                }
+            }
 
             trackedDownload.RemoteEpisode = series == null
                 ? null

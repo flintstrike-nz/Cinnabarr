@@ -15,6 +15,7 @@ namespace NzbDrone.Core.History
         public const string RELEASE_GROUP = "releaseGroup";
         public const string SIZE = "size";
         public const string INDEXER = "indexer";
+        public const string VERSION_SLOT_ID = "versionSlotId";
 
         public EpisodeHistory()
         {
@@ -32,6 +33,9 @@ namespace NzbDrone.Core.History
         public Dictionary<string, string> Data { get; set; }
         public List<Language> Languages { get; set; }
         public string DownloadId { get; set; }
+
+        // The extra version slot of the series that the event is about; 0 for the default version.
+        public int VersionSlotId => Data != null && Data.TryGetValue(VERSION_SLOT_ID, out var id) && int.TryParse(id, out var slotId) ? slotId : 0;
     }
 
     public enum EpisodeHistoryEventType

@@ -149,7 +149,7 @@ namespace NzbDrone.Core.Organizer
 
             if (!namingConfig.RenameEpisodes)
             {
-                return GetOriginalTitle(episodeFile, true) + extension;
+                return WithVersionLabel(GetOriginalTitle(episodeFile, true), series.VersionLabel, namingConfig) + extension;
             }
 
             if (namingConfig.StandardEpisodeFormat.IsNullOrWhiteSpace() && series.SeriesType == SeriesTypes.Standard)
@@ -225,6 +225,12 @@ namespace NzbDrone.Core.Organizer
                 component = ReplaceReservedDeviceNames(component);
 
                 components.Add(component);
+            }
+
+            // "Show - S01E01 - Title - Label.ext" for a version; a format with its own {Version} token places it itself.
+            if (!VersionTokenRegex.IsMatch(pattern) && components.Count > 0)
+            {
+                components[^1] = WithVersionLabel(components[^1], series.VersionLabel, namingConfig);
             }
 
             return string.Join(Path.DirectorySeparatorChar.ToString(), components) + extension;
@@ -474,6 +480,7 @@ namespace NzbDrone.Core.Organizer
 
         private void AddSeriesTokens(Dictionary<string, Func<TokenMatch, string>> tokenHandlers, Series series, string title)
         {
+            tokenHandlers["{Version}"] = m => series.VersionLabel ?? string.Empty;
             tokenHandlers["{Series Title}"] = m => Truncate(title, m.CustomFormat);
             tokenHandlers["{Series CleanTitle}"] = m => Truncate(CleanTitle(title), m.CustomFormat);
             tokenHandlers["{Series TitleYear}"] = m => Truncate(TitleYear(title, series.Year), m.CustomFormat);

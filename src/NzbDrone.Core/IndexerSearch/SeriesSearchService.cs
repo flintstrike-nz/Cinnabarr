@@ -6,6 +6,7 @@ using NzbDrone.Common.Instrumentation.Extensions;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Tv;
+using NzbDrone.Core.Tv.Versions;
 
 namespace NzbDrone.Core.IndexerSearch
 {
@@ -13,18 +14,21 @@ namespace NzbDrone.Core.IndexerSearch
     {
         private readonly ISeriesService _seriesService;
         private readonly IEpisodeService _episodeService;
+        private readonly ISeriesVersionSlotService _versionSlotService;
         private readonly ISearchForReleases _releaseSearchService;
         private readonly IProcessDownloadDecisions _processDownloadDecisions;
         private readonly Logger _logger;
 
         public SeriesSearchService(ISeriesService seriesService,
                                    IEpisodeService episodeService,
+                                   ISeriesVersionSlotService versionSlotService,
                                    ISearchForReleases releaseSearchService,
                                    IProcessDownloadDecisions processDownloadDecisions,
                                    Logger logger)
         {
             _seriesService = seriesService;
             _episodeService = episodeService;
+            _versionSlotService = versionSlotService;
             _releaseSearchService = releaseSearchService;
             _processDownloadDecisions = processDownloadDecisions;
             _logger = logger;
@@ -32,7 +36,14 @@ namespace NzbDrone.Core.IndexerSearch
 
         public void Execute(SeriesSearchCommand message)
         {
+            var slotId = message.VersionSlotId;
             var series = _seriesService.GetSeries(message.SeriesId);
+
+            if (slotId != 0)
+            {
+                series = _versionSlotService.GetView(series, slotId);
+            }
+
             var downloadedCount = 0;
             var userInvokedSearch = message.Trigger == CommandTrigger.Manual;
             var profile = series.QualityProfile.Value;
@@ -41,7 +52,14 @@ namespace NzbDrone.Core.IndexerSearch
             {
                 _logger.Debug("No seasons of {0} are monitored, searching for all monitored episodes", series.Title);
 
-                var episodes = _episodeService.GetEpisodeBySeries(series.Id)
+                var seriesEpisodes = _episodeService.GetEpisodeBySeries(series.Id);
+
+                if (slotId != 0)
+                {
+                    seriesEpisodes = _versionSlotService.GetEpisodeViews(seriesEpisodes, slotId);
+                }
+
+                var episodes = seriesEpisodes
                     .Where(e => e.Monitored &&
                                 !e.HasFile &&
                                 e.AirDateUtc.HasValue &&
@@ -50,7 +68,7 @@ namespace NzbDrone.Core.IndexerSearch
 
                 foreach (var episode in episodes)
                 {
-                    var decisions = _releaseSearchService.EpisodeSearch(episode, userInvokedSearch, false).GetAwaiter().GetResult();
+                    var decisions = _releaseSearchService.EpisodeSearch(episode.Id, slotId, userInvokedSearch, false).GetAwaiter().GetResult();
                     var processDecisions = _processDownloadDecisions.ProcessDecisions(decisions).GetAwaiter().GetResult();
                     downloadedCount += processDecisions.Grabbed.Count;
                 }
@@ -65,7 +83,7 @@ namespace NzbDrone.Core.IndexerSearch
                         continue;
                     }
 
-                    var decisions = _releaseSearchService.SeasonSearch(message.SeriesId, season.SeasonNumber, !profile.UpgradeAllowed, true, userInvokedSearch, false).GetAwaiter().GetResult();
+                    var decisions = _releaseSearchService.SeasonSearch(message.SeriesId, slotId, season.SeasonNumber, !profile.UpgradeAllowed, true, userInvokedSearch, false).GetAwaiter().GetResult();
                     var processDecisions = _processDownloadDecisions.ProcessDecisions(decisions).GetAwaiter().GetResult();
                     downloadedCount += processDecisions.Grabbed.Count;
                 }

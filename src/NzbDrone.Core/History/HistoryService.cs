@@ -18,6 +18,9 @@ namespace NzbDrone.Core.History
     {
         PagingSpec<EpisodeHistory> Paged(PagingSpec<EpisodeHistory> pagingSpec, int[] languages, int[] qualities);
         EpisodeHistory MostRecentForEpisode(int episodeId);
+
+        // The latest event about one version of the episode (0 is the series' default version).
+        EpisodeHistory MostRecentForEpisode(int episodeId, int versionSlotId);
         List<EpisodeHistory> FindByEpisodeId(int episodeId);
         EpisodeHistory MostRecentForDownloadId(string downloadId);
         EpisodeHistory Get(int historyId);
@@ -51,6 +54,11 @@ namespace NzbDrone.Core.History
         public PagingSpec<EpisodeHistory> Paged(PagingSpec<EpisodeHistory> pagingSpec, int[] languages, int[] qualities)
         {
             return _historyRepository.GetPaged(pagingSpec, languages, qualities);
+        }
+
+        public EpisodeHistory MostRecentForEpisode(int episodeId, int versionSlotId)
+        {
+            return _historyRepository.FindByEpisodeId(episodeId).FirstOrDefault(h => h.VersionSlotId == versionSlotId);
         }
 
         public EpisodeHistory MostRecentForEpisode(int episodeId)
@@ -178,6 +186,7 @@ namespace NzbDrone.Core.History
                 history.Data.Add("ReleaseSource", message.Episode.ReleaseSource.ToString());
                 history.Data.Add("IndexerFlags", message.Episode.Release.IndexerFlags.ToString());
                 history.Data.Add("ReleaseType", message.Episode.ParsedEpisodeInfo.ReleaseType.ToString());
+                AddVersionSlot(history, message.Episode.Series.VersionSlotId);
 
                 if (!message.Episode.ParsedEpisodeInfo.ReleaseHash.IsNullOrWhiteSpace())
                 {
@@ -190,6 +199,14 @@ namespace NzbDrone.Core.History
                 }
 
                 _historyRepository.Insert(history);
+            }
+        }
+
+        private static void AddVersionSlot(EpisodeHistory history, int slotId)
+        {
+            if (slotId != 0)
+            {
+                history.Data.Add(EpisodeHistory.VERSION_SLOT_ID, slotId.ToString());
             }
         }
 
@@ -231,6 +248,7 @@ namespace NzbDrone.Core.History
                 history.Data.Add("Size", message.EpisodeInfo.Size.ToString());
                 history.Data.Add("IndexerFlags", message.ImportedEpisode.IndexerFlags.ToString());
                 history.Data.Add("ReleaseType", message.ImportedEpisode.ReleaseType.ToString());
+                AddVersionSlot(history, message.ImportedEpisode.VersionSlotId);
 
                 _historyRepository.Insert(history);
             }
@@ -259,6 +277,7 @@ namespace NzbDrone.Core.History
                 history.Data.Add("ReleaseGroup", message.TrackedDownload?.RemoteEpisode?.ParsedEpisodeInfo?.ReleaseGroup ?? message.Data.GetValueOrDefault(EpisodeHistory.RELEASE_GROUP));
                 history.Data.Add("Size", message.TrackedDownload?.DownloadItem.TotalSize.ToString() ?? message.Data.GetValueOrDefault(EpisodeHistory.SIZE));
                 history.Data.Add("Indexer", message.TrackedDownload?.RemoteEpisode?.Release?.Indexer ?? message.Data.GetValueOrDefault(EpisodeHistory.INDEXER));
+                AddVersionSlot(history, message.VersionSlotId);
 
                 _historyRepository.Insert(history);
             }
@@ -295,6 +314,7 @@ namespace NzbDrone.Core.History
                 history.Data.Add("Size", message.EpisodeFile.Size.ToString());
                 history.Data.Add("IndexerFlags", message.EpisodeFile.IndexerFlags.ToString());
                 history.Data.Add("ReleaseType", message.EpisodeFile.ReleaseType.ToString());
+                AddVersionSlot(history, message.EpisodeFile.VersionSlotId);
 
                 _historyRepository.Insert(history);
             }
