@@ -21,7 +21,7 @@ COPY src/NzbDrone.Core/Localization ./src/NzbDrone.Core/Localization
 RUN yarn build
 
 # --- The application -----------------------------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/sdk:10.0-trixie-slim AS app
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS app
 WORKDIR /src
 COPY . .
 # global.json pins one exact SDK patch; the image's SDK is the newest one.
@@ -44,15 +44,22 @@ RUN cmake -S /engine-src -B /engine-build -G Ninja -DCMAKE_BUILD_TYPE=Release \
  && strip /engine-build/cinnabarr-engine
 
 # --- What runs -----------------------------------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-trixie-slim AS runtime
+# The .NET runtime comes from Microsoft's image, but the final image is Debian 13 (not that image's Ubuntu), because the
+# engine is built on Debian 13 and needs the same Qt and libtorrent versions at run time.
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS dotnet-runtime
+
+FROM debian:trixie-slim AS runtime
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates curl ffmpeg \
+ && apt-get install -y --no-install-recommends ca-certificates curl ffmpeg tzdata util-linux passwd zlib1g libstdc++6 libicu76 \
       libqt6core6t64 libqt6network6 libqt6sql6 libqt6xml6 libqt6sql6-sqlite libtorrent-rasterbar2.0t64 libssl3t64 \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd --gid 1000 cinnabarr \
  && useradd --uid 1000 --gid cinnabarr --no-create-home --shell /usr/sbin/nologin cinnabarr \
  && mkdir -p /config /app
+
+COPY --from=dotnet-runtime /usr/share/dotnet /usr/share/dotnet
+RUN ln -s /usr/share/dotnet/dotnet /usr/bin/dotnet
 
 COPY --from=app /src/_output/net10.0 /app/bin
 COPY --from=frontend /src/_output/UI /app/UI
@@ -64,6 +71,7 @@ RUN ln -sf /usr/bin/ffprobe /app/bin/ffprobe \
  && chmod +x /entrypoint.sh /app/engine/cinnabarr-engine
 
 ENV CINNABARR_ENGINE_PATH=/app/engine/cinnabarr-engine \
+    DOTNET_RUNNING_IN_CONTAINER=true \
     DOTNET_gcServer=0 \
     PUID=1000 \
     PGID=1000
