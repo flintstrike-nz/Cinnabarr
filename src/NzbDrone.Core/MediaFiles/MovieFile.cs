@@ -13,6 +13,9 @@ namespace NzbDrone.Core.MediaFiles
     public class MovieFile : ModelBase
     {
         public int MovieId { get; set; }
+
+        // The version slot the file belongs to; 0 is the default slot, the one the movie itself points to.
+        public int VersionSlotId { get; set; }
         public string RelativePath { get; set; }
         public string Path { get; set; }
         public long Size { get; set; }

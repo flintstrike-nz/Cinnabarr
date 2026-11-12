@@ -402,6 +402,12 @@ namespace NzbDrone.Core.Movies
 
         public void Handle(MovieFileAddedEvent message)
         {
+            // The files of the other version slots are not the movie's own file.
+            if (message.MovieFile.VersionSlotId != 0)
+            {
+                return;
+            }
+
             var movie = message.MovieFile.Movie;
             movie.MovieFileId = message.MovieFile.Id;
             _movieRepository.Update(movie);

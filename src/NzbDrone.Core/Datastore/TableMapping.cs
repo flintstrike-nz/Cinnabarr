@@ -34,6 +34,7 @@ using NzbDrone.Core.Movies;
 using NzbDrone.Core.Movies.AlternativeTitles;
 using NzbDrone.Core.Movies.Credits;
 using NzbDrone.Core.Movies.Translations;
+using NzbDrone.Core.Movies.Versions;
 using NzbDrone.Core.Notifications;
 using NzbDrone.Core.Organizer;
 using NzbDrone.Core.Parser.Model;
@@ -166,6 +167,7 @@ namespace NzbDrone.Core.Datastore
             Mapper.Entity<SubtitleFile>("SubtitleFiles").RegisterModel();
             Mapper.Entity<MovieSubtitleFile>("MovieSubtitleFiles").RegisterModel();
             Mapper.Entity<MovieOtherExtraFile>("MovieOtherExtraFiles").RegisterModel();
+            Mapper.Entity<VersionSlot>("VersionSlots").RegisterModel();
             Mapper.Entity<OtherExtraFile>("ExtraFiles").RegisterModel();
 
             Mapper.Entity<PendingRelease>("PendingReleases").RegisterModel()

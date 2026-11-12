@@ -32,7 +32,7 @@ BL-045,Engine,Verify backups include the engine profile; restore test,Spike,MIG-
 BL-046,Engine,Engine push channel (SSE or websocket) instead of polling,Story,ENG-18,Later,C,L,none,Later,Ready
 BL-047,Engine,Engine legal notice shown once at first run,Task,SET-03,2,M,S,none,Next,Done (wording is a placeholder; needs owner and legal review)
 BL-048,Engine,"Complete Downloads settings: port, UPnP, interface binding, privacy, pre-allocation",Story,SET-04,2,S,M,none,Next,"Partial: port, UPnP, interface, limits, privacy, encryption done; alternative-speed schedule open"
-BL-050,Versions,Version slot schema and a default slot per item,Story,VER-01,5,M,XL,BL-044,Next,Ready
+BL-050,Versions,Version slot schema and a default slot per item,Story,VER-01,5,M,XL,BL-044,Next,"Partial: movie version slots stored (table, file slot id, API with a limit of 8 versions, default slot is the movie itself); nothing uses them yet (BL-051)"
 BL-051,Versions,"Per-slot Wanted, cutoff and upgrades",Story,VER-01,5,M,L,BL-050,Next,Ready
 BL-052,Versions,Download another version from Search,Story,VER-02,5,S,M,BL-050,Next,Ready
 BL-053,Versions,"Race mode per file, with winner rules and loser cleanup",Story,"VER-03, VER-04",5,S,XL,"BL-050, BL-093",Next,Ready
@@ -41,7 +41,7 @@ BL-055,Versions,"Verify Emby, Jellyfin and Plex multi-version conventions",Spike
 BL-056,Versions,Version label in file names,Task,NAM-04,5,M,S,"BL-050, BL-055",Next,"Partial: naming presets (Jellyfin default, Emby, Plex) done; the {Version} label waits for version slots (BL-050)"
 BL-059,Versions,"Verify subtitle language, forced and SDH naming, and copy numbers",Spike,NAM-02,2,S,S,none,Now,"Done (checked against the real engine: language, forced and SDH names; copy numbers only unit-tested)"
 BL-057,Versions,Default version slots and race defaults in Settings,Story,SET-02,5,S,M,BL-050,Next,Ready
-BL-058,Versions,Decide the maximum number of version slots (decision 6),Decision,VER-01,5,S,XS,none,Next,Decision
+BL-058,Versions,Decide the maximum number of version slots (decision 6),Decision,VER-01,5,S,XS,none,Next,"Decided for now: at most 8 versions per movie (adjustable)"
 BL-060,Migration,"Library reorganisation tool with preview, journal and undo",Story,"MIG-01, NFR-02, FIL-09",6,M,XL,BL-010,Later,Ready
 BL-061,Migration,Importer for the Sonarr database,Story,MIG-02,6,M,L,BL-080,Later,Ready
 BL-062,Migration,Importer for the Radarr database,Story,MIG-02,6,M,M,BL-061,Later,Ready
@@ -70,7 +70,7 @@ BL-088,Process,Set up the backlog in GitHub Projects (see 04-product-backlog.md)
 BL-090,Decisions,Decision 1: when to rename NzbDrone.* namespaces,Decision,NFR-12,4+,S,XS,none,Later,Decision
 BL-091,Decisions,Decision 3: support an external torrent client?,Decision,CON-05,later,S,XS,none,Later,"Decided: external torrent clients are out of scope"
 BL-092,Decisions,Decision 7: Plex naming template,Decision,VER-05,5,S,XS,BL-055,Next,"Decided: Jellyfin naming is the default, Emby and Plex are presets (the preset work is BL-056)"
-BL-093,Decisions,Decision 5: how a race winner is chosen,Decision,VER-03,5,S,XS,none,Next,Decision
+BL-093,Decisions,Decision 5: how a race winner is chosen,Decision,VER-03,5,S,XS,none,Next,"Decided for now: the first valid copy wins (as in the roadmap)"
 BL-094,Owner inputs,Obtain a TVDB v4 project key and check its licence terms,Task,MET-06,4,M,S,none,Now,"Not needed: no TVDB key is required while Sonarr's service is used"
 BL-095,Owner inputs,Obtain a TMDb key and confirm attribution,Task,MET-06,4,M,S,none,Now,Blocked: owner
 BL-096,Owner inputs,Decide whether the ownership marker ships in an earlier release,Decision,MIG-05,1e,M,XS,none,Now,Decision
