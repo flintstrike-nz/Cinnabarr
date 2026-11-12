@@ -1,8 +1,11 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
+  EngineQueueMove,
   getEngineErrorMessage,
   useEngineDownloadAction,
   useEngineForceStart,
+  useEngineQueueMove,
+  useEngineSpeedLimits,
 } from 'Activity/Queue/Engine/useEngineControls';
 import Alert from 'Components/Alert';
 import Icon from 'Components/Icon';
@@ -128,6 +131,13 @@ function FileRow({
   );
 }
 
+const QUEUE_MOVES: { move: EngineQueueMove; label: string }[] = [
+  { move: 'top', label: 'EngineMoveTop' },
+  { move: 'up', label: 'EngineMoveUp' },
+  { move: 'down', label: 'EngineMoveDown' },
+  { move: 'bottom', label: 'EngineMoveBottom' },
+];
+
 interface QueueFileDetailsProps {
   downloadId: string;
 }
@@ -139,6 +149,10 @@ function QueueFileDetails({ downloadId }: QueueFileDetailsProps) {
   const resume = useEngineDownloadAction(downloadId, 'resume');
   const recheck = useEngineDownloadAction(downloadId, 'recheck');
   const forceStart = useEngineForceStart(downloadId);
+  const queueMove = useEngineQueueMove(downloadId);
+  const speedLimits = useEngineSpeedLimits(downloadId);
+  const [downloadLimit, setDownloadLimit] = useState<number | null>(null);
+  const [uploadLimit, setUploadLimit] = useState<number | null>(null);
 
   const isPaused = !!data?.isPaused;
   const isForceStarted = !!data?.isForceStarted;
@@ -146,7 +160,9 @@ function QueueFileDetails({ downloadId }: QueueFileDetailsProps) {
     getEngineErrorMessage(pause.error) ??
     getEngineErrorMessage(resume.error) ??
     getEngineErrorMessage(recheck.error) ??
-    getEngineErrorMessage(forceStart.error);
+    getEngineErrorMessage(forceStart.error) ??
+    getEngineErrorMessage(queueMove.error) ??
+    getEngineErrorMessage(speedLimits.error);
 
   const handlePauseOrResumePress = useCallback(() => {
     if (isPaused) {
@@ -159,6 +175,36 @@ function QueueFileDetails({ downloadId }: QueueFileDetailsProps) {
   const handleForceStartPress = useCallback(() => {
     forceStart.mutate(!isForceStarted);
   }, [isForceStarted, forceStart]);
+
+  const handleMovePress = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      const move = event.currentTarget.dataset.move as EngineQueueMove;
+
+      queueMove.mutate(move);
+    },
+    [queueMove]
+  );
+
+  const handleDownloadLimitChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setDownloadLimit(Number(event.target.value));
+    },
+    []
+  );
+
+  const handleUploadLimitChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setUploadLimit(Number(event.target.value));
+    },
+    []
+  );
+
+  const handleApplyLimitsPress = useCallback(() => {
+    speedLimits.mutate({
+      download: downloadLimit ?? data?.downloadLimit ?? 0,
+      upload: uploadLimit ?? data?.uploadLimit ?? 0,
+    });
+  }, [speedLimits, downloadLimit, uploadLimit, data]);
 
   const handleRecheckPress = useCallback(() => {
     recheck.mutate();
@@ -206,6 +252,46 @@ function QueueFileDetails({ downloadId }: QueueFileDetailsProps) {
             onPress={handleRecheckPress}
           >
             <Icon name={icons.REFRESH} /> {translate('EngineRecheck')}
+          </SpinnerButton>
+
+          {QUEUE_MOVES.map(({ move, label }) => (
+            <SpinnerButton
+              key={move}
+              data-move={move}
+              isSpinning={queueMove.isPending}
+              onPress={handleMovePress}
+            >
+              {translate(label)}
+            </SpinnerButton>
+          ))}
+
+          <label>
+            {translate('EngineDownloadLimitRow')}{' '}
+            <input
+              type="number"
+              min={0}
+              name="downloadLimit"
+              value={downloadLimit ?? data.downloadLimit}
+              onChange={handleDownloadLimitChange}
+            />
+          </label>
+
+          <label>
+            {translate('EngineUploadLimitRow')}{' '}
+            <input
+              type="number"
+              min={0}
+              name="uploadLimit"
+              value={uploadLimit ?? data.uploadLimit}
+              onChange={handleUploadLimitChange}
+            />
+          </label>
+
+          <SpinnerButton
+            isSpinning={speedLimits.isPending}
+            onPress={handleApplyLimitsPress}
+          >
+            {translate('EngineApplyLimits')}
           </SpinnerButton>
 
           {data.isAwaitingPreparation ? (

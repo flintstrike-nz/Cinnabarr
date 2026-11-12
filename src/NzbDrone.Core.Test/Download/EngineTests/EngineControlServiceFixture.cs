@@ -177,6 +177,36 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_move_a_download_in_the_queue_when_queueing_is_on()
+        {
+            _proxy.Setup(p => p.GetPreferencesJson(_settings)).Returns(JObject.Parse("{\"queueing_enabled\": true}"));
+
+            Subject.MoveInQueue(Ready, "top");
+
+            _proxy.Verify(p => p.MoveTorrentInQueue(Ready, "top", _settings), Times.Once());
+        }
+
+        [Test]
+        public void should_refuse_a_queue_move_when_queueing_is_off_or_the_move_is_unknown()
+        {
+            _proxy.Setup(p => p.GetPreferencesJson(_settings)).Returns(JObject.Parse("{\"queueing_enabled\": false}"));
+
+            Assert.Throws<EngineControlException>(() => Subject.MoveInQueue(Ready, "top"));
+            Assert.Throws<EngineControlException>(() => Subject.MoveInQueue(Ready, "sideways"));
+
+            _proxy.Verify(p => p.MoveTorrentInQueue(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
+        }
+
+        [Test]
+        public void should_set_a_downloads_own_speed_limits_in_bytes()
+        {
+            Subject.SetSpeedLimits(Ready, 500, 0);
+
+            _proxy.Verify(p => p.SetTorrentSpeedLimits(Ready, 500 * 1024L, 0, _settings), Times.Once());
+            Assert.Throws<EngineControlException>(() => Subject.SetSpeedLimits(Ready, -1, 0));
+        }
+
+        [Test]
         public void should_refuse_a_download_the_engine_does_not_have()
         {
             Assert.Throws<EngineControlException>(() => Subject.Pause(new string('f', 40)));

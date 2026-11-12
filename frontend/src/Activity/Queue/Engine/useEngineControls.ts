@@ -78,6 +78,44 @@ export const useEngineDownloadAction = (
   });
 };
 
+export type EngineQueueMove = 'top' | 'up' | 'down' | 'bottom';
+
+const useRefreshDownload = (downloadId: string) => {
+  const queryClient = useQueryClient();
+
+  return () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['/queue'] }),
+      queryClient.invalidateQueries({
+        queryKey: [`/engine/downloads/${downloadId}/files`],
+      }),
+    ]);
+};
+
+// Moves one engine download in the engine's queue.
+export const useEngineQueueMove = (downloadId: string) => {
+  const refresh = useRefreshDownload(downloadId);
+
+  return useApiMutation<void, void, EngineQueueMove>({
+    path: `/engine/downloads/${downloadId}/queue`,
+    method: 'POST',
+    getRequest: (move) => ({ queryParams: { move } }),
+    mutationOptions: { onSettled: refresh },
+  });
+};
+
+// Sets one engine download's own speed limits, in KiB/s (0 is unlimited).
+export const useEngineSpeedLimits = (downloadId: string) => {
+  const refresh = useRefreshDownload(downloadId);
+
+  return useApiMutation<void, void, { download: number; upload: number }>({
+    path: `/engine/downloads/${downloadId}/limits`,
+    method: 'PUT',
+    getRequest: (limits) => ({ queryParams: limits }),
+    mutationOptions: { onSettled: refresh },
+  });
+};
+
 // Turns force start on or off for one engine download.
 export const useEngineForceStart = (downloadId: string) => {
   const queryClient = useQueryClient();

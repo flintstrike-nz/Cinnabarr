@@ -56,6 +56,15 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         [JsonProperty(PropertyName = "has_metadata")] // False while a magnet is still fetching its metadata
         public bool HasMetadata { get; set; } = true;
 
+        [JsonProperty(PropertyName = "dl_limit")] // The torrent's own download limit in bytes per second (0 or -1 = none)
+        public long DownloadLimit { get; set; }
+
+        [JsonProperty(PropertyName = "up_limit")] // The torrent's own upload limit in bytes per second (0 or -1 = none)
+        public long UploadLimit { get; set; }
+
+        [JsonProperty(PropertyName = "priority")] // The torrent's place in the queue (0 when queueing is off)
+        public int QueuePosition { get; set; }
+
         public string Tags { get; set; } // Comma-separated tags
     }
 

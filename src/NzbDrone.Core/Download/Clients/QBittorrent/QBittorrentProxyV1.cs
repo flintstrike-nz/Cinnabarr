@@ -355,6 +355,16 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             throw new NotSupportedException("Rechecking torrent files requires qBittorrent API v2");
         }
 
+        public void MoveTorrentInQueue(string hash, string move, QBittorrentSettings settings)
+        {
+            throw new NotSupportedException("Moving torrents in the queue by hand requires qBittorrent API v2");
+        }
+
+        public void SetTorrentSpeedLimits(string hash, long downloadLimit, long uploadLimit, QBittorrentSettings settings)
+        {
+            throw new NotSupportedException("Per-torrent speed limits require qBittorrent API v2");
+        }
+
         public void SetLocation(string hash, string location, QBittorrentSettings settings)
         {
             var request = BuildRequest(settings).Resource("/command/setLocation")
