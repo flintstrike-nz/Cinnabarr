@@ -122,7 +122,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | BL-061 | Importer for the Sonarr database | Story | MIG-02 | 6 | M | L | BL-080 | Later | Done in a simple form: reads the other install's database (a copy) and adds the series with their path, monitoring, type, quality profile (by name) and tags; episodes' own monitoring is not read, and files are found again by the scan |
 | BL-062 | Importer for the Radarr database | Story | MIG-02 | 6 | M | M | BL-061 | Later | Done in a simple form: the same for movies (path, monitoring, minimum availability, profile by name, tags) |
 | BL-063 | Importer for the Prowlarr database | Story | MIG-02 | 6 | M | M | BL-061 | Later | Done for Torznab indexers; other kinds (Cardigann trackers) are reported as skipped |
-| BL-064 | Importer for qBittorrent BT_backup, keeping seeding | Story | MIG-02 | 6 | M | L | BL-060 | Later | Ready |
+| BL-064 | Importer for qBittorrent BT_backup, keeping seeding | Story | MIG-02 | 6 | M | L | BL-060 | Later | Done in a simple form: Library → Import from Another Install can take over the torrents of a qBittorrent profile (BT_backup): each one the engine does not have is added where its files are (checked, then seeding, stopped ones stay stopped); a path swap covers containers |
 | BL-065 | Settings review for duplication and wording | Task | UI-08 | 6 | S | M | none | Later | Ready |
 
 ### Release
@@ -132,9 +132,9 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | BL-070 | Ownership marker and start-up protection before Phase 7 | Story | MIG-05 | 1e–7 | M | M | BL-096 | Next | Decision |
 | BL-071 | External contracts migration with identity records and rollback | Story | MIG-04 | 7 | M | XL | BL-070, BL-004, BL-087 | Later | Ready |
 | BL-072 | Windows installer: distinct AppId, install location, verified service | Story | MIG-04, PKG-02 | 7 | M | L | BL-071 | Later | Ready |
-| BL-073 | systemd unit update and Docker and macOS packaging notes | Task | MIG-04 | 7 | M | M | BL-071 | Later | Ready |
-| BL-074 | Single Docker image running the host and the engine | Story | PKG-01 | 7 | M | L | BL-075 | Later | Ready |
-| BL-075 | Engine CI binaries for linux-x64, linux-arm64, win-x64 and macOS | Story | ENG-16, PKG-04, NFR-08 | 7 | M | L | none | Later | Ready |
+| BL-073 | systemd unit update and Docker and macOS packaging notes | Task | MIG-04 | 7 | M | M | BL-071 | Later | Docker notes done in docs/cinnabarr/DOCKER.md; systemd and macOS notes still open |
+| BL-074 | Single Docker image running the host and the engine | Story | PKG-01 | 7 | M | L | BL-075 | Later | Done: Dockerfile, entrypoint (PUID, PGID, UMASK) and compose file, see docs/cinnabarr/DOCKER.md. The engine build, the runtime libraries, the app build and the start-up were each verified in a real Debian 13 environment; the image itself was not built end to end because this machine has no Docker daemon |
+| BL-075 | Engine CI binaries for linux-x64, linux-arm64, win-x64 and macOS | Story | ENG-16, PKG-04, NFR-08 | 7 | M | L | none | Later | Partial: the Docker build compiles the engine for linux-x64 (and arm64 when built on arm64) from source; CI binaries for the other platforms are not set up |
 | BL-076 | Update channel and updater | Story | PKG-03 | 7 | M | L | BL-075 | Later | Ready |
 | BL-077 | Bundle a definitions snapshot in each release | Task | IDX-03 | 7 | M | S | BL-075 | Later | Ready |
 | BL-078 | Remove the Sonarr v3 API once the frontend no longer uses it | Task | API-02 | 7 | S | M | none | Later | Ready |

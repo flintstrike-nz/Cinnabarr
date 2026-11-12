@@ -4,7 +4,7 @@ Cinnabarr is one app for TV shows and movies: library management, indexer search
 
 It is built by merging [Sonarr](https://github.com/Sonarr/Sonarr) (the base of this repository), [Radarr](https://github.com/Radarr/Radarr), [Prowlarr](https://github.com/Prowlarr/Prowlarr) and a headless [qBittorrent](https://github.com/qbittorrent/qBittorrent) engine. Cinnabarr is not affiliated with those projects; please don't ask them for support with Cinnabarr.
 
-**Status:** early development. See the [user guide](docs/cinnabarr/USER_GUIDE.md) for how it works today, and the [architecture and roadmap](docs/cinnabarr/ROADMAP.md) for the design and the phase plan.
+**Status:** early development. See the [user guide](docs/cinnabarr/USER_GUIDE.md) for how it works today, [DOCKER.md](docs/cinnabarr/DOCKER.md) to run it in Docker, and the [architecture and roadmap](docs/cinnabarr/ROADMAP.md) for the design and the phase plan.
 
 ## Contributing
 

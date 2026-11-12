@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Instrumentation.Extensions;
 using NzbDrone.Common.Serializer;
+using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Indexers.Torznab;
 using NzbDrone.Core.Movies;
@@ -67,6 +69,8 @@ namespace NzbDrone.Core.ExternalImport
         private readonly IQualityProfileService _qualityProfileService;
         private readonly ITagService _tagService;
         private readonly IIndexerFactory _indexerFactory;
+        private readonly IQBittorrentBackupReader _backupReader;
+        private readonly IEngineControlService _engineControlService;
         private readonly Logger _logger;
 
         public ExternalInstallImporter(IExternalInstallReader reader,
@@ -77,6 +81,8 @@ namespace NzbDrone.Core.ExternalImport
                                        IQualityProfileService qualityProfileService,
                                        ITagService tagService,
                                        IIndexerFactory indexerFactory,
+                                       IQBittorrentBackupReader backupReader,
+                                       IEngineControlService engineControlService,
                                        Logger logger)
         {
             _reader = reader;
@@ -87,6 +93,8 @@ namespace NzbDrone.Core.ExternalImport
             _qualityProfileService = qualityProfileService;
             _tagService = tagService;
             _indexerFactory = indexerFactory;
+            _backupReader = backupReader;
+            _engineControlService = engineControlService;
             _logger = logger;
         }
 
@@ -97,6 +105,7 @@ namespace NzbDrone.Core.ExternalImport
                 ExternalInstallKind.Sonarr => PreviewSeries(options),
                 ExternalInstallKind.Radarr => PreviewMovies(options),
                 ExternalInstallKind.Prowlarr => PreviewIndexers(options),
+                ExternalInstallKind.QBittorrent => PreviewTorrents(options),
                 _ => throw new ArgumentOutOfRangeException(nameof(options))
             };
         }
@@ -108,6 +117,7 @@ namespace NzbDrone.Core.ExternalImport
                 ExternalInstallKind.Sonarr => ImportSeries(options),
                 ExternalInstallKind.Radarr => ImportMovies(options),
                 ExternalInstallKind.Prowlarr => ImportIndexers(options),
+                ExternalInstallKind.QBittorrent => ImportTorrents(options),
                 _ => throw new ArgumentOutOfRangeException(nameof(options))
             };
 
@@ -233,6 +243,65 @@ namespace NzbDrone.Core.ExternalImport
             }
 
             return items;
+        }
+
+        // Torrents of another qBittorrent
+
+        private List<ExternalImportItem> PreviewTorrents(ExternalImportOptions options)
+        {
+            var inEngine = _engineControlService.GetTorrentIds();
+
+            return _backupReader.Read(options.Folder).Select(t => DescribeTorrent(t, options, inEngine)).ToList();
+        }
+
+        private List<ExternalImportItem> ImportTorrents(ExternalImportOptions options)
+        {
+            var inEngine = _engineControlService.GetTorrentIds();
+            var items = new List<ExternalImportItem>();
+
+            foreach (var torrent in _backupReader.Read(options.Folder))
+            {
+                var item = DescribeTorrent(torrent, options, inEngine);
+
+                if (item.Status == ExternalImportStatus.Add)
+                {
+                    try
+                    {
+                        _logger.ProgressInfo("Taking over torrent '{0}'", torrent.Name);
+
+                        _engineControlService.AdoptTorrentFile(Path.GetFileName(torrent.TorrentFile), File.ReadAllBytes(torrent.TorrentFile), Remap(torrent.SavePath, options), torrent.Stopped);
+                        inEngine.Add(torrent.Hash);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Warn(ex, "Unable to take over torrent '{0}'", torrent.Name);
+                        item.Status = ExternalImportStatus.Skipped;
+                        item.Reason = ex.Message;
+                    }
+                }
+
+                items.Add(item);
+            }
+
+            return items;
+        }
+
+        // A torrent is taken over when the engine doesn't have it and its files' folder can be reached from here.
+        private static ExternalImportItem DescribeTorrent(ExternalTorrent torrent, ExternalImportOptions options, HashSet<string> inEngine)
+        {
+            var savePath = Remap(torrent.SavePath, options);
+
+            if (inEngine.Contains(torrent.Hash))
+            {
+                return new ExternalImportItem { Name = torrent.Name, Status = ExternalImportStatus.Exists };
+            }
+
+            if (!Directory.Exists(savePath))
+            {
+                return new ExternalImportItem { Name = torrent.Name, Status = ExternalImportStatus.Skipped, Reason = $"The folder '{savePath}' can't be reached from here; mount it, or use the path boxes to say where it is" };
+            }
+
+            return new ExternalImportItem { Name = torrent.Name, Status = ExternalImportStatus.Add };
         }
 
         // Indexers

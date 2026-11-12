@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.ExternalImport;
 using Sonarr.Http;
 using Sonarr.Http.REST;
@@ -9,7 +10,7 @@ namespace Sonarr.Api.V5.ExternalImport;
 
 public class ExternalImportRequest
 {
-    // "sonarr", "radarr" or "prowlarr".
+    // "sonarr", "radarr", "prowlarr" or "qbittorrent".
     public required string Kind { get; set; }
 
     // The other install's data folder (the one holding its database).
@@ -56,7 +57,7 @@ public class ExternalImportController : Controller
                 Reason = i.Reason
             }).ToList());
         }
-        catch (Exception ex) when (ex is ArgumentException or FileNotFoundException or global::System.Data.Common.DbException)
+        catch (Exception ex) when (ex is ArgumentException or FileNotFoundException or EngineControlException or global::System.Data.Common.DbException)
         {
             throw new BadRequestException(ex.Message);
         }

@@ -12,7 +12,8 @@ namespace NzbDrone.Core.ExternalImport
     {
         Sonarr,
         Radarr,
-        Prowlarr
+        Prowlarr,
+        QBittorrent
     }
 
     public class ExternalSeries

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using MonoTorrent;
 using Newtonsoft.Json.Linq;
@@ -93,6 +94,13 @@ namespace NzbDrone.Core.Download.Engine
         // and subtitle files are chosen; it is listed as Unlinked until Manual Import links it to the library.
         string AddMagnet(string magnetLink);
         string AddTorrentFile(string fileName, byte[] fileContent);
+
+        // Adds a torrent that is already downloaded under savePath (taken over from another qBittorrent), as it is: it isn't
+        // prepared, renamed or linked, and shows in Downloads as unlinked. Returns its id.
+        string AdoptTorrentFile(string fileName, byte[] fileContent, string savePath, bool stopped);
+
+        // The ids (upper-case info-hashes) of the torrents the engine has.
+        HashSet<string> GetTorrentIds();
     }
 
     // Controls for the built-in engine and its torrents (roadmap §6.2). A torrent still being prepared (§4.8) is never
@@ -151,6 +159,27 @@ namespace NzbDrone.Core.Download.Engine
             }
 
             return Add(hash, (proxy, settings) => proxy.AddManualTorrentFromFile(fileName, fileContent, settings));
+        }
+
+        public string AdoptTorrentFile(string fileName, byte[] fileContent, string savePath, bool stopped)
+        {
+            string hash;
+
+            try
+            {
+                hash = _torrentFileInfoReader.GetHashFromTorrentFile(fileContent);
+            }
+            catch (Exception ex)
+            {
+                throw new EngineControlException("that isn't a valid .torrent file", ex);
+            }
+
+            return Add(hash, (proxy, settings) => proxy.AdoptTorrentFromFile(fileName, fileContent, savePath, stopped, settings));
+        }
+
+        public HashSet<string> GetTorrentIds()
+        {
+            return Run((proxy, settings) => proxy.GetTorrents(settings).Select(t => t.Hash.ToUpperInvariant()).ToHashSet());
         }
 
         private string Add(string hash, Action<IQBittorrentProxy, QBittorrentSettings> add)
