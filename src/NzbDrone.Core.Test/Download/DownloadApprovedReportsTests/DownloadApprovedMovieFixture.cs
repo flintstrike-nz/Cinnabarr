@@ -4,12 +4,14 @@ using FluentAssertions;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Core.DecisionEngine;
+using NzbDrone.Core.DecisionEngine.Movies;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.Clients;
 using NzbDrone.Core.Download.Pending;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Movies;
 using NzbDrone.Core.Parser.Model;
+using NzbDrone.Core.Queue;
 using NzbDrone.Core.Test.Framework;
 
 namespace NzbDrone.Core.Test.Download.DownloadApprovedReportsTests
@@ -23,6 +25,8 @@ namespace NzbDrone.Core.Test.Download.DownloadApprovedReportsTests
             Mocker.GetMock<IPrioritizeDownloadDecision>()
                   .Setup(v => v.PrioritizeDecisions(It.IsAny<List<DownloadDecision>>()))
                   .Returns<List<DownloadDecision>>(v => v);
+
+            Mocker.GetMock<IQueueService>().Setup(q => q.GetQueue()).Returns(new List<NzbDrone.Core.Queue.Queue>());
         }
 
         private static DownloadDecision Decision(int movieId, DownloadProtocol protocol = DownloadProtocol.Torrent, params DownloadRejection[] rejections)
@@ -81,6 +85,34 @@ namespace NzbDrone.Core.Test.Download.DownloadApprovedReportsTests
             var processed = await Subject.ProcessDecisions(new List<DownloadDecision> { versionOne, versionTwo });
 
             processed.Grabbed.Should().Equal(versionOne, versionTwo);
+        }
+
+        [Test]
+        public async Task should_grab_a_second_release_for_a_version_when_the_race_policy_allows_it()
+        {
+            var first = VersionDecision(1, 7, "a");
+            var second = VersionDecision(1, 7, "b");
+
+            Mocker.GetMock<IMovieRacePolicy>()
+                  .Setup(p => p.MayJoin(second.RemoteMovie, It.Is<IReadOnlyCollection<RemoteMovie>>(o => o.Count == 1)))
+                  .Returns(true);
+
+            var processed = await Subject.ProcessDecisions(new List<DownloadDecision> { first, second });
+
+            processed.Grabbed.Should().Equal(first, second);
+        }
+
+        [Test]
+        public async Task should_not_race_the_same_release_even_when_the_policy_allows_racing()
+        {
+            var first = VersionDecision(1, 0, "a");
+            var second = VersionDecision(1, 7, "a");
+
+            Mocker.GetMock<IMovieRacePolicy>().Setup(p => p.MayJoin(It.IsAny<RemoteMovie>(), It.IsAny<IReadOnlyCollection<RemoteMovie>>())).Returns(true);
+
+            var processed = await Subject.ProcessDecisions(new List<DownloadDecision> { first, second });
+
+            processed.Grabbed.Should().ContainSingle().Which.Should().BeSameAs(first);
         }
 
         [Test]

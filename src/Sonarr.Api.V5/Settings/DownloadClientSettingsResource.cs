@@ -14,6 +14,7 @@ public class DownloadClientSettingsResource : RestResource
     public int? EngineSeedingMinutes { get; set; }
     public double? EngineSeedingRatio { get; set; }
     public int? EngineOrphanGraceDays { get; set; }
+    public int? EngineRaceMaxSources { get; set; }
     public bool AutoRedownloadFailed { get; set; }
     public bool AutoRedownloadFailedFromInteractiveSearch { get; set; }
 }
@@ -31,6 +32,7 @@ public static class DownloadClientSettingsResourceMapper
             EngineSeedingMinutes = model.EngineSeedingMinutes,
             EngineSeedingRatio = model.EngineSeedingRatio,
             EngineOrphanGraceDays = model.EngineOrphanGraceDays,
+            EngineRaceMaxSources = model.EngineRaceMaxSources,
             AutoRedownloadFailed = model.AutoRedownloadFailed,
             AutoRedownloadFailedFromInteractiveSearch = model.AutoRedownloadFailedFromInteractiveSearch
         };

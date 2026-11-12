@@ -65,6 +65,7 @@ namespace NzbDrone.Core.Download.Engine
         private readonly IEngineFileMapper _fileMapper;
         private readonly IEngineFileReplacementService _replacementService;
         private readonly IEngineSubtitleValidator _subtitleValidator;
+        private readonly IEngineRaceService _raceService;
         private readonly IMovieSubtitleFileService _subtitleFileService;
         private readonly Logger _logger;
 
@@ -91,6 +92,7 @@ namespace NzbDrone.Core.Download.Engine
                                             IEngineFileMapper fileMapper,
                                             IEngineFileReplacementService replacementService,
                                             IEngineSubtitleValidator subtitleValidator,
+                                            IEngineRaceService raceService,
                                             IMovieSubtitleFileService subtitleFileService,
                                             Logger logger)
         {
@@ -111,6 +113,7 @@ namespace NzbDrone.Core.Download.Engine
             _fileMapper = fileMapper;
             _replacementService = replacementService;
             _subtitleValidator = subtitleValidator;
+            _raceService = raceService;
             _subtitleFileService = subtitleFileService;
             _logger = logger;
         }
@@ -345,6 +348,7 @@ namespace NzbDrone.Core.Download.Engine
                 {
                     // A recheck that failed or was cut short by a restart.
                     RecheckDetached(proxy, settings, file, save);
+                    _raceService.CancelLosers(proxy, settings, downloadId, link);
                     return;
                 }
 
@@ -441,6 +445,7 @@ namespace NzbDrone.Core.Download.Engine
                         save();
 
                         RecheckDetached(proxy, settings, file, save);
+                        _raceService.CancelLosers(proxy, settings, downloadId, link);
 
                         return;
                     }
@@ -475,6 +480,7 @@ namespace NzbDrone.Core.Download.Engine
                     save();
 
                     RecheckDetached(proxy, settings, file, save);
+                    _raceService.CancelLosers(proxy, settings, downloadId, link);
 
                     return;
                 }

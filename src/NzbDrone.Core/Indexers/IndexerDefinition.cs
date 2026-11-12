@@ -29,6 +29,10 @@ namespace NzbDrone.Core.Indexers
         public bool EnableInteractiveSearch { get; set; }
         public int DownloadClientId { get; set; }
         public int Priority { get; set; }
+
+        // Whether releases from this indexer may race others for the same movie version (roadmap §4.9). Off by default,
+        // because racing can cost a private tracker's ratio.
+        public bool AllowRace { get; set; }
         public int SeasonSearchMaximumSingleEpisodeAge { get; set; }
 
         [MemberwiseEqualityIgnore]

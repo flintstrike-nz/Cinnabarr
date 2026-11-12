@@ -24,6 +24,8 @@ namespace NzbDrone.Core.Configuration
 
     public class ConfigService : IConfigService
     {
+        public const int MaxRaceSources = 4;
+
         private readonly IConfigRepository _repository;
         private readonly IEventAggregator _eventAggregator;
         private readonly Logger _logger;
@@ -238,6 +240,13 @@ namespace NzbDrone.Core.Configuration
             get { return GetValueInt("EngineOrphanGraceDays", 7); }
 
             set { SetValue("EngineOrphanGraceDays", value); }
+        }
+
+        public int EngineRaceMaxSources
+        {
+            get { return GetValueInt("EngineRaceMaxSources", 1); }
+
+            set { SetValue("EngineRaceMaxSources", value); }
         }
 
         public bool EnableCompletedDownloadHandling

@@ -492,7 +492,7 @@ namespace NzbDrone.Core.Test.DecisionEngineTests.Movies
         private void GivenMostRecent(MovieHistoryEventType type, Quality quality, DateTime date)
         {
             Mocker.GetMock<IMovieHistoryService>()
-                  .Setup(s => s.MostRecentForMovie(7))
+                  .Setup(s => s.MostRecentForMovie(7, 0))
                   .Returns(new MovieHistory { EventType = type, Quality = new QualityModel(quality), Date = date });
         }
 
@@ -519,6 +519,32 @@ namespace NzbDrone.Core.Test.DecisionEngineTests.Movies
 
             decision.Accepted.Should().BeFalse();
             decision.Reason.Should().Be(DownloadRejectionReason.HistoryRecentCutoffMet);
+        }
+
+        [Test]
+        public void should_accept_when_a_recent_grab_is_still_downloading_and_the_release_may_race_it()
+        {
+            GivenMostRecent(MovieHistoryEventType.Grabbed, Quality.Bluray1080p, DateTime.UtcNow.AddMinutes(-5));
+
+            var remote = MovieSpecTestData.Remote(_movie, Quality.Bluray1080p);
+            Mocker.GetMock<IMovieRacePolicy>().Setup(p => p.MayRace(remote)).Returns(true);
+
+            Subject.IsSatisfiedBy(remote, new MovieReleaseDecisionInformation()).Accepted.Should().BeTrue();
+        }
+
+        [Test]
+        public void should_only_look_at_the_history_of_the_version_being_decided()
+        {
+            var view = _movie.ShallowCopy();
+            view.Slot = new NzbDrone.Core.Movies.Versions.VersionSlot { Id = 5, MovieId = _movie.Id };
+
+            Mocker.GetMock<IMovieHistoryService>()
+                  .Setup(s => s.MostRecentForMovie(7, 5))
+                  .Returns(new MovieHistory { EventType = MovieHistoryEventType.Grabbed, Quality = new QualityModel(Quality.Bluray1080p), Date = DateTime.UtcNow.AddMinutes(-5) });
+
+            // The movie's own grab (version 0) is not what is looked at for the version.
+            Subject.IsSatisfiedBy(MovieSpecTestData.Remote(_movie, Quality.Bluray1080p), new MovieReleaseDecisionInformation()).Accepted.Should().BeTrue();
+            Subject.IsSatisfiedBy(MovieSpecTestData.Remote(view, Quality.Bluray1080p), new MovieReleaseDecisionInformation()).Accepted.Should().BeFalse();
         }
 
         [Test]

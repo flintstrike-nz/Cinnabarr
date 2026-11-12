@@ -31,6 +31,7 @@ export interface IndexerModel extends Provider {
   seasonSearchMaximumSingleEpisodeAge: number;
   protocol: DownloadProtocol;
   priority: number;
+  allowRace: boolean;
   downloadClientId: number;
   tags: number[];
 }

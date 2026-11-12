@@ -14,18 +14,21 @@ namespace NzbDrone.Core.DecisionEngine.Movies.Specifications
         private readonly UpgradableSpecification _upgradableSpecification;
         private readonly ICustomFormatCalculationService _formatService;
         private readonly IConfigService _configService;
+        private readonly IMovieRacePolicy _racePolicy;
         private readonly Logger _logger;
 
         public MovieHistorySpecification(IMovieHistoryService historyService,
                                          UpgradableSpecification upgradableSpecification,
                                          ICustomFormatCalculationService formatService,
                                          IConfigService configService,
+                                         IMovieRacePolicy racePolicy,
                                          Logger logger)
         {
             _historyService = historyService;
             _upgradableSpecification = upgradableSpecification;
             _formatService = formatService;
             _configService = configService;
+            _racePolicy = racePolicy;
             _logger = logger;
         }
 
@@ -44,9 +47,15 @@ namespace NzbDrone.Core.DecisionEngine.Movies.Specifications
             var qualityProfile = subject.Movie.QualityProfile;
 
             _logger.Debug("Checking current status of movie [{0}] in history", subject.Movie.Id);
-            var mostRecent = _historyService.MostRecentForMovie(subject.Movie.Id);
+            var mostRecent = _historyService.MostRecentForMovie(subject.Movie.Id, subject.Movie.VersionSlotId);
 
             if (mostRecent == null || mostRecent.EventType != MovieHistoryEventType.Grabbed)
+            {
+                return DownloadSpecDecision.Accept();
+            }
+
+            // The grab is still downloading and racing is allowed: another release may download alongside it.
+            if (_racePolicy.MayRace(subject))
             {
                 return DownloadSpecDecision.Accept();
             }
