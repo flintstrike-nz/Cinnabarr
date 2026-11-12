@@ -27,6 +27,8 @@ namespace NzbDrone.Core.Test.IndexerSearchTests
         public void SetUp()
         {
             Mocker.GetMock<IVersionSlotService>().Setup(s => s.GetView(It.IsAny<Movie>(), It.IsAny<int>())).Returns<Movie, int>((m, _) => m);
+            Mocker.GetMock<IVersionSlotService>().Setup(s => s.GetMissingViews()).Returns(new List<Movie>());
+            Mocker.GetMock<IVersionSlotService>().Setup(s => s.GetCutoffUnmetViews()).Returns(new List<Movie>());
             Mocker.GetMock<ISearchForMovieReleases>()
                   .Setup(s => s.MovieSearch(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()))
                   .ReturnsAsync(new List<DownloadDecision>());
@@ -46,6 +48,22 @@ namespace NzbDrone.Core.Test.IndexerSearchTests
             }
 
             Mocker.GetMock<ISearchForMovieReleases>().Verify(s => s.MovieSearch(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Exactly(ids.Length));
+        }
+
+        [Test]
+        public void a_missing_search_also_searches_the_versions_with_no_file()
+        {
+            var view = Movie(2);
+            view.Slot = new VersionSlot { Id = 9, Label = "4K" };
+
+            Mocker.GetMock<IMovieService>().Setup(s => s.MoviesWithoutFiles(It.IsAny<PagingSpec<Movie>>())).Returns(new PagingSpec<Movie> { Records = new List<Movie> { Movie(1) } });
+            Mocker.GetMock<IVersionSlotService>().Setup(s => s.GetMissingViews()).Returns(new List<Movie> { view });
+            Mocker.GetMock<ISearchForMovieReleases>().Setup(s => s.MovieSearch(2, 9, It.IsAny<bool>(), false)).ReturnsAsync(new List<DownloadDecision>());
+
+            Subject.Execute(new MissingMoviesSearchCommand { Trigger = CommandTrigger.Manual });
+
+            Mocker.GetMock<ISearchForMovieReleases>().Verify(s => s.MovieSearch(1, It.IsAny<bool>(), false), Times.Once());
+            Mocker.GetMock<ISearchForMovieReleases>().Verify(s => s.MovieSearch(2, 9, It.IsAny<bool>(), false), Times.Once());
         }
 
         [Test]

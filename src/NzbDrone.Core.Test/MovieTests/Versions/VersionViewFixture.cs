@@ -104,6 +104,57 @@ namespace NzbDrone.Core.Test.MovieTests.Versions
             Assert.Throws<NzbDroneClientException>(() => Subject.GetView(_movie, 5));
         }
 
+        private void GivenSlots(params VersionSlot[] slots)
+        {
+            Mocker.GetMock<IVersionSlotRepository>().Setup(r => r.All()).Returns(slots.ToList());
+        }
+
+        private void GivenMovies(params Movie[] movies)
+        {
+            Mocker.GetMock<IMovieService>().Setup(s => s.GetMovies(It.IsAny<IEnumerable<int>>())).Returns(movies.ToList());
+        }
+
+        [Test]
+        public void should_list_monitored_versions_without_a_file_as_missing()
+        {
+            var other = new Movie { Id = 8, Monitored = true, MovieMetadata = new MovieMetadata { Title = "Other" } };
+            var unmonitoredMovie = new Movie { Id = 9, Monitored = false, MovieMetadata = new MovieMetadata { Title = "Off" } };
+
+            GivenSlots(_slot,                                                                           // movie 7: has a file, so not missing
+                       new VersionSlot { Id = 6, MovieId = 7, Label = "HD", QualityProfileId = 9, Monitored = true },
+                       new VersionSlot { Id = 7, MovieId = 7, Label = "Off", QualityProfileId = 9, Monitored = false },
+                       new VersionSlot { Id = 8, MovieId = 8, Label = "4K", QualityProfileId = 9, Monitored = true },
+                       new VersionSlot { Id = 9, MovieId = 9, Label = "4K", QualityProfileId = 9, Monitored = true });
+            GivenMovies(_movie, other, unmonitoredMovie);
+            Mocker.GetMock<IMovieFileService>().Setup(s => s.GetFilesByMovies(It.IsAny<IEnumerable<int>>()))
+                  .Returns(new List<MovieFile> { new MovieFile { Id = 4, MovieId = 7, VersionSlotId = 5 } });
+
+            var views = Subject.GetMissingViews();
+
+            views.Select(v => (v.Id, v.VersionSlotId)).Should().BeEquivalentTo(new[] { (7, 6), (8, 8) });
+            views.Should().OnlyContain(v => v.MovieFileId == 0 && v.QualityProfile == _profile);
+        }
+
+        [Test]
+        public void should_list_versions_whose_file_is_below_the_profile_cutoff_as_cutoff_unmet()
+        {
+            _profile.UpgradeAllowed = true;
+            _profile.Cutoff = Quality.HDTV720p.Id;
+            _profile.Items = NzbDrone.Core.Test.Qualities.QualityFixture.GetDefaultQualities(Quality.SDTV, Quality.HDTV720p, Quality.Bluray2160p);
+
+            GivenSlots(_slot, new VersionSlot { Id = 6, MovieId = 8, Label = "HD", QualityProfileId = 9, Monitored = true });
+            GivenMovies(_movie, new Movie { Id = 8, Monitored = true, MovieMetadata = new MovieMetadata { Title = "Other" } });
+            Mocker.GetMock<IMovieFileService>().Setup(s => s.GetFilesByMovies(It.IsAny<IEnumerable<int>>()))
+                  .Returns(new List<MovieFile>
+                           {
+                               new MovieFile { Id = 4, MovieId = 7, VersionSlotId = 5, Quality = new QualityModel(Quality.SDTV) },
+                               new MovieFile { Id = 5, MovieId = 8, VersionSlotId = 6, Quality = new QualityModel(Quality.Bluray2160p) }
+                           });
+
+            // Movie 7's version holds SDTV, below the 720p cutoff; movie 8's holds 2160p.
+            Subject.GetCutoffUnmetViews().Select(v => (v.Id, v.VersionSlotId)).Should().BeEquivalentTo(new[] { (7, 5) });
+        }
+
         [Test]
         public void should_name_a_file_of_a_version_with_its_label_when_the_format_has_no_version_token()
         {

@@ -58,12 +58,17 @@ namespace NzbDrone.Core.IndexerSearch
         {
             var movies = _movieService.MoviesWithoutFiles(AllMonitored()).Records.ToList();
 
+            // The versions of movies that have no file yet are wanted too.
+            movies.AddRange(_versionSlotService.GetMissingViews().Where(m => m.IsAvailable()));
+
             SearchForBulkMovies(NotInQueue(movies), message.Trigger == CommandTrigger.Manual).GetAwaiter().GetResult();
         }
 
         public void Execute(CutoffUnmetMoviesSearchCommand message)
         {
             var movies = _movieCutoffService.MoviesWhereCutoffUnmet(AllMonitored()).Records.ToList();
+
+            movies.AddRange(_versionSlotService.GetCutoffUnmetViews().Where(m => m.IsAvailable()));
 
             SearchForBulkMovies(NotInQueue(movies), message.Trigger == CommandTrigger.Manual).GetAwaiter().GetResult();
         }
