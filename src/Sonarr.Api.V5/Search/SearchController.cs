@@ -8,6 +8,7 @@ using NzbDrone.Core.Download;
 using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.IndexerSearch;
 using NzbDrone.Core.Languages;
+using NzbDrone.Core.Movies.Versions;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
 using Sonarr.Api.V5.Release;
@@ -41,22 +42,31 @@ public class SearchGrabResource
     public required string Guid { get; set; }
     public required int IndexerId { get; set; }
     public int? DownloadClientId { get; set; }
+
+    // For a movie release: the version of the movie it is for (0 or left out is the movie itself), or a new version to
+    // make for it (a label and a quality profile).
+    public int VersionSlotId { get; set; }
+    public string? NewVersionLabel { get; set; }
+    public int NewVersionQualityProfileId { get; set; }
 }
 
 [V5ApiController("search")]
 public class SearchController : Controller
 {
     private readonly ISearchForFreeText _searchService;
+    private readonly IVersionSlotService _versionSlotService;
     private readonly IDownloadService _downloadService;
     private readonly Logger _logger;
     private readonly ICached<RemoteMedia> _remoteCache;
 
     public SearchController(ISearchForFreeText searchService,
+                            IVersionSlotService versionSlotService,
                             IDownloadService downloadService,
                             ICacheManager cacheManager,
                             Logger logger)
     {
         _searchService = searchService;
+        _versionSlotService = versionSlotService;
         _downloadService = downloadService;
         _logger = logger;
         _remoteCache = cacheManager.GetCache<RemoteMedia>(GetType(), "remotes");
@@ -122,6 +132,28 @@ public class SearchController : Controller
             throw new NzbDroneClientException(HttpStatusCode.NotFound, "This release doesn't match a series or movie in the library, add it first");
         }
 
+        // "Download another version": the release is for one of the movie's versions, which may be made now.
+        NzbDrone.Core.Movies.Movie? movieOriginal = null;
+
+        if (remote is RemoteMovie remoteMovie && (release.VersionSlotId != 0 || !string.IsNullOrWhiteSpace(release.NewVersionLabel)))
+        {
+            var slotId = release.VersionSlotId;
+
+            if (slotId == 0)
+            {
+                slotId = _versionSlotService.Add(new VersionSlot
+                {
+                    MovieId = remoteMovie.Movie.Id,
+                    Label = release.NewVersionLabel,
+                    QualityProfileId = release.NewVersionQualityProfileId,
+                    Monitored = true
+                }).Id;
+            }
+
+            movieOriginal = remoteMovie.Movie;
+            remoteMovie.Movie = _versionSlotService.GetView(remoteMovie.Movie, slotId);
+        }
+
         try
         {
             await _downloadService.DownloadReport(remote, release.DownloadClientId);
@@ -130,6 +162,14 @@ public class SearchController : Controller
         {
             _logger.Error(ex, ex.Message);
             throw new NzbDroneClientException(HttpStatusCode.Conflict, $"Getting release from indexer failed: {ex.Message}");
+        }
+        finally
+        {
+            // The cached release stays the movie's own, so it can still be grabbed for another version.
+            if (movieOriginal != null && remote is RemoteMovie grabbed)
+            {
+                grabbed.Movie = movieOriginal;
+            }
         }
 
         return TypedResults.Ok(release);

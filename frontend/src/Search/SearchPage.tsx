@@ -10,16 +10,23 @@ import PageContentBody from 'Components/Page/PageContentBody';
 import PageHeading from 'Components/Page/PageHeading';
 import { icons, kinds } from 'Helpers/Props';
 import styles from 'Movie/Movie.module.css';
+import { useVersionSlots } from 'Movie/useVersionSlots';
+import { useQualityProfilesData } from 'Settings/Profiles/Quality/useQualityProfiles';
 import { InputChanged } from 'typings/inputs';
 import formatBytes from 'Utilities/Number/formatBytes';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
-import { SearchResult, useGrabSearchResult, useSearch } from './useSearch';
+import {
+  GrabPayload,
+  SearchResult,
+  useGrabSearchResult,
+  useSearch,
+} from './useSearch';
 
 interface ResultRowProps {
   item: SearchResult;
   isGrabbing: boolean;
-  onGrab: (payload: { guid: string; indexerId: number }) => void;
+  onGrab: (payload: GrabPayload) => void;
 }
 
 type SortKey =
@@ -108,12 +115,118 @@ function getMatchLink(item: SearchResult) {
   return `/movie/${item.mappedMovieId}`;
 }
 
+const NEW_VERSION = -1;
+
+interface VersionPickerProps {
+  movieId: number;
+  value: number;
+  onChange: (value: number) => void;
+  label: string;
+  onLabelChange: (label: string) => void;
+  profileId: number;
+  onProfileChange: (profileId: number) => void;
+}
+
+// "Download another version": which version of the movie a release is for, or a new one.
+function VersionPicker({
+  movieId,
+  value,
+  onChange,
+  label,
+  onLabelChange,
+  profileId,
+  onProfileChange,
+}: VersionPickerProps) {
+  const { data: slots } = useVersionSlots(movieId);
+  const profiles = useQualityProfilesData();
+
+  const handleChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      onChange(Number(event.target.value));
+    },
+    [onChange]
+  );
+
+  const handleLabelChange = useCallback(
+    ({ value: text }: InputChanged<string>) => {
+      onLabelChange(text);
+    },
+    [onLabelChange]
+  );
+
+  const handleProfileChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      onProfileChange(Number(event.target.value));
+    },
+    [onProfileChange]
+  );
+
+  return (
+    <div>
+      <select
+        className={styles.select}
+        aria-label={translate('Version')}
+        value={value}
+        onChange={handleChange}
+      >
+        {slots.map((slot) => (
+          <option key={slot.id ?? 0} value={slot.id ?? 0}>
+            {slot.isDefault ? translate('DefaultVersion') : slot.label}
+          </option>
+        ))}
+        <option value={NEW_VERSION}>{translate('NewVersion')}</option>
+      </select>
+
+      {value === NEW_VERSION ? (
+        <>
+          <TextInput
+            name="newVersionLabel"
+            value={label}
+            placeholder={translate('VersionLabelPlaceholder')}
+            onChange={handleLabelChange}
+          />
+
+          <select
+            className={styles.select}
+            aria-label={translate('QualityProfile')}
+            value={profileId || profiles[0]?.id || 0}
+            onChange={handleProfileChange}
+          >
+            {profiles.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 function ResultRow({ item, isGrabbing, onGrab }: ResultRowProps) {
   const { release, decision } = item;
+  const profiles = useQualityProfilesData();
+  const [version, setVersion] = useState(0);
+  const [newLabel, setNewLabel] = useState('');
+  const [newProfileId, setNewProfileId] = useState(0);
+  const movieId = item.mediaType === 'movie' ? item.mappedMovieId ?? 0 : 0;
 
   const handleGrabPress = useCallback(() => {
-    onGrab({ guid: release.guid, indexerId: release.indexerId });
-  }, [release, onGrab]);
+    const payload: GrabPayload = {
+      guid: release.guid,
+      indexerId: release.indexerId,
+    };
+
+    if (version === NEW_VERSION) {
+      payload.newVersionLabel = newLabel;
+      payload.newVersionQualityProfileId = newProfileId || profiles[0]?.id || 0;
+    } else if (version !== 0) {
+      payload.versionSlotId = version;
+    }
+
+    onGrab(payload);
+  }, [release, onGrab, version, newLabel, newProfileId, profiles]);
 
   return (
     <tr>
@@ -138,7 +251,20 @@ function ResultRow({ item, isGrabbing, onGrab }: ResultRowProps) {
             ) : null}
           </>
         ) : (
-          <Link to={getMatchLink(item)}>{item.mappedTitle}</Link>
+          <>
+            <Link to={getMatchLink(item)}>{item.mappedTitle}</Link>
+            {movieId ? (
+              <VersionPicker
+                movieId={movieId}
+                value={version}
+                label={newLabel}
+                profileId={newProfileId}
+                onChange={setVersion}
+                onLabelChange={setNewLabel}
+                onProfileChange={setNewProfileId}
+              />
+            ) : null}
+          </>
         )}
       </td>
       <td>{release.indexer}</td>
@@ -149,7 +275,11 @@ function ResultRow({ item, isGrabbing, onGrab }: ResultRowProps) {
       <td>
         <Button
           kind={decision.approved ? kinds.SUCCESS : kinds.WARNING}
-          isDisabled={isGrabbing || !item.downloadAllowed}
+          isDisabled={
+            isGrabbing ||
+            !item.downloadAllowed ||
+            (version === NEW_VERSION && !newLabel.trim())
+          }
           onPress={handleGrabPress}
         >
           {translate('Grab')}

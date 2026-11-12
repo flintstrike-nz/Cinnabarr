@@ -50,18 +50,25 @@ export const useSearch = (term: string) => {
   return { ...result, data: result.data ?? NO_RESULTS };
 };
 
+export interface GrabPayload {
+  guid: string;
+  indexerId: number;
+  // For a movie release: one of the movie's versions, or a new one to make (a label and a quality profile).
+  versionSlotId?: number;
+  newVersionLabel?: string;
+  newVersionQualityProfileId?: number;
+}
+
 export const useGrabSearchResult = () => {
   const queryClient = useQueryClient();
 
-  const { isPending, error, mutate } = useApiMutation<
-    unknown,
-    { guid: string; indexerId: number }
-  >({
+  const { isPending, error, mutate } = useApiMutation<unknown, GrabPayload>({
     path: '/search/grab',
     method: 'POST',
     mutationOptions: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['/queue'] });
+        queryClient.invalidateQueries({ queryKey: ['/versionslot'] });
       },
     },
   });
