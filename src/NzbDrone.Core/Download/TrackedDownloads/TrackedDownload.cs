@@ -7,8 +7,8 @@ namespace NzbDrone.Core.Download.TrackedDownloads
     public class TrackedDownload
     {
         public const string IncompleteLinkMessage = "Some episodes this torrent is linked to are no longer in the library, so it won't be imported automatically. Use Manual Import to link it.";
-        public const string MissingFromEngineMessage = "Missing from engine: Embarr grabbed this torrent but it is no longer in the engine. Nothing has been deleted. Re-add it, or remove it from the queue to dismiss it.";
-        public const string UnlinkedMessage = "Unlinked: this torrent wasn't added by Embarr, so it won't be imported automatically. Use Manual Import to link it.";
+        public const string MissingFromEngineMessage = "Missing from engine: Cinnabarr grabbed this torrent but it is no longer in the engine. Nothing has been deleted. Re-add it, or remove it from the queue to dismiss it.";
+        public const string UnlinkedMessage = "Unlinked: this torrent wasn't added by Cinnabarr, so it won't be imported automatically. Use Manual Import to link it.";
 
         public int DownloadClient { get; set; }
         public DownloadClientItem DownloadItem { get; set; }

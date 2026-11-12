@@ -20,7 +20,7 @@ namespace NzbDrone.Core.Analytics
             _historyService = historyService;
         }
 
-        // Embarr sends no analytics or telemetry to upstream (Sonarr) services.
+        // Cinnabarr sends no analytics or telemetry to upstream (Sonarr) services.
         public bool IsEnabled => false;
 
         public bool InstallIsActive

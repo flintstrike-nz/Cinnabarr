@@ -14,7 +14,7 @@ namespace NzbDrone.Core.Download.Engine
     {
         string EngineFolder { get; }
 
-        // True for the built-in "Embarr Engine" download client.
+        // True for the built-in "Cinnabarr Engine" download client.
         bool IsEngineClient(int downloadClientId);
 
         // The id stored in <engine>/client.id, or 0 if there is none.

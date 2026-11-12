@@ -23,7 +23,7 @@ namespace NzbDrone.Core.Test.Download
                 {
                     DownloadId = "AAA",
                     Title = "Series.S01E01",
-                    DownloadClientInfo = new DownloadClientItemClientInfo { Id = 3, Name = "Embarr Engine" }
+                    DownloadClientInfo = new DownloadClientItemClientInfo { Id = 3, Name = "Cinnabarr Engine" }
                 }
             };
         }

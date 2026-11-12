@@ -13,7 +13,7 @@ namespace NzbDrone.Core.Download.Engine
 {
     public interface IEngineTorrentPreparationService
     {
-        // Applies the file whitelist to torrents Embarr grabbed that the engine is holding, then starts them
+        // Applies the file whitelist to torrents Cinnabarr grabbed that the engine is holding, then starts them
         // (roadmap §4.8). Torrents with no video file are rejected, blocklisted and searched for again.
         void Prepare(IDownloadClient downloadClient);
     }
@@ -107,7 +107,7 @@ namespace NzbDrone.Core.Download.Engine
                 .Where(h => h.EventType == EpisodeHistoryEventType.Grabbed)
                 .MaxBy(h => h.Date);
 
-            // Only torrents Embarr grabbed, or that were added by hand on the Downloads page, are held for it; anything
+            // Only torrents Cinnabarr grabbed, or that were added by hand on the Downloads page, are held for it; anything
             // else in the engine is left alone.
             if (grab == null)
             {
@@ -132,7 +132,7 @@ namespace NzbDrone.Core.Download.Engine
             var files = proxy.GetTorrentFiles(hash, settings);
             var link = _engineLinkService.Get(downloadId);
 
-            // Map the files to the library when Embarr has the torrent's link (written at grab time). Without it the
+            // Map the files to the library when Cinnabarr has the torrent's link (written at grab time). Without it the
             // torrent downloads to the engine's folder and is imported the old way.
             var map = link == null ? null : link.Files != null ? new EngineFileMap { SavePath = link.SavePath, Files = link.Files } : MapToLibrary(downloadId, grab, files);
 
@@ -218,7 +218,7 @@ namespace NzbDrone.Core.Download.Engine
                 {
                     _logger.Warn("'{0}' has no video file ({1}); rejecting it and searching again", torrent.Name, files.Select(f => f.Name).ConcatToString());
 
-                    _failedDownloadService.MarkMovieAsFailed(grab.Id, NoVideoMessage, "Embarr");
+                    _failedDownloadService.MarkMovieAsFailed(grab.Id, NoVideoMessage, "Cinnabarr");
                 }
 
                 proxy.RemoveTorrent(hash, true, settings);
@@ -304,7 +304,7 @@ namespace NzbDrone.Core.Download.Engine
             {
                 _logger.Warn("'{0}' has no video file for the grabbed episodes ({1}); rejecting it and searching again", torrent.Name, files.Select(f => f.Name).ConcatToString());
 
-                _failedDownloadService.MarkAsFailed(grab.Id, NoVideoMessage, "Embarr");
+                _failedDownloadService.MarkAsFailed(grab.Id, NoVideoMessage, "Cinnabarr");
             }
 
             // Nothing was downloaded: the torrent was held before any data.

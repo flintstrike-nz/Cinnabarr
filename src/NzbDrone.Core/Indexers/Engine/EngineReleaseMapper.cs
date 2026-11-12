@@ -7,7 +7,7 @@ using EngineTorrent = NzbDrone.Core.IndexerEngine.Parser.Model.TorrentInfo;
 
 namespace NzbDrone.Core.Indexers.Engine
 {
-    /// <summary>Turns releases found by the indexer engine into Embarr's own release model.</summary>
+    /// <summary>Turns releases found by the indexer engine into Cinnabarr's own release model.</summary>
     public static class EngineReleaseMapper
     {
         public static ReleaseInfo Map(EngineRelease source)

@@ -21,7 +21,7 @@ namespace NzbDrone.Common.Test.ReflectionTests
         }
 
         [Test]
-        public void should_prefer_embarrs_own_type_over_a_class_ported_from_prowlarr_with_the_same_name()
+        public void should_prefer_cinnabarrs_own_type_over_a_class_ported_from_prowlarr_with_the_same_name()
         {
             var assembly = Assembly.Load("Sonarr.Core");
 

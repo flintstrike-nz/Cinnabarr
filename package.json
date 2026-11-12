@@ -1,7 +1,7 @@
 {
-  "name": "embarr",
+  "name": "cinnabarr",
   "version": "4.0.0",
-  "description": "Embarr: one app for TV, movies, indexers and torrent downloads",
+  "description": "Cinnabarr: one app for TV, movies, indexers and torrent downloads",
   "type": "module",
   "scripts": {
     "build": "vite build",

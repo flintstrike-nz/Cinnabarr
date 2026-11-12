@@ -187,7 +187,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             _proxy.Verify(p => p.SetFilePriority(Hash, new[] { 1 }, 0, _settings), Times.Once());
             Mocker.GetMock<IDiskProvider>().Verify(s => s.DeleteFile(_pending), Times.Once());
             Mocker.GetMock<IDiskProvider>().Verify(s => s.DeleteFile(_subtitlePending), Times.Once());
-            Mocker.GetMock<IFailedDownloadService>().Verify(s => s.MarkMovieAsFailed(5, EngineFileImportService.RejectedMessage, "Embarr", false), Times.Once());
+            Mocker.GetMock<IFailedDownloadService>().Verify(s => s.MarkMovieAsFailed(5, EngineFileImportService.RejectedMessage, "Cinnabarr", false), Times.Once());
             _link.Files.Should().OnlyContain(f => f.State == EngineLinkFileState.Rejected);
 
             // Nothing was imported: the empty torrent is removed without its data.

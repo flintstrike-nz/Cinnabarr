@@ -1,6 +1,6 @@
 #### Description
 
-<!-- What does this change and why? Which roadmap phase/step does it belong to (docs/embarr/ROADMAP.md)? -->
+<!-- What does this change and why? Which roadmap phase/step does it belong to (docs/cinnabarr/ROADMAP.md)? -->
 
 #### Testing
 

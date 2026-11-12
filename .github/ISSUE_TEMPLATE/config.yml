@@ -1,5 +1,5 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Embarr roadmap
-    url: https://github.com/flintstrike-nz/EmbarrPre1/blob/develop/docs/embarr/ROADMAP.md
+  - name: Cinnabarr roadmap
+    url: https://github.com/flintstrike-nz/EmbarrPre1/blob/develop/docs/cinnabarr/ROADMAP.md
     about: Check the roadmap before suggesting a feature; it may already be planned for a later phase.

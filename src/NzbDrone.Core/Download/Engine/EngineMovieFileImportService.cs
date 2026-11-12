@@ -149,7 +149,7 @@ namespace NzbDrone.Core.Download.Engine
                         continue;
                     }
 
-                    // Only downloads Embarr is tracking: a download the user ignored is left alone.
+                    // Only downloads Cinnabarr is tracking: a download the user ignored is left alone.
                     var trackedDownload = _trackedDownloadService.Find(downloadId);
 
                     if (trackedDownload == null || trackedDownload.State == TrackedDownloadState.Ignored)
@@ -177,7 +177,7 @@ namespace NzbDrone.Core.Download.Engine
                 return;
             }
 
-            // Failures recorded since the latest grab. Those Embarr recorded for a rejected file don't stop the rest
+            // Failures recorded since the latest grab. Those Cinnabarr recorded for a rejected file don't stop the rest
             // of the torrent; any other failure (the engine reported an error, or someone marked it failed) does.
             var latestGrab = grabs.Max(g => g.Date);
             var failures = history.Where(h => h.EventType == MovieHistoryEventType.DownloadFailed && h.Date >= latestGrab).ToList();
@@ -634,7 +634,7 @@ namespace NzbDrone.Core.Download.Engine
             if (!failedSinceGrab.Value)
             {
                 failedSinceGrab.Value = true;
-                _failedDownloadService.MarkMovieAsFailed(grabs.MaxBy(g => g.Date).Id, EngineFileImportService.RejectedMessage, "Embarr");
+                _failedDownloadService.MarkMovieAsFailed(grabs.MaxBy(g => g.Date).Id, EngineFileImportService.RejectedMessage, "Cinnabarr");
             }
         }
 

@@ -125,7 +125,7 @@ public class CalendarFeedController : Controller
                     }
 
                     var occurrence = calendar.Create<CalendarEvent>();
-                    occurrence.Uid = $"Embarr_movie_{movie.Id}_{key}";
+                    occurrence.Uid = $"Cinnabarr_movie_{movie.Id}_{key}";
                     occurrence.Status = movie.HasFile ? EventStatus.Confirmed : EventStatus.Tentative;
                     occurrence.Description = metadata.Overview;
                     occurrence.Summary = $"{metadata.Title} ({metadata.Year}) - {label}";

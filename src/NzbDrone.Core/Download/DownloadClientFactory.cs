@@ -36,8 +36,8 @@ namespace NzbDrone.Core.Download
             _logger = logger;
         }
 
-        // Embarr downloads only with its built-in engine (roadmap §4.4). Any other client definition left in the
-        // database (such as the user's own qBittorrent) is never loaded, so Embarr never touches that client.
+        // Cinnabarr downloads only with its built-in engine (roadmap §4.4). Any other client definition left in the
+        // database (such as the user's own qBittorrent) is never loaded, so Cinnabarr never touches that client.
         protected override List<DownloadClientDefinition> Active()
         {
             return base.Active().Where(c => c.Enable && _engineClientRegistry.IsEngineClient(c.Id)).ToList();

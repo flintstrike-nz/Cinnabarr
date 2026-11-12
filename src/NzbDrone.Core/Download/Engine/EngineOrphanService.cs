@@ -50,7 +50,7 @@ namespace NzbDrone.Core.Download.Engine
         List<EngineOrphanFile> Approve(IEnumerable<string> paths, bool deleteAutomatically);
     }
 
-    // Only Embarr's own partial files are ever considered: the hidden pending files of a mapped torrent (with or
+    // Only Cinnabarr's own partial files are ever considered: the hidden pending files of a mapped torrent (with or
     // without the engine's ".!qB" suffix, §4.8) and libtorrent's ".parts" files. Each carries its torrent's id in its
     // name, so its owner is known. A file counts as an orphan only when no torrent in the engine (or download still in
     // the queue, such as one missing from the engine that can be re-added) has that id, it hasn't been written to for
@@ -111,7 +111,7 @@ namespace NzbDrone.Core.Download.Engine
 
         public int AwaitingReview => _awaitingReview;
 
-        // The torrent id in an Embarr partial file's name: the first 8 hex digits of the info-hash for a pending
+        // The torrent id in an Cinnabarr partial file's name: the first 8 hex digits of the info-hash for a pending
         // file, the whole info-hash for a part file. Null for any other file.
         public static string GetTorrentId(string fileName)
         {
@@ -266,7 +266,7 @@ namespace NzbDrone.Core.Download.Engine
             return DateTime.UtcNow.AddDays(-Math.Clamp(_configService.EngineOrphanGraceDays, 1, MaxGraceDays));
         }
 
-        // True for an Embarr partial file whose torrent id none of the owners has. A pending file's id is a prefix of
+        // True for an Cinnabarr partial file whose torrent id none of the owners has. A pending file's id is a prefix of
         // its torrent's hash; a part file's name has the hash libtorrent prefers, which for a v2-only torrent is longer
         // than the engine's (truncated) id. A part file named by a v2 hash is kept while an unfinished download's v2
         // hash isn't known: it may be that download's.
@@ -352,7 +352,7 @@ namespace NzbDrone.Core.Download.Engine
             public bool UnknownV2Hash { get; set; }
         }
 
-        // A staged file sits in .embarr-staging/{torrent}/{file}/: those folders go once they are empty, never the
+        // A staged file sits in .cinnabarr-staging/{torrent}/{file}/: those folders go once they are empty, never the
         // staging folder itself.
         private void RemoveEmptyStagingFolders(string path)
         {

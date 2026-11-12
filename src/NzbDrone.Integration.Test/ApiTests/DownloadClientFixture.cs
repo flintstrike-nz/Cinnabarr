@@ -4,7 +4,7 @@ using NUnit.Framework;
 
 namespace NzbDrone.Integration.Test.ApiTests
 {
-    // Embarr downloads only with its built-in engine (roadmap §4.4): download clients can be listed and edited, but not
+    // Cinnabarr downloads only with its built-in engine (roadmap §4.4): download clients can be listed and edited, but not
     // added.
     [TestFixture]
     public class DownloadClientFixture : IntegrationTest

@@ -24,7 +24,7 @@ namespace NzbDrone.Core.IndexerEngine.Indexers
         public bool Redirect { get; set; }
         public int DownloadClientId { get; set; }
         public DateTime Added { get; set; }
-        // EMBARR: Prowlarr's app-sync profile (AppProfileId, AppProfile) is not ported: Embarr has no app sync.
+        // CINNABARR: Prowlarr's app-sync profile (AppProfileId, AppProfile) is not ported: Cinnabarr has no app sync.
 
         public List<SettingsField> ExtraFields { get; set; } = new();
     }

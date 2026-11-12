@@ -41,7 +41,7 @@ namespace NzbDrone.Core.Download.Engine
     }
 
     // Writes the link-intent sidecar for every grab sent to the built-in engine, and uses it
-    // to restore links that Embarr's database has lost (roadmap §4.4 rule 5).
+    // to restore links that Cinnabarr's database has lost (roadmap §4.4 rule 5).
     public class EngineLinkService : IEngineLinkService, IHandle<EpisodeGrabbedEvent>, IHandle<MovieGrabbedEvent>
     {
         public const string SeriesMediaType = "series";
@@ -82,7 +82,7 @@ namespace NzbDrone.Core.Download.Engine
             _logger = logger;
         }
 
-        private string LinkFolder => Path.Combine(_engineClientRegistry.EngineFolder, "embarr");
+        private string LinkFolder => Path.Combine(_engineClientRegistry.EngineFolder, "cinnabarr");
 
         public static bool IsInfoHash(string downloadId)
         {
@@ -303,7 +303,7 @@ namespace NzbDrone.Core.Download.Engine
             catch (Exception ex)
             {
                 // The grab itself has succeeded; without a sidecar the torrent is still linked
-                // through Embarr's database, it just can't be recovered from the engine alone.
+                // through Cinnabarr's database, it just can't be recovered from the engine alone.
                 _logger.Warn(ex, "Unable to write the engine link for '{0}'", link.SourceTitle);
             }
         }

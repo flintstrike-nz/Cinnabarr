@@ -159,7 +159,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
 
             Subject.Prepare(GivenClient());
 
-            Mocker.GetMock<IFailedDownloadService>().Verify(f => f.MarkMovieAsFailed(31, It.IsAny<string>(), "Embarr", false), Times.Once());
+            Mocker.GetMock<IFailedDownloadService>().Verify(f => f.MarkMovieAsFailed(31, It.IsAny<string>(), "Cinnabarr", false), Times.Once());
             _proxy.Verify(p => p.RemoveTorrent(Hash, true, _settings), Times.Once());
             _proxy.Verify(p => p.StartTorrent(It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
             ExceptionVerification.ExpectedWarns(1);
@@ -178,7 +178,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
 
             Subject.Prepare(GivenClient());
 
-            Mocker.GetMock<IFailedDownloadService>().Verify(f => f.MarkMovieAsFailed(31, It.IsAny<string>(), "Embarr", false), Times.Once());
+            Mocker.GetMock<IFailedDownloadService>().Verify(f => f.MarkMovieAsFailed(31, It.IsAny<string>(), "Cinnabarr", false), Times.Once());
             _proxy.Verify(p => p.RemoveTorrent(Hash, true, _settings), Times.Once());
             _proxy.Verify(p => p.StartTorrent(It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
             ExceptionVerification.ExpectedWarns(1);
@@ -320,7 +320,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             Subject.Prepare(GivenClient());
 
             Mocker.GetMock<IFailedDownloadService>()
-                .Verify(s => s.MarkAsFailed(12, EngineTorrentPreparationService.NoVideoMessage, "Embarr", false), Times.Once());
+                .Verify(s => s.MarkAsFailed(12, EngineTorrentPreparationService.NoVideoMessage, "Cinnabarr", false), Times.Once());
             _proxy.Verify(p => p.StartTorrent(It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
 
             ExceptionVerification.ExpectedWarns(1);
@@ -349,17 +349,17 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             Subject.Prepare(GivenClient());
 
             Mocker.GetMock<IFailedDownloadService>()
-                .Verify(s => s.MarkAsFailed(12, EngineTorrentPreparationService.NoVideoMessage, "Embarr", false), Times.Once());
+                .Verify(s => s.MarkAsFailed(12, EngineTorrentPreparationService.NoVideoMessage, "Cinnabarr", false), Times.Once());
             _proxy.Verify(p => p.RemoveTorrent(Hash, true, _settings), Times.Once());
             _proxy.Verify(p => p.StartTorrent(It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Never());
 
             ExceptionVerification.ExpectedWarns(1);
         }
 
-        [TestCase("metaDL", true, "embarr-held")]
-        [TestCase("stoppedDL", false, "embarr-held")]
-        [TestCase("downloading", true, "embarr-held")]
-        [TestCase("stoppedDL", true, "embarr-held,embarr-prepared")]
+        [TestCase("metaDL", true, "cinnabarr-held")]
+        [TestCase("stoppedDL", false, "cinnabarr-held")]
+        [TestCase("downloading", true, "cinnabarr-held")]
+        [TestCase("stoppedDL", true, "cinnabarr-held,cinnabarr-prepared")]
         [TestCase("stoppedDL", true, "")]
         [TestCase("stoppedUP", true, "other")]
         public void should_leave_torrents_that_are_not_held_for_preparation(string state, bool hasMetadata, string tags)
@@ -375,7 +375,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
-        public void should_leave_torrents_embarr_did_not_grab()
+        public void should_leave_torrents_cinnabarr_did_not_grab()
         {
             Mocker.GetMock<IHistoryService>()
                 .Setup(s => s.FindByDownloadId(Hash.ToUpperInvariant()))

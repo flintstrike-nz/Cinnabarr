@@ -5,8 +5,8 @@ using NzbDrone.Core.ThingiProvider.Status;
 
 namespace NzbDrone.Core.IndexerEngine.Indexers
 {
-    // EMBARR: only Prowlarr's interface is kept. The implementation is Embarr's EngineIndexerStatusService, which
-    // records into Embarr's own indexer status (roadmap Phase 3, step 3b).
+    // CINNABARR: only Prowlarr's interface is kept. The implementation is Cinnabarr's EngineIndexerStatusService, which
+    // records into Cinnabarr's own indexer status (roadmap Phase 3, step 3b).
     public interface IIndexerStatusService : IProviderStatusServiceBase<IndexerStatus>
     {
         ReleaseInfo GetLastRssSyncReleaseInfo(int indexerId);

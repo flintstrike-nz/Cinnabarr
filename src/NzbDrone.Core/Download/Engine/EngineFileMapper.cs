@@ -53,7 +53,7 @@ namespace NzbDrone.Core.Download.Engine
         public const int PendingOverheadBytes = 1 + 9 + 8 + 4;
         public const int MaxFileNameBytes = 255;
         public const int MaxSuffixBytes = 64;
-        public const string StagingFolderName = ".embarr-staging";
+        public const string StagingFolderName = ".cinnabarr-staging";
         private const string StandIn = "x.";
 
         // Sonarr's subtitle tags (LanguageParser).
@@ -257,7 +257,7 @@ namespace NzbDrone.Core.Download.Engine
         {
             var savePath = GetCommonFolder(mappedVideos.Select(v => Path.GetDirectoryName(v.FinalPath)).ToList());
 
-            // With staging (roadmap §4.8), files download into <root>/.embarr-staging/<torrent>/ and the torrent saves
+            // With staging (roadmap §4.8), files download into <root>/.cinnabarr-staging/<torrent>/ and the torrent saves
             // into the root folder, so moving a finished file to its final path is a rename on the same drive.
             string stagingFolder = null;
             var root = _configService.EngineUseStagingFolder ? GetStagingRoot(mediaPath, savePath, mappedVideos.Select(v => Path.GetDirectoryName(v.FinalPath)).Distinct().ToList()) : null;

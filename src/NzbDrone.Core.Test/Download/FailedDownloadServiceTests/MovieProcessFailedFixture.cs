@@ -86,9 +86,9 @@ namespace NzbDrone.Core.Test.Download.FailedDownloadServiceTests
         [Test]
         public void should_publish_a_movie_failure_when_a_tracked_movie_download_is_marked_failed()
         {
-            Subject.MarkAsFailed(_trackedDownload, "Rejected", "Embarr");
+            Subject.MarkAsFailed(_trackedDownload, "Rejected", "Cinnabarr");
 
-            Mocker.GetMock<IEventAggregator>().Verify(e => e.PublishEvent(It.Is<MovieDownloadFailedEvent>(f => f.MovieId == 8 && f.Message == "Rejected" && f.Source == "Embarr")), Times.Once());
+            Mocker.GetMock<IEventAggregator>().Verify(e => e.PublishEvent(It.Is<MovieDownloadFailedEvent>(f => f.MovieId == 8 && f.Message == "Rejected" && f.Source == "Cinnabarr")), Times.Once());
         }
 
         [Test]

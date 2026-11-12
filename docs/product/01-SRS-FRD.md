@@ -6,7 +6,7 @@
 | Date | 2026-11-06 |
 | Baseline | `origin/develop` at `8507a4c` (merged PRs #2 to #79) |
 | Status | Draft for owner review. Not yet agreed. |
-| Source of truth | `docs/embarr/ROADMAP.md`, `AGENTS.md`, Addenda A to C |
+| Source of truth | `docs/cinnabarr/ROADMAP.md`, `AGENTS.md`, Addenda A to C |
 | Companion documents | [PRD](03-PRD.md), [RTM](02-RTM.md), [Product backlog](04-product-backlog.md) |
 
 ## 1. Introduction
@@ -27,7 +27,7 @@ Terms are in section 5.
 
 ### 1.4 References
 
-- `docs/embarr/ROADMAP.md` at the baseline, all sections including build notes for Phases 2, 3 and 4.
+- `docs/cinnabarr/ROADMAP.md` at the baseline, all sections including build notes for Phases 2, 3 and 4.
 - `AGENTS.md` (working rules and checks).
 - Addendum A (Jellyfin and webOS), Addendum B (Vercel relay) and Addendum C (web sources and yt-dlp).
 - Merged pull requests on `develop`, #2 to #79, read from titles and merge history.
@@ -123,7 +123,7 @@ Each table lists one group of functional requirements. A requirement shows its s
 | ENG-14 | Engine-aware upgrades | An upgrade shall replace the old file only after the new one passes its checks. The old file goes to the recycle bin. | M | 2 | Done |
 | ENG-15 | Movies download direct to the final place | Movie torrents shall use the direct-to-final flow with movie names, and import file by file. | M | 4 | Open |
 | ENG-16 | Engine binaries built in CI | CI shall build cinnabarr-engine as a static binary for linux-x64, linux-arm64, win-x64 and macOS (x64 and arm64). | M | 7 | Open |
-| ENG-17 | Engine binary name | The engine binary shall be named cinnabarr-engine, not embarr-engine. | M | 1e | Open |
+| ENG-17 | Engine binary name | The engine binary shall be named cinnabarr-engine, not cinnabarr-engine. | M | 1e | Open |
 | ENG-18 | Engine pushes changes | The engine shall push changes to Cinnabarr instead of Cinnabarr polling it. | C | Later | Open |
 
 #### 3.1.3 Files, checks and import
@@ -246,7 +246,7 @@ Each table lists one group of functional requirements. A requirement shows its s
 
 | ID | Requirement | Statement | Priority | Phase | Status |
 | --- | --- | --- | --- | --- | --- |
-| BRD-01 | Phase 1 rename to Embarr | Product name, logos and user-visible strings shall read Embarr. | M | 1 | Partial |
+| BRD-01 | Phase 1 rename to Cinnabarr | Product name, logos and user-visible strings shall read Cinnabarr. | M | 1 | Partial |
 | BRD-02 | Phase 1e rename to Cinnabarr | The product, UI, logos, theme and metadata shall read Cinnabarr, using the owner's theme and icons. | M | 1e | Open |
 | BRD-03 | Name clearance | The name shall be checked against trademark registers, app stores, GitHub and domain availability before any public release. | M | pre-release | Open |
 | BRD-04 | Upstream namespaces kept | NzbDrone.* namespaces and project names shall stay until the roadmap says otherwise, so upstream fixes can be cherry-picked. | M | 1–4 | Ongoing |
@@ -333,7 +333,7 @@ The review found ten places where the roadmap, the built code and the notes disa
 | --- | --- | --- | --- |
 | D-01 | API path | §4.6 names /api/v1. Built features use /api/v5 (for example /api/v5/engine and /api/v5/moviefile). | BL-081 |
 | D-02 | Migration chain | §4.5 says to start a fresh chain at migration 1. Built work adds migration 242 to Sonarr's chain (3b-1). | BL-080 |
-| D-03 | Engine binary name | §5 and §4.7 say cinnabarr-engine. Commit #9 is titled 'supervise embarr-engine', and the code name is not confirmed. | BL-005 |
+| D-03 | Engine binary name | §5 and §4.7 say cinnabarr-engine. Commit #9 is titled 'supervise cinnabarr-engine', and the code name is not confirmed. | BL-005 |
 | D-04 | Interim movie metadata | Movies use the Radarr project's metadata service (api.radarr.video) until 4i. §8 says not to ship publicly on a third party's service. | BL-015 |
 | D-05 | Series metadata still Sonarr's | Series data still comes from Sonarr's Skyhook service (§8 TV metadata). | BL-014 |
 | D-06 | Verification gap | Several steps were checked with lint and build only, not in a browser (notes 4g-5, 4h-4). | BL-084 |
@@ -353,7 +353,7 @@ The owner decisions below block the most work, and should be settled first:
 
 | Term | Meaning |
 | --- | --- |
-| Cinnabarr | The product (working name Embarr until Phase 1e). |
+| Cinnabarr | The product (working name Embarr until the rename). |
 | Engine | The headless qBittorrent-based torrent process, `cinnabarr-engine`. |
 | Info-hash | A torrent's identity. The only key for matching engine torrents (ENG-04). |
 | Sidecar | A small file per torrent in the engine profile that records what the grab was for (ENG-08). |

@@ -33,7 +33,7 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
         [SetUp]
         public void SetUp()
         {
-            _client = new DownloadClientDefinition { Id = 1, Name = "Embarr Engine", Protocol = DownloadProtocol.Torrent };
+            _client = new DownloadClientDefinition { Id = 1, Name = "Cinnabarr Engine", Protocol = DownloadProtocol.Torrent };
             _movie = new Movie { Id = 8, MovieMetadata = new MovieMetadata { TmdbId = 603, Title = "The Matrix", Year = 1999 } };
 
             Mocker.GetMock<IEngineClientRegistry>().Setup(s => s.IsEngineClient(1)).Returns(true);

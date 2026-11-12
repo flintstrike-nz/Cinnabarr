@@ -28,7 +28,7 @@ function AddIndexerModalContent({
 
   const [filter, setFilter] = useState('');
 
-  // Embarr only handles torrents.
+  // Cinnabarr only handles torrents.
   const torrentIndexers = useMemo(() => {
     const text = filter.trim().toLowerCase();
 

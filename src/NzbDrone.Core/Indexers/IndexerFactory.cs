@@ -55,7 +55,7 @@ namespace NzbDrone.Core.Indexers
             return All().Where(c => !HasImplementation(c)).ToList();
         }
 
-        // Saved indexers whose implementation Embarr no longer has (for example Usenet ones) are kept,
+        // Saved indexers whose implementation Cinnabarr no longer has (for example Usenet ones) are kept,
         // switched off and flagged in Health instead of being deleted.
         protected override void RemoveMissingImplementations()
         {

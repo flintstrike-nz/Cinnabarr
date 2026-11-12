@@ -79,7 +79,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             var pending = GivenFile("Show/Season 01/.Show - S01E01.mkv.abcdef01.pending");
             var incomplete = GivenFile("Show/Season 01/.Show - S01E02.mkv.abcdef01.pending.!qB");
             var parts = GivenFile($"Show/Season 01/.{Gone}.parts");
-            var staged = GivenFile(".embarr-staging/abcdef01/0/.Show - S01E03.mkv.abcdef01.pending.!qB");
+            var staged = GivenFile(".cinnabarr-staging/abcdef01/0/.Show - S01E03.mkv.abcdef01.pending.!qB");
 
             Subject.Scan().Select(o => o.Path).Should().BeEquivalentTo(new[] { pending, incomplete, parts, staged });
         }
@@ -243,7 +243,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         [Test]
         public void should_delete_only_approved_files_that_are_still_orphans()
         {
-            var approved = GivenFile(".embarr-staging/abcdef01/0/.Show - S01E01.mkv.abcdef01.pending.!qB");
+            var approved = GivenFile(".cinnabarr-staging/abcdef01/0/.Show - S01E01.mkv.abcdef01.pending.!qB");
             var notApproved = GivenFile("Show/.Show - S01E02.mkv.abcdef01.pending");
             var nowOwned = GivenFile("Show/.Show - S01E03.mkv.12345678.pending");
             Mocker.GetMock<IDiskProvider>().Setup(s => s.TryDeleteEmptyFolder(It.IsAny<string>())).Returns(true);
@@ -258,7 +258,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             Subject.AwaitingReview.Should().Be(1);
 
             // The torrent's and the file's staging folders go; the staging folder itself stays.
-            var staging = Path.Combine(_root, ".embarr-staging");
+            var staging = Path.Combine(_root, ".cinnabarr-staging");
             Mocker.GetMock<IDiskProvider>().Verify(s => s.TryDeleteEmptyFolder(Path.Combine(staging, "abcdef01", "0")), Times.Once());
             Mocker.GetMock<IDiskProvider>().Verify(s => s.TryDeleteEmptyFolder(Path.Combine(staging, "abcdef01")), Times.Once());
             Mocker.GetMock<IDiskProvider>().Verify(s => s.TryDeleteEmptyFolder(staging), Times.Never());

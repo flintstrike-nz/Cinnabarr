@@ -42,7 +42,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             Mocker.SetConstant<IEngineClientRegistry>(Mocker.Resolve<EngineClientRegistry>());
 
             Mocker.GetMock<IDiskProvider>()
-                .Setup(s => s.FileExists(It.Is<string>(p => Path.GetFileNameWithoutExtension(p) == "embarr-engine")))
+                .Setup(s => s.FileExists(It.Is<string>(p => Path.GetFileNameWithoutExtension(p) == "cinnabarr-engine")))
                 .Returns(true);
 
             Mocker.GetMock<IDownloadClientFactory>()

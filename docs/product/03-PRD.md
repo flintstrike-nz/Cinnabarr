@@ -64,7 +64,7 @@ The phases follow ROADMAP §7. The status column is the baseline from the [RTM](
 | Phase | Scope | Status at baseline | Exit criteria (roadmap) |
 | --- | --- | --- | --- |
 | 1: Rebrand and shell | Names, navigation, analytics off, CI | 1a to 1d done. Header and sidebar still say Sonarr. | Working TV-only shell; nothing in the UI says Sonarr |
-| 1e: Rebrand to Cinnabarr | User-visible rename with the owner's theme and icons | Waiting on theme and icons | Nothing in the UI says Embarr or Sonarr, except legacy handling |
+| 1e: Rebrand to Cinnabarr | User-visible rename with the owner's theme and icons | Waiting on theme and icons | Nothing in the UI says Cinnabarr or Sonarr, except legacy handling |
 | 2: Built-in engine | Engine, reconcile, direct-to-final, seeding, orphan clean-up, Downloads page | Done | Grab, download into the library and seed, with no external client |
 | 3: Indexer engine | Prowlarr's engine, definitions, proxies, stats, add from definitions | Mostly done. 3c on hold. | Any Prowlarr torrent indexer usable for RSS, automatic and manual search |
 | 4: Movies and merged library | Movies, shared profiles, one Library, Calendar and Wanted | Largely done. 4e-4, 4f and 4i open. | Movies and series side by side, one queue, one history, no Sonarr or Radarr services |
@@ -126,7 +126,7 @@ Settle these first, because they block the most backlog items.
 2. **API path** (BL-081). `/api/v1` as the roadmap says, or `/api/v5` as the code uses?
 3. **Metadata keys** (BL-094, BL-095). Obtain the TVDB and TMDb keys?
 4. **Ownership marker timing** (BL-096). Ship it before Phase 7, as the roadmap's ownership rule implies?
-5. **Repository and folder rename** (BL-004). Rename `EmbarrPre1` and `docs/embarr/` during Phase 1e, or later?
+5. **Repository and folder rename** (BL-004). Rename `EmbarrPre1` and `docs/cinnabarr/` during Phase 1e, or later?
 6. **Race winner rule** (BL-093, §9 decision 5) and **maximum version slots** (BL-058, §9 decision 6).
 7. **Addendum C first step** (BL-120). The owner re-runs NHKollector against the live NHK site to test whether yt-dlp can list the shows.
 8. **Private definitions repository** (BL-121). Create `cinnabarr-definitions` as a private repo.

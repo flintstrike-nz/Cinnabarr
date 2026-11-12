@@ -60,7 +60,7 @@ Evidence cites merged pull request numbers on `develop`, or the build note, or t
 | ENG-14 | Engine-aware upgrades | §4.8 Name taken | 2 | M | Done | #17 | Unit tests | G3 | none (see notes) |
 | ENG-15 | Movies download direct to the final place | §7 Phase 4 (4e-4) | 4 | M | Open | Planned in 4e-4; not built | Integration test | G3 | BL-010 |
 | ENG-16 | Engine binaries built in CI | §5 CI builds; §7 Phase 7 | 7 | M | Open | Moved to Phase 7 (Phase 2 status) | Build pipeline run | G7 | BL-075 |
-| ENG-17 | Engine binary name | §5; §4.7 | 1e | M | Open | #9 commit title still says embarr-engine | Code search and build check | G7 | BL-005 |
+| ENG-17 | Engine binary name | §5; §4.7 | 1e | M | Open | #9 commit title still says cinnabarr-engine | Code search and build check | G7 | BL-005 |
 | ENG-18 | Engine pushes changes | §5; §9 decision 4 | Later | C | Open | Polling in place | Latency test | G1 | BL-046 |
 | FIL-01 | File whitelist | §4.8 File whitelist | 2 | M | Done | #15 | Unit tests, including movie.mkv.exe | G3 | none (see notes) |
 | FIL-02 | Pre-download checks | §4.8 Checks | 2 | M | Partial | Not confirmed in build notes | Unit tests | G3 | BL-043 |
@@ -128,7 +128,7 @@ Evidence cites merged pull request numbers on `develop`, or the build note, or t
 | SET-02 | Default version slots and race defaults | §6.3; §4.9 | 5 | S | Open | Not started | Manual browser check | G4 | BL-057 |
 | SET-03 | Engine legal notice at first run | §5; §8 | 2 | M | Open | Not confirmed | Manual browser check | G7 | BL-047 |
 | SET-04 | Downloads settings | §6.3 | 2 | S | Partial | Speed and alternative speed #26; others not confirmed | Manual browser check | G1 | BL-048 |
-| BRD-01 | Phase 1 rename to Embarr | §7 Phase 1 | 1 | M | Partial | #4 (1c); header and sidebar still say Sonarr (review of #10) | Manual browser check | G7 | BL-001 |
+| BRD-01 | Phase 1 rename to Cinnabarr | §7 Phase 1 | 1 | M | Partial | #4 (1c); header and sidebar still say Sonarr (review of #10) | Manual browser check | G7 | BL-001 |
 | BRD-02 | Phase 1e rename to Cinnabarr | §7 Phase 1e; owner request | 1e | M | Open | Waiting on the owner's theme and icons | Manual browser check; name check | G7 | BL-002, BL-004 |
 | BRD-03 | Name clearance | §9 decision 8 | pre-release | M | Open | No search done | Documented search results | G7 | BL-003 |
 | BRD-04 | Upstream namespaces kept | AGENTS.md; §4.7; §9 decision 1 | 1–4 | M | Ongoing | Kept; IndexerEngine namespace kept (#33) | Build check | G7 | none (see notes) |
@@ -185,7 +185,7 @@ Evidence cites merged pull request numbers on `develop`, or the build note, or t
 | --- | --- | --- | --- |
 | D-01 | API path | §4.6 names /api/v1. Built features use /api/v5 (for example /api/v5/engine and /api/v5/moviefile). | BL-081 |
 | D-02 | Migration chain | §4.5 says to start a fresh chain at migration 1. Built work adds migration 242 to Sonarr's chain (3b-1). | BL-080 |
-| D-03 | Engine binary name | §5 and §4.7 say cinnabarr-engine. Commit #9 is titled 'supervise embarr-engine', and the code name is not confirmed. | BL-005 |
+| D-03 | Engine binary name | §5 and §4.7 say cinnabarr-engine. Commit #9 is titled 'supervise cinnabarr-engine', and the code name is not confirmed. | BL-005 |
 | D-04 | Interim movie metadata | Movies use the Radarr project's metadata service (api.radarr.video) until 4i. §8 says not to ship publicly on a third party's service. | BL-015 |
 | D-05 | Series metadata still Sonarr's | Series data still comes from Sonarr's Skyhook service (§8 TV metadata). | BL-014 |
 | D-06 | Verification gap | Several steps were checked with lint and build only, not in a browser (notes 4g-5, 4h-4). | BL-084 |

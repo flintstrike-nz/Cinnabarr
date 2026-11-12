@@ -22,7 +22,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
 
             Mocker.GetMock<IEngineClientRegistry>().SetupGet(r => r.EngineFolder).Returns(_profile);
 
-            Write("embarr/0123.json", "{\"link\":true}");
+            Write("cinnabarr/0123.json", "{\"link\":true}");
             Write("qBittorrent/config/qBittorrent.conf", "[BitTorrent]");
             Write("qBittorrent/data/BT_backup/0123.fastresume", "resume");
             Write("qBittorrent/data/logs/qbittorrent.log", "log");
@@ -51,7 +51,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             Subject.CreateArchive(_zip).Should().BeTrue();
 
             Entries().Should().Equal(
-                "embarr/0123.json",
+                "cinnabarr/0123.json",
                 "qBittorrent/config/qBittorrent.conf",
                 "qBittorrent/data/BT_backup/0123.fastresume");
         }

@@ -13,7 +13,7 @@ interface DownloadClientsProps {
   testResults?: ProviderTestAllResult[];
 }
 
-// Embarr downloads only with its built-in engine (roadmap §4.4), so download clients can be edited but not added.
+// Cinnabarr downloads only with its built-in engine (roadmap §4.4), so download clients can be edited but not added.
 function DownloadClients({ testResults }: DownloadClientsProps) {
   const { isFetching, isFetched, data, error } = useSortedDownloadClients();
 

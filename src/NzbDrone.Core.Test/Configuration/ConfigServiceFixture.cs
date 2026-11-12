@@ -30,7 +30,7 @@ namespace NzbDrone.Core.Test.Configuration
         }
 
         [Test]
-        public void indexer_definitions_should_come_from_embarrs_own_source_by_default()
+        public void indexer_definitions_should_come_from_cinnabarrs_own_source_by_default()
         {
             var url = new Uri(Subject.IndexerDefinitionsUrl);
 

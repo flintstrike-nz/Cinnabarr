@@ -63,7 +63,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         private IQBittorrentProxy Proxy => _proxySelector.GetProxy(Settings);
         private Version ProxyApiVersion => _proxySelector.GetApiVersion(Settings);
 
-        // The built-in engine holds new torrents until Embarr has prepared them (roadmap §4.8).
+        // The built-in engine holds new torrents until Cinnabarr has prepared them (roadmap §4.8).
         private bool HoldNewTorrents => _engineClientRegistry.IsEngineClient(Definition.Id);
 
         public override void MarkItemAsImported(DownloadClientItem downloadClientItem)
@@ -284,7 +284,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
 
         public override string Name => "qBittorrent";
 
-        // "embarr-" tags are reserved for the engine's own markers.
+        // "cinnabarr-" tags are reserved for the engine's own markers.
         private IEnumerable<string> GetSeriesTagLabels(RemoteMedia remote)
         {
             return _tagRepository.GetTags(remote.Tags)
@@ -316,7 +316,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
 
                 // Avoid removing torrents that haven't reached the global max ratio.
                 // Removal also requires the torrent to be paused, in case a higher max ratio was set on the torrent itself (which is not exposed by the api).
-                // A built-in engine torrent mapped into the library is removed by Embarr once its seeding goals are met,
+                // A built-in engine torrent mapped into the library is removed by Cinnabarr once its seeding goals are met,
                 // never by the generic completed-download cleanup.
                 item.CanMoveFiles = item.CanBeRemoved =
                     item.DownloadClientInfo.RemoveCompletedDownloads &&
