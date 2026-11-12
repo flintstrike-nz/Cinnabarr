@@ -16,6 +16,9 @@ namespace NzbDrone.Core.History
     {
         MovieHistory Get(int id);
         MovieHistory MostRecentForMovie(int movieId);
+
+        // The latest event about one version of the movie (0 is the movie itself).
+        MovieHistory MostRecentForMovie(int movieId, int versionSlotId);
         MovieHistory MostRecentForDownloadId(string downloadId);
         List<MovieHistory> FindByDownloadId(string downloadId);
         List<MovieHistory> GetByMovieId(int movieId);
@@ -39,6 +42,8 @@ namespace NzbDrone.Core.History
         public MovieHistory Get(int id) => _historyRepository.Get(id);
 
         public MovieHistory MostRecentForMovie(int movieId) => _historyRepository.MostRecentForMovie(movieId);
+
+        public MovieHistory MostRecentForMovie(int movieId, int versionSlotId) => _historyRepository.FindByMovieId(movieId).FirstOrDefault(h => h.VersionSlotId == versionSlotId);
 
         public MovieHistory MostRecentForDownloadId(string downloadId) => _historyRepository.MostRecentForDownloadId(downloadId);
 

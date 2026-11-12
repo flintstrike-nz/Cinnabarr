@@ -16,18 +16,21 @@ namespace NzbDrone.Core.DecisionEngine.Movies.Specifications
         private readonly UpgradableSpecification _upgradableSpecification;
         private readonly ICustomFormatCalculationService _formatService;
         private readonly IConfigService _configService;
+        private readonly IMovieRacePolicy _racePolicy;
         private readonly Logger _logger;
 
         public MovieQueueSpecification(IQueueService queueService,
                                        UpgradableSpecification upgradableSpecification,
                                        ICustomFormatCalculationService formatService,
                                        IConfigService configService,
+                                       IMovieRacePolicy racePolicy,
                                        Logger logger)
         {
             _queueService = queueService;
             _upgradableSpecification = upgradableSpecification;
             _formatService = formatService;
             _configService = configService;
+            _racePolicy = racePolicy;
             _logger = logger;
         }
 
@@ -39,6 +42,14 @@ namespace NzbDrone.Core.DecisionEngine.Movies.Specifications
             var matchingMovies = _queueService.GetQueue()
                 .Where(q => q.RemoteMovie?.Movie != null && q.RemoteMovie.Movie.Id == subject.Movie.Id && q.RemoteMovie.Movie.VersionSlotId == subject.Movie.VersionSlotId)
                 .ToList();
+
+            // Race mode: the release may download alongside the ones already queued for this version.
+            if (_racePolicy.MayRace(subject))
+            {
+                _logger.Debug("Release may race the ones already queued for this version");
+
+                return DownloadSpecDecision.Accept();
+            }
 
             foreach (var queueItem in matchingMovies)
             {

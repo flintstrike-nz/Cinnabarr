@@ -11,6 +11,7 @@ public class DownloadClientSettingsController : SettingsController<DownloadClien
     public DownloadClientSettingsController(IConfigFileProvider configFileProvider, IConfigService configService)
         : base(configFileProvider, configService)
     {
+        SharedValidator.RuleFor(c => c.EngineRaceMaxSources).InclusiveBetween(1, ConfigService.MaxRaceSources).When(c => c.EngineRaceMaxSources.HasValue);
         SharedValidator.RuleFor(c => c.EngineOrphanGraceDays).InclusiveBetween(1, EngineOrphanService.MaxGraceDays).When(c => c.EngineOrphanGraceDays.HasValue);
     }
 

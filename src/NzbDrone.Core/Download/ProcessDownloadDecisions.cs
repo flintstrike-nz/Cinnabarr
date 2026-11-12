@@ -4,10 +4,14 @@ using System.Linq;
 using System.Threading.Tasks;
 using NLog;
 using NzbDrone.Core.DecisionEngine;
+using NzbDrone.Core.DecisionEngine.Movies;
 using NzbDrone.Core.Download.Clients;
 using NzbDrone.Core.Download.Pending;
+using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.Indexers;
+using NzbDrone.Core.Parser.Model;
+using NzbDrone.Core.Queue;
 
 namespace NzbDrone.Core.Download
 {
@@ -22,16 +26,22 @@ namespace NzbDrone.Core.Download
         private readonly IDownloadService _downloadService;
         private readonly IPrioritizeDownloadDecision _prioritizeDownloadDecision;
         private readonly IPendingReleaseService _pendingReleaseService;
+        private readonly IMovieRacePolicy _racePolicy;
+        private readonly IQueueService _queueService;
         private readonly Logger _logger;
 
         public ProcessDownloadDecisions(IDownloadService downloadService,
                                         IPrioritizeDownloadDecision prioritizeDownloadDecision,
                                         IPendingReleaseService pendingReleaseService,
+                                        IMovieRacePolicy racePolicy,
+                                        IQueueService queueService,
                                         Logger logger)
         {
             _downloadService = downloadService;
             _prioritizeDownloadDecision = prioritizeDownloadDecision;
             _pendingReleaseService = pendingReleaseService;
+            _racePolicy = racePolicy;
+            _queueService = queueService;
             _logger = logger;
         }
 
@@ -53,7 +63,7 @@ namespace NzbDrone.Core.Download
                 var downloadProtocol = report.Remote.Release.DownloadProtocol;
 
                 // Skip if already grabbed
-                if (IsMediaProcessed(grabbed, report))
+                if (IsMediaProcessed(grabbed, report) && !MayRace(grabbed, report))
                 {
                     continue;
                 }
@@ -172,6 +182,37 @@ namespace NzbDrone.Core.Download
             }
 
             return decision.RemoteMovie != null ? decision.RemoteMovie.Movie != null : decision.RemoteEpisode.Episodes.Any();
+        }
+
+        // Race mode (roadmap §4.9): a movie version that already has a release grabbed may take more, up to the limit,
+        // when every indexer involved allows it. The queue counts too: releases grabbed earlier are still downloading.
+        private bool MayRace(List<DownloadDecision> grabbed, DownloadDecision report)
+        {
+            if (report.RemoteMovie?.Movie == null)
+            {
+                return false;
+            }
+
+            var movie = report.RemoteMovie.Movie;
+            var release = report.RemoteMovie.Release;
+
+            bool SameRelease(ReleaseInfo other) => !string.IsNullOrEmpty(release.Guid) && other.Guid == release.Guid && other.IndexerId == release.IndexerId;
+            bool SameVersion(RemoteMovie other) => other?.Movie != null && other.Movie.Id == movie.Id && other.Movie.VersionSlotId == movie.VersionSlotId;
+
+            if (grabbed.Any(d => d.RemoteMovie != null && SameRelease(d.RemoteMovie.Release)))
+            {
+                return false;
+            }
+
+            var others = grabbed.Where(d => SameVersion(d.RemoteMovie)).Select(d => d.RemoteMovie).ToList();
+
+            var queued = _queueService.GetQueue()
+                                      .Where(q => SameVersion(q.RemoteMovie) && q.TrackedDownloadState != TrackedDownloadState.FailedPending)
+                                      .Select(q => q.RemoteMovie)
+                                      .Where(q => !others.Any(o => o.Release.Guid == q.Release.Guid && o.Release.IndexerId == q.Release.IndexerId))
+                                      .ToList();
+
+            return _racePolicy.MayJoin(report.RemoteMovie, others.Concat(queued).ToList());
         }
 
         private bool IsMediaProcessed(List<DownloadDecision> decisions, DownloadDecision report)

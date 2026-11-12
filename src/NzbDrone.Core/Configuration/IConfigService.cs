@@ -33,6 +33,9 @@ namespace NzbDrone.Core.Configuration
         TMDbCountryCode CertificationCountry { get; set; }
         bool LogIndexerResponse { get; set; }
         int EngineOrphanGraceDays { get; set; }
+
+        // How many releases may download the same movie version at once (race mode, roadmap §4.9): 1 is off.
+        int EngineRaceMaxSources { get; set; }
         bool AutoRedownloadFailed { get; set; }
         bool AutoRedownloadFailedFromInteractiveSearch { get; set; }
 

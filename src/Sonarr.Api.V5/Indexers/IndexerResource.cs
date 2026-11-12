@@ -18,6 +18,7 @@ public class IndexerResource : ProviderResource<IndexerResource>
     public bool SupportsSearch { get; set; }
     public DownloadProtocol Protocol { get; set; }
     public int Priority { get; set; }
+    public bool AllowRace { get; set; }
     public int SeasonSearchMaximumSingleEpisodeAge { get; set; }
     public int DownloadClientId { get; set; }
 }
@@ -47,6 +48,7 @@ public class IndexerResourceMapper : ProviderResourceMapper<IndexerResource, Ind
         resource.SupportsSearch = definition.SupportsSearch;
         resource.Protocol = definition.Protocol;
         resource.Priority = definition.Priority;
+        resource.AllowRace = definition.AllowRace;
         resource.SeasonSearchMaximumSingleEpisodeAge = definition.SeasonSearchMaximumSingleEpisodeAge;
         resource.DownloadClientId = definition.DownloadClientId;
 
@@ -61,6 +63,7 @@ public class IndexerResourceMapper : ProviderResourceMapper<IndexerResource, Ind
         definition.EnableAutomaticSearch = resource.EnableAutomaticSearch;
         definition.EnableInteractiveSearch = resource.EnableInteractiveSearch;
         definition.Priority = resource.Priority;
+        definition.AllowRace = resource.AllowRace;
         definition.SeasonSearchMaximumSingleEpisodeAge = resource.SeasonSearchMaximumSingleEpisodeAge;
         definition.DownloadClientId = resource.DownloadClientId;
 

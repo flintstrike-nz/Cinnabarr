@@ -8,6 +8,7 @@ export interface DownloadClientSettingsModel {
   engineSeedingMinutes: number;
   engineSeedingRatio: number;
   engineOrphanGraceDays: number;
+  engineRaceMaxSources: number;
   autoRedownloadFailed: boolean;
   autoRedownloadFailedFromInteractiveSearch: boolean;
 }

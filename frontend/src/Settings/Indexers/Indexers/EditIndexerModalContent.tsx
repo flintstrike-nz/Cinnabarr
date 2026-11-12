@@ -65,6 +65,7 @@ function EditIndexerModalContent({
     tags,
     fields,
     priority,
+    allowRace,
     seasonSearchMaximumSingleEpisodeAge,
     protocol,
     downloadClientId,
@@ -221,6 +222,19 @@ function EditIndexerModalContent({
               min={1}
               max={50}
               {...priority}
+              onChange={handleInputChange}
+            />
+          </FormRow>
+
+          <FormRow>
+            <FormLabel>{translate('AllowRace')}</FormLabel>
+
+            <FormInputHelpText text={translate('AllowRaceHelpText')} />
+
+            <FormInput
+              type={inputTypes.CHECK}
+              name="allowRace"
+              {...allowRace}
               onChange={handleInputChange}
             />
           </FormRow>

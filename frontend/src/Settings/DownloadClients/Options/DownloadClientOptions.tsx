@@ -109,6 +109,23 @@ function DownloadClientOptions({
             </FormRow>
 
             <FormRow>
+              <FormLabel>{translate('EngineRaceMaxSources')}</FormLabel>
+
+              <FormInputHelpText
+                text={translate('EngineRaceMaxSourcesHelpText')}
+              />
+
+              <FormInput
+                type={inputTypes.NUMBER}
+                name="engineRaceMaxSources"
+                min={1}
+                max={4}
+                onChange={handleInputChange}
+                {...settings.engineRaceMaxSources}
+              />
+            </FormRow>
+
+            <FormRow>
               <FormLabel>{translate('AutoRedownloadFailed')}</FormLabel>
 
               <FormInputHelpText
