@@ -1,6 +1,6 @@
 # Cinnabarr — Architecture & Roadmap
 
-> Name: the product is **Cinnabarr** (working name was Embarr). Repos, code, UI strings and some identifiers still say Embarr / EmbarrPre* until Phase 1e lands. This document uses Cinnabarr for the product throughout, except in Phase 1, which describes work that shipped under the old name.
+> Name: the product is **Cinnabarr** (the working name was Embarr). The UI strings, the engine (`cinnabarr-engine`) and these docs use the final name; the GitHub repositories are still named EmbarrPre1 to EmbarrPre4 until the owner renames them, and the AppData folder, service name, executable and project names change with the Phase 7 migration (§4.7). This document says Cinnabarr throughout, including in Phase 1, which describes work that shipped under the old name.
 
 > Status: **Phase 0 — design proposal.** No code has changed yet. This document is the agreed starting point for the work that follows; update it as decisions change.
 
@@ -8,7 +8,7 @@ Cinnabarr is a single application that combines four upstream projects:
 
 | Repo | Upstream | Role in Cinnabarr |
 | --- | --- | --- |
-| **Cinnabarr** (repo still named EmbarrPre1 until the rebrand step) | Sonarr | **Home repo.** Base host, data layer, frontend, TV support |
+| **Cinnabarr** (repo still named EmbarrPre1 until the owner renames it) | Sonarr | **Home repo.** Base host, data layer, frontend, TV support |
 | EmbarrPre2 | Radarr | Source of movie support (ported in) |
 | EmbarrPre4 | Prowlarr | Source of the indexer engine (ported in) |
 | EmbarrPre3 | qBittorrent | Source of the built-in torrent engine (forked, headless) |
@@ -491,23 +491,23 @@ Built so far (2g-3):
 
 Each phase ends in a working, shippable build.
 
-### Phase 1 — Rebrand and shell (Embarr)
+### Phase 1 — Rebrand and shell (Cinnabarr)
 
-- Product name and logos → Embarr. AppData folder, default port, service and binary names, database file, environment variables and custom-script variables are **not** renamed here; they move together in Phase 7 (§4.7).
-- Replace upstream `AGENTS.md`, `CONTRIBUTING.md`, PR template and issue templates with Embarr's own.
-- Disable calls to Sonarr's own services: analytics (`Embarr:src/NzbDrone.Core/Analytics`), Sonarr update channel, Sonarr cloud endpoints except metadata (until Phase 4 replaces it, §4.14).
+- Product name and logos → Cinnabarr. AppData folder, default port, service and binary names, database file, environment variables and custom-script variables are **not** renamed here; they move together in Phase 7 (§4.7).
+- Replace upstream `AGENTS.md`, `CONTRIBUTING.md`, PR template and issue templates with Cinnabarr's own.
+- Disable calls to Sonarr's own services: analytics (`Cinnabarr:src/NzbDrone.Core/Analytics`), Sonarr update channel, Sonarr cloud endpoints except metadata (until Phase 4 replaces it, §4.14).
 - New sidebar labels and routes from §6.1. Labels point at the **existing** screens (series list → Library, queue → Downloads) until Phases 2 and 4 replace them. New pages with no existing screen (Search) are hidden until their phase.
-- CI builds and tests Embarr from this repo.
-- **Exit:** Embarr runs as a working TV-only app with the new navigation; nothing references Sonarr in the UI.
+- CI builds and tests Cinnabarr from this repo.
+- **Exit:** Cinnabarr runs as a working TV-only app with the new navigation; nothing references Sonarr in the UI.
 
 ### Phase 1e — Rebrand to Cinnabarr (waiting on theme and icons)
 
 - The product name is **Cinnabarr**. This step replaces the working name Embarr in everything user-visible, with the same scope as Phase 1c: `BuildInfo.AppName` and the localisation `appName` token, login/logout/index pages, `package.json` and assembly product metadata, documentation, and the header and sidebar brand text that Phase 1c missed.
-- **Theme and icons come from the owner** and are supplied when this step starts: logo, favicons, touch and tile icons, the `Logo/` PNGs and the colour theme. Until then the Embarr placeholders stay.
-- The instance-name validator and default instance name accept Cinnabarr, and keep accepting the Embarr and Sonarr names that existing installs already use.
-- The GitHub repositories and the `docs/embarr/` folder are renamed at the owner's choice. GitHub redirects renamed repos, but links and the `AGENTS.md` path need updating with the folder.
+- **Theme and icons come from the owner** and are supplied when this step starts: logo, favicons, touch and tile icons, the `Logo/` PNGs and the colour theme. Until then the Cinnabarr placeholders stay.
+- The instance-name validator and default instance name accept Cinnabarr, and keep accepting the Cinnabarr and Sonarr names that existing installs already use.
+- The GitHub repositories and the `docs/cinnabarr/` folder are renamed at the owner's choice. GitHub redirects renamed repos, but links and the `AGENTS.md` path need updating with the folder.
 - **Not in this step:** the external contracts (database file, AppData folder, service and binary names, default ports, environment variables, custom-script variables), which move once in the Phase 7 migration, and the `NzbDrone.*` namespaces.
-- **Exit:** nothing in the UI says Embarr or Sonarr except legacy-name handling.
+- **Exit:** nothing in the UI says Cinnabarr or Sonarr except legacy-name handling.
 
 ### Phase 2 — Built-in engine (EmbarrPre3 + Cinnabarr)
 
@@ -678,7 +678,7 @@ Built so far (3a-2):
 5. **How a race winner is chosen.** Every option requires the winner to pass its post-completion checks and be imported before losers are cancelled (§4.9). Proposal: the first copy to do so. Alternative: rank by projected finish time and keep only the top two running, which saves bandwidth.
 6. **Maximum version slots per item.** Proposal: no hard limit; warn above 3.
 7. **Plex multi-version naming.** Plex uses a different convention from Emby. Proposal: Emby format by default (§4.11), Plex as an optional template in Phase 5.
-8. **Product name: Cinnabarr (decided).** Replaces the working name Embarr and the earlier JellyBarr candidate, which is dropped. The rename happens in Phase 1e (user-visible, waiting on the owner's theme and icons) and Phase 7 (external contracts).
+8. **Product name: Cinnabarr (decided).** Replaces the working name Embarr and the earlier JellyBarr candidate, which is dropped. The user-visible rename was applied once the name was confirmed (the owner's theme and icons are still to come); the external contracts follow in Phase 7.
    - **Contract migration:** because the name is now fixed, the Phase 7 migration renames the external contracts directly to it, once.
    - **Addenda:** A, B and C already use the new name.
    - **Name check before any public release:** no register has been searched for "Cinnabarr". Before distributing, check trademark registers (NZ IPONZ, plus WIPO Global Brand Database, USPTO and EUIPO if distributing abroad, in software classes 9 and 42), GitHub, app stores and domain availability. Names are protected by trademark, not copyright, so the risk is a confusingly similar mark for related goods. This is a risk checklist, not legal advice.
@@ -978,7 +978,7 @@ Built so far (4a):
 Built so far (4b):
 
 - **Movie and its file.** `Movie` (monitored, minimum availability, quality profile, path, tags, added, last search, its one file) points at its TMDb information; `MovieFile` holds the file's path, size, quality, languages, release group, scene name, edition and media info. Migration 245 creates both tables. A movie still has exactly one file; version slots (§4.1) arrive in Phase 5.
-- **Stores and services.** `MovieRepository`/`MovieService` (find by TMDb id, IMDb id, title, path; movies without files; movies between dates; delete with files; keeping a movie's file link in step), `MovieFileRepository`/`MovieFileService`, `AddMovieService` and its validator (path must be valid, in a root folder, not the recycle bin, not another movie's or an ancestor of one). The Radarr names `MediaFileService` and `MediaFileRepository` became `MovieFile…` because Embarr's episode files already use those names.
+- **Stores and services.** `MovieRepository`/`MovieService` (find by TMDb id, IMDb id, title, path; movies without files; movies between dates; delete with files; keeping a movie's file link in step), `MovieFileRepository`/`MovieFileService`, `AddMovieService` and its validator (path must be valid, in a root folder, not the recycle bin, not another movie's or an ancestor of one). The Radarr names `MediaFileService` and `MediaFileRepository` became `MovieFile…` because Cinnabarr's episode files already use those names.
 - **Folder naming for now.** New movies go in a folder named `Title (Year)`. The configurable movie naming (and the file naming) is step 4e.
 - **Left out on purpose.** Auto-tagging rules for movies (the hook exists and does nothing yet), collection handling, and the movie refresh job (4d/4g).
 - **Also ported.** The roman-numeral helper used to find titles written with numerals, the setting that unmonitors a movie when its file is deleted (`AutoUnmonitorPreviouslyDownloadedMovies`), and the movie-deleted handlers that clean up credits, alternative titles and translations.
@@ -987,7 +987,7 @@ Built so far (4b):
 Built so far (4c-1, qualities):
 
 - **One quality list for series and movies.** Eight movie-only qualities join the list: WORKPRINT, CAM, TELESYNC, TELECINE, DVDSCR, REGIONAL, DVD-R and BR-DISK, each with its own default size limits and a place in the best-to-worst order (the worst are the camera and screener copies, the best the 2160p remux).
-- **Saved numbers do not change.** Embarr's existing quality numbers stay as they are, because they are saved in profiles and episode files. Radarr uses the same numbers 23 to 29 for the movie-only ones (kept), but different numbers for four others (its Bluray-480p is 20, Bluray-576p 21, BR-DISK 22, Remux 30 and 31; ours are 13, 22, 32 and 20/21). An import from a Radarr database (Phase 6) must translate those; this is noted in the code.
+- **Saved numbers do not change.** Cinnabarr's existing quality numbers stay as they are, because they are saved in profiles and episode files. Radarr uses the same numbers 23 to 29 for the movie-only ones (kept), but different numbers for four others (its Bluray-480p is 20, Bluray-576p 21, BR-DISK 22, Remux 30 and 31; ours are 13, 22, 32 and 20/21). An import from a Radarr database (Phase 6) must translate those; this is noted in the code.
 - **New source values.** Camera, telesync, telecine, workprint, DVD screener, DVD regional, DVD raw and Blu-ray disc were added at the end of the source list (the numbers are saved in custom formats, so the old ones are untouched). Each source and resolution still points to exactly one quality.
 - **Existing profiles get the new qualities.** At start-up, a profile that does not list a quality gets it added as not allowed, in its place by weight, so it can be switched on in the profile screen. A profile that is in use by a movie cannot be deleted.
 - **Checked.** 14 new tests (saved numbers, uniqueness, defaults, ordering, and the profile top-up including groups). A running app listed the 30 qualities and an existing profile showed the new ones switched off.
@@ -1088,7 +1088,7 @@ Built so far (4d-3b, searching for what is wanted):
 Built so far (4e-1, naming movie files and folders):
 
 - **Settings.** The naming settings gain `RenameMovies` (off by default, as in Radarr), `StandardMovieFormat` (`{Movie Title} ({Release Year}) {Quality Full}`) and `MovieFolderFormat` (`{Movie Title} ({Release Year})`), stored by migration 248 (existing installs get the defaults).
-- **Builder.** The file name builder now also builds movie names, with Radarr's movie tokens: title in several forms (clean, "The" last, first character, original, a translated title by language code), certification, collection, release year, IMDb and TMDb ids, `{edition-{Edition Tags}}`, quality (full, title, proper, real), media info (video, audio, languages, dynamic range), release group (`Embarr` when unknown), original title and file name, custom formats. The series naming is untouched; only `TitleThe` and `CleanTitleThe` now cope with an empty title, and the language table knows Mongolian's other codes.
+- **Builder.** The file name builder now also builds movie names, with Radarr's movie tokens: title in several forms (clean, "The" last, first character, original, a translated title by language code), certification, collection, release year, IMDb and TMDb ids, `{edition-{Edition Tags}}`, quality (full, title, proper, real), media info (video, audio, languages, dynamic range), release group (`Cinnabarr` when unknown), original title and file name, custom formats. The series naming is untouched; only `TitleThe` and `CleanTitleThe` now cope with an empty title, and the language table knows Mongolian's other codes.
 - **Folders.** Adding a movie now builds its folder from the movie folder format instead of the fixed `Title (Year)`.
 - **Media info** for a movie file is read again when a naming token needs newer information, as for episodes. The `{MediaInfo 3D}` token is not carried over (our media info reader has no multi-view count).
 - **Checked.** Radarr's naming tests were ported (341); Core suite shows only the 18 known failures.
@@ -1237,7 +1237,7 @@ Built so far (4g-6, bulk actions on the movie list):
 
 Backlog BL-001 and BL-082 (see `docs/product/04-product-backlog.md`):
 
-- **BL-001:** the header and sidebar showed a fixed "Sonarr"; they now show the instance name (Embarr today, Cinnabarr after the rename).
+- **BL-001:** the header and sidebar showed a fixed "Sonarr"; they now show the instance name (Embarr then, Cinnabarr now).
 - **BL-082:** the "18 baseline failures" are cleared. Six were tests that call thexem.info over the network, which CI already leaves out with `TestCategory!=IntegrationTest`. The rest were tests that did not expect warnings the code logs on purpose (a generated first-run password, a blocked import, a failed database restore, failed sign-ins and password resets). With CI's filter every unit test project now passes (Core 7470, Common 710, Http 57, Api 44, Update 17, Host 22, Libraries 2).
 
 Backlog BL-020 (one Wanted page): the Wanted → Missing and Cutoff Unmet pages now list the wanted movies under the episodes (a *Movies: Missing* / *Movies: Cutoff Unmet* section, shown only when the library has movies), with their own *Search All*. The separate *Wanted → Movies* sidebar entry is gone and `/wanted/movies` redirects to `/wanted/missing`. Checked in a browser.
@@ -1267,7 +1267,7 @@ Backlog BL-018, part 1 (Discover): `GET /api/v5/movie/lookup/discover?list=trend
 
 Backlog BL-048 (Downloads settings, SET-04): *Settings → Download Clients* has an *Engine Network and Speed* section that reads and writes the built-in engine's own preferences (`GET/PUT /api/v5/engine/preferences`, through the engine's `app/preferences` and `app/setPreferences`): listening port (or a random one), UPnP/NAT-PMP, network interface, download and upload limits and the alternative limits (KiB/s), queue limits, DHT, peer exchange, local peer discovery, anonymous mode, encryption and disk pre-allocation. A port outside 0–65535 is refused. Checked against the real engine: the values were read, then changed in the browser (port, limit, anonymous mode) and read back from the engine. Unit tests cover the mapping. **Not done:** the alternative-speed *schedule* (days and times), and the section is plainly styled next to the rest of the page.
 
-Backlog BL-045 (backups include the engine profile, MIG-06): the check found a gap, backups held only `config.xml`, the database and the version file. A backup now also holds `engine_profile.zip`: the engine's settings, its resume data (`BT_backup`) and Embarr's link records (`embarr/*.json`), without the API key, process id, logs or cache. A profile that cannot be read is logged and the backup carries on. On restore the archive is unpacked beside the live profile (`engine.restore`) and swapped in when the engine next starts, keeping the old profile (and this install's API key) in `engine.pre-restore`. Checked against the real engine: a manual backup contained the profile with the test torrent's resume data and link record. The swap-in on restore is covered by unit tests with real files; a full restore and restart was not run here.
+Backlog BL-045 (backups include the engine profile, MIG-06): the check found a gap, backups held only `config.xml`, the database and the version file. A backup now also holds `engine_profile.zip`: the engine's settings, its resume data (`BT_backup`) and Cinnabarr's link records (`cinnabarr/*.json`), without the API key, process id, logs or cache. A profile that cannot be read is logged and the backup carries on. On restore the archive is unpacked beside the live profile (`engine.restore`) and swapped in when the engine next starts, keeping the old profile (and this install's API key) in `engine.pre-restore`. Checked against the real engine: a manual backup contained the profile with the test torrent's resume data and link record. The swap-in on restore is covered by unit tests with real files; a full restore and restart was not run here.
 
 Backlog BL-022 (Library bulk actions): the Library grid has a *Select* mode with a checkbox on each tile and an action bar for the selected items: *Search*, *Monitored*, *Unmonitored*, *Quality Profile* and *Delete* (with a confirmation). It works on series and movies together. Checked in a browser with movies: two selected movies were unmonitored and moved to another quality profile in one go (read back from the API). Not checked: the series path of each action. Not done: bulk tag editing.
 

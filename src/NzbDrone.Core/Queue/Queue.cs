@@ -52,7 +52,7 @@ namespace NzbDrone.Core.Queue
         public bool IsEngineDownload { get; set; }
         public bool IsMissingFromEngine { get; set; }
 
-        // In the engine with no Embarr record (roadmap §4.4): not imported until Manual Import links it.
+        // In the engine with no Cinnabarr record (roadmap §4.4): not imported until Manual Import links it.
         public bool IsUnlinked { get; set; }
     }
 }

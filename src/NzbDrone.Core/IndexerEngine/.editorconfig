@@ -1,5 +1,5 @@
 # Code ported from Prowlarr (roadmap Phase 3). It is kept as close to Prowlarr's as possible, so Prowlarr fixes can
-# still be cherry-picked; its style differs slightly from Embarr's, so style-only rules are not enforced here.
+# still be cherry-picked; its style differs slightly from Cinnabarr's, so style-only rules are not enforced here.
 [*.cs]
 dotnet_diagnostic.SA1005.severity = none
 dotnet_diagnostic.SA1210.severity = none

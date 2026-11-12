@@ -7,7 +7,7 @@ namespace NzbDrone.Core.Download.Engine
 {
     public interface IEngineProfileBackup
     {
-        // Zips the engine profile (its settings, resume data and Embarr's link records) into the file; false when there
+        // Zips the engine profile (its settings, resume data and Cinnabarr's link records) into the file; false when there
         // is no profile yet. The API key and process id are left out, and so are the logs and cache.
         bool CreateArchive(string zipPath);
 

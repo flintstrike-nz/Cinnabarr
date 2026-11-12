@@ -358,7 +358,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             Mocker.GetMock<NzbDrone.Core.Configuration.IConfigService>().SetupGet(c => c.EngineUseStagingFolder).Returns(true);
             Mocker.GetMock<NzbDrone.Common.Disk.IDiskProvider>().Setup(d => d.FolderExists(It.IsAny<string>())).Returns(true);
             Mocker.GetMock<NzbDrone.Core.RootFolders.IRootFolderService>().Setup(r => r.GetBestRootFolderPath(_series.Path)).Returns(root);
-            Mocker.GetMock<NzbDrone.Common.Disk.IDiskProvider>().Setup(d => d.GetMount(Path.Combine(root, ".embarr-staging"))).Returns(rootMountMock.Object);
+            Mocker.GetMock<NzbDrone.Common.Disk.IDiskProvider>().Setup(d => d.GetMount(Path.Combine(root, ".cinnabarr-staging"))).Returns(rootMountMock.Object);
             Mocker.GetMock<NzbDrone.Common.Disk.IDiskProvider>().Setup(d => d.GetMount(_seasonFolder)).Returns(seriesMountMock.Object);
         }
 
@@ -372,8 +372,8 @@ namespace NzbDrone.Core.Test.Download.EngineTests
 
             map.SavePath.Should().Be(root);
             map.Files[0].FinalPath.Should().Be("Show/Season 01/Show - S01E01.mkv");
-            map.Files[0].PendingPath.Should().Be(".embarr-staging/abcdef01/0/.Show - S01E01.mkv.abcdef01.pending");
-            map.Files[1].PendingPath.Should().Be(".embarr-staging/abcdef01/1/.Show - S01E01.en.srt.abcdef01.pending");
+            map.Files[0].PendingPath.Should().Be(".cinnabarr-staging/abcdef01/0/.Show - S01E01.mkv.abcdef01.pending");
+            map.Files[1].PendingPath.Should().Be(".cinnabarr-staging/abcdef01/1/.Show - S01E01.en.srt.abcdef01.pending");
         }
 
         [Test]
@@ -387,7 +387,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             var otherMount = new Mock<NzbDrone.Common.Disk.IMount>();
             otherMount.SetupGet(m => m.RootDirectory).Returns("/mnt/other".AsOsAgnostic());
 
-            Mocker.GetMock<NzbDrone.Common.Disk.IDiskProvider>().Setup(d => d.GetMount(Path.Combine(root, ".embarr-staging", "abcdef01", "0"))).Returns(Mocker.GetMock<NzbDrone.Common.Disk.IDiskProvider>().Object.GetMount(Path.Combine(root, ".embarr-staging")));
+            Mocker.GetMock<NzbDrone.Common.Disk.IDiskProvider>().Setup(d => d.GetMount(Path.Combine(root, ".cinnabarr-staging", "abcdef01", "0"))).Returns(Mocker.GetMock<NzbDrone.Common.Disk.IDiskProvider>().Object.GetMount(Path.Combine(root, ".cinnabarr-staging")));
             Mocker.GetMock<NzbDrone.Common.Disk.IDiskProvider>().Setup(d => d.GetMount(Path.Combine(_series.Path, "Specials"))).Returns(otherMount.Object);
             Mocker.GetMock<IBuildFileNames>()
                 .Setup(s => s.BuildFilePath(It.IsAny<List<Episode>>(), _series, It.IsAny<EpisodeFile>(), ".mkv", null, It.IsAny<List<CustomFormat>>()))

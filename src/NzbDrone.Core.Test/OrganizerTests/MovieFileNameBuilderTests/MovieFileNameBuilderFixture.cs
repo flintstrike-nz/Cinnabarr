@@ -631,19 +631,19 @@ namespace NzbDrone.Core.Test.OrganizerTests.MovieFileNameBuilderTests
         }
 
         [Test]
-        public void should_use_Embarr_as_release_group_when_not_available()
+        public void should_use_Cinnabarr_as_release_group_when_not_available()
         {
             _movieFile.ReleaseGroup = null;
             _namingConfig.StandardMovieFormat = "{Release Group}";
 
             Subject.BuildFileName(_movie, _movieFile)
-                   .Should().Be("Embarr");
+                   .Should().Be("Cinnabarr");
         }
 
         [TestCase("{Movie Title}{-Release Group}", "South Park")]
         [TestCase("{Movie Title}{ Release Group}", "South Park")]
         [TestCase("{Movie Title}{ [Release Group]}", "South Park")]
-        public void should_not_use_Embarr_as_release_group_if_pattern_has_separator(string pattern, string expectedFileName)
+        public void should_not_use_Cinnabarr_as_release_group_if_pattern_has_separator(string pattern, string expectedFileName)
         {
             _movieFile.ReleaseGroup = null;
             _namingConfig.StandardMovieFormat = pattern;

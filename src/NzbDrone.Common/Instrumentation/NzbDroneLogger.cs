@@ -162,7 +162,7 @@ namespace NzbDrone.Common.Instrumentation
             LogManager.Configuration.LoggingRules.Insert(0, rule);
         }
 
-        // Embarr doesn't report to Sentry. Events written to the "Sentry" logger are
+        // Cinnabarr doesn't report to Sentry. Events written to the "Sentry" logger are
         // telemetry-only, so swallow them instead of letting them reach local logs.
         private static void RegisterSentrySink()
         {

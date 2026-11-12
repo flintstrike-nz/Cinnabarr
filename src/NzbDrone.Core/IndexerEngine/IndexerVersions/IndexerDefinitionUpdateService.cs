@@ -92,7 +92,7 @@ namespace NzbDrone.Core.IndexerEngine.IndexerVersions
 
             try
             {
-                // EMBARR: definitions are read from disk (filled by UpdateLocalDefinitions), never from Prowlarr's servers.
+                // CINNABARR: definitions are read from disk (filled by UpdateLocalDefinitions), never from Prowlarr's servers.
                 var definitionFolder = Path.Combine(_appFolderInfo.AppDataFolder, "Definitions");
 
                 indexerList = ReadDefinitionsFromDisk(indexerList, definitionFolder)
@@ -212,7 +212,7 @@ namespace NzbDrone.Core.IndexerEngine.IndexerVersions
                 throw new ArgumentNullException(nameof(fileKey));
             }
 
-            // EMBARR: no web lookup; a definition that isn't on disk doesn't exist (update the definitions to fetch new ones).
+            // CINNABARR: no web lookup; a definition that isn't on disk doesn't exist (update the definitions to fetch new ones).
             throw new Exception($"Indexer definition for '{fileKey}' does not exist.");
         }
 
@@ -257,7 +257,7 @@ namespace NzbDrone.Core.IndexerEngine.IndexerVersions
 
         public void Handle(ApplicationStartedEvent message)
         {
-            // EMBARR: only the first start fetches definitions; after that the daily scheduled task keeps them current.
+            // CINNABARR: only the first start fetches definitions; after that the daily scheduled task keeps them current.
             var definitionsFolder = Path.Combine(_appFolderInfo.AppDataFolder, "Definitions");
 
             if (!Directory.Exists(definitionsFolder) || !Directory.EnumerateFiles(definitionsFolder, "*.yml", SearchOption.TopDirectoryOnly).Any())

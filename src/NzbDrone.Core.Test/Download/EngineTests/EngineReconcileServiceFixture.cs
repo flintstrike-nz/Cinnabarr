@@ -19,7 +19,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         [SetUp]
         public void Setup()
         {
-            _client = new DownloadClientDefinition { Id = 3, Name = "Embarr Engine" };
+            _client = new DownloadClientDefinition { Id = 3, Name = "Cinnabarr Engine" };
             _unfinished = new List<DownloadHistory> { new DownloadHistory { Id = 1, DownloadId = "AAA", SourceTitle = "Series.S01E01" } };
 
             Mocker.GetMock<IDownloadHistoryService>()

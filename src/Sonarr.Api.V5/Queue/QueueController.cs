@@ -200,7 +200,7 @@ namespace Sonarr.Api.V5.Queue
                     include &= q.Series != null && seriesIds.Contains(q.Series.Id);
                 }
 
-                // Built-in engine downloads with no Embarr record, or that the engine no longer has (roadmap §4.4).
+                // Built-in engine downloads with no Cinnabarr record, or that the engine no longer has (roadmap §4.4).
                 if (unlinked.HasValue)
                 {
                     include &= q.IsUnlinked == unlinked.Value;

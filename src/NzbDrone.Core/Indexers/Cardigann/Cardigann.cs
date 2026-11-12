@@ -21,7 +21,7 @@ namespace NzbDrone.Core.Indexers.Cardigann
 {
     /// <summary>
     /// An indexer described by a definition file. The indexer engine does the logging in, searching and
-    /// parsing; this class translates Embarr's searches and releases to and from the engine.
+    /// parsing; this class translates Cinnabarr's searches and releases to and from the engine.
     /// </summary>
     public class Cardigann : IndexerBase<CardigannSettings>, IIndexerFileDownloader
     {

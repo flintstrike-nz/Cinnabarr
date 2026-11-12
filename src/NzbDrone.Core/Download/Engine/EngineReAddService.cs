@@ -21,7 +21,7 @@ namespace NzbDrone.Core.Download.Engine
 
     public interface IEngineReAddService
     {
-        // Sends a grab that is missing from the engine back to it, using the release Embarr stored at grab
+        // Sends a grab that is missing from the engine back to it, using the release Cinnabarr stored at grab
         // time (roadmap §4.4 rule 3). Files already at the target are re-checked by the engine, not replaced.
         Task ReAdd(string downloadId);
     }

@@ -71,8 +71,8 @@ namespace NzbDrone.Common.Reflection
         {
             var matches = assembly.GetExportedTypes().Where(c => c.Name.Equals(name, StringComparison.InvariantCultureIgnoreCase)).ToList();
 
-            // Code ported from Prowlarr lives under NzbDrone.Core.IndexerEngine and can share a class name with Embarr's
-            // own (such as TorznabSettings). While both exist, Embarr's own wins (roadmap Phase 3).
+            // Code ported from Prowlarr lives under NzbDrone.Core.IndexerEngine and can share a class name with Cinnabarr's
+            // own (such as TorznabSettings). While both exist, Cinnabarr's own wins (roadmap Phase 3).
             return matches.Count > 1
                 ? matches.SingleOrDefault(c => c.Namespace?.StartsWith("NzbDrone.Core.IndexerEngine", StringComparison.Ordinal) != true)
                 : matches.SingleOrDefault();

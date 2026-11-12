@@ -111,7 +111,7 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
                 .Setup(s => s.FindByDownloadId(EngineHash))
                 .Returns([]);
 
-            return new DownloadClientDefinition { Id = 1, Name = "Embarr Engine", Protocol = DownloadProtocol.Torrent };
+            return new DownloadClientDefinition { Id = 1, Name = "Cinnabarr Engine", Protocol = DownloadProtocol.Torrent };
         }
 
         private DownloadClientItem GivenEngineItem(DownloadClientDefinition client)

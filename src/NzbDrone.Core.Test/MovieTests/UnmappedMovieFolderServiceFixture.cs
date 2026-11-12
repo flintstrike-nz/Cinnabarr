@@ -54,7 +54,7 @@ namespace NzbDrone.Core.Test.MovieTests
         [Test]
         public void should_leave_out_folders_a_movie_already_uses_and_hidden_folders()
         {
-            GivenFolders("Alien (1979)", "Heat (1995)", ".embarr-staging");
+            GivenFolders("Alien (1979)", "Heat (1995)", ".cinnabarr-staging");
             Mocker.GetMock<IMovieService>()
                   .Setup(s => s.AllMoviePaths())
                   .Returns(new Dictionary<int, string> { { 1, System.IO.Path.Combine(_root, "Alien (1979)") } });

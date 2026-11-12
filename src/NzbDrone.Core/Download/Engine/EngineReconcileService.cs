@@ -8,7 +8,7 @@ namespace NzbDrone.Core.Download.Engine
 {
     public interface IEngineReconcileService
     {
-        // Compares Embarr's unfinished grabs for the built-in engine with the torrents the engine
+        // Compares Cinnabarr's unfinished grabs for the built-in engine with the torrents the engine
         // reported, and returns the grabs whose torrent is gone (roadmap §4.4 rule 3).
         List<TrackedDownload> FindMissing(DownloadClientDefinition downloadClient, IEnumerable<string> presentDownloadIds);
     }
@@ -61,7 +61,7 @@ namespace NzbDrone.Core.Download.Engine
                 _missedPolls = missedPolls;
             }
 
-            // Reconcile only flags: nothing is deleted from disk, the engine or Embarr's records (rule 4).
+            // Reconcile only flags: nothing is deleted from disk, the engine or Cinnabarr's records (rule 4).
             return flagged.Select(g => _trackedDownloadService.TrackMissingFromEngine(downloadClient, g)).ToList();
         }
     }

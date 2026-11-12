@@ -302,7 +302,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
 
             if (hold)
             {
-                // Built-in engine: nothing is downloaded until Embarr has set the file priorities (roadmap §4.8).
+                // Built-in engine: nothing is downloaded until Cinnabarr has set the file priorities (roadmap §4.8).
                 // The held tag marks the torrent for preparation. A magnet fetches its metadata, then stops; a
                 // .torrent file already has it, so it starts stopped.
                 request.AddFormParameter("tags", holdTags);

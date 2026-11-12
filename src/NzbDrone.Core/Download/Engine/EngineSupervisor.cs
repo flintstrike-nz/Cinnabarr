@@ -43,15 +43,15 @@ namespace NzbDrone.Core.Download.Engine
         string EnginePath { get; }
     }
 
-    // Starts and supervises embarr-engine (the headless qBittorrent fork, roadmap §3)
-    // and keeps the built-in "Embarr Engine" download client pointed at it.
+    // Starts and supervises cinnabarr-engine (the headless qBittorrent fork, roadmap §3)
+    // and keeps the built-in "Cinnabarr Engine" download client pointed at it.
     public class EngineSupervisor : IEngineSupervisor,
                                     IHandle<ApplicationStartedEvent>,
                                     IHandle<ApplicationShutdownRequested>
     {
-        public const string EngineDefinitionName = "Embarr Engine";
-        public const string EnginePathVariable = "EMBARR_ENGINE_PATH";
-        public const string ApiKeyVariable = "EMBARR_ENGINE_API_KEY";
+        public const string EngineDefinitionName = "Cinnabarr Engine";
+        public const string EnginePathVariable = "CINNABARR_ENGINE_PATH";
+        public const string ApiKeyVariable = "CINNABARR_ENGINE_API_KEY";
 
         private const string ApiKeyPrefix = "qbt_";
         private const int ApiKeyLength = 28;
@@ -136,7 +136,7 @@ namespace NzbDrone.Core.Download.Engine
             if (EnginePath == null)
             {
                 SetStatus(EngineStatus.NotFound);
-                _logger.Warn("embarr-engine was not found next to Embarr and {0} is not set. Downloads are unavailable.", EnginePathVariable);
+                _logger.Warn("cinnabarr-engine was not found next to Cinnabarr and {0} is not set. Downloads are unavailable.", EnginePathVariable);
                 return;
             }
 
@@ -159,7 +159,7 @@ namespace NzbDrone.Core.Download.Engine
                         }
                         catch (Exception ex)
                         {
-                            _logger.Error(ex, "Failed to stop embarr-engine on exit");
+                            _logger.Error(ex, "Failed to stop cinnabarr-engine on exit");
                         }
                     };
                     _processExitHooked = true;
@@ -219,7 +219,7 @@ namespace NzbDrone.Core.Download.Engine
                 return null;
             }
 
-            var fileName = OsInfo.IsWindows ? "embarr-engine.exe" : "embarr-engine";
+            var fileName = OsInfo.IsWindows ? "cinnabarr-engine.exe" : "cinnabarr-engine";
             var nextToApp = Path.Combine(_appFolderInfo.StartUpFolder, fileName);
 
             return _diskProvider.FileExists(nextToApp) ? nextToApp : null;
@@ -308,7 +308,7 @@ namespace NzbDrone.Core.Download.Engine
             settings.Username = string.Empty;
             settings.Password = string.Empty;
 
-            // Every torrent in the engine is Embarr's, so the built-in client doesn't route by
+            // Every torrent in the engine is Cinnabarr's, so the built-in client doesn't route by
             // category (roadmap §4.4). With no category it polls all torrents, so imported or
             // hand-added ones are never filtered out of tracking.
             settings.TvCategory = string.Empty;
@@ -359,7 +359,7 @@ namespace NzbDrone.Core.Download.Engine
                     {
                         // Never run two engines on one profile: wait for the old one to go.
                         SetStatus(EngineStatus.Failed);
-                        _logger.Error("The previous embarr-engine is still running; not starting another. Retrying in {0}s", backoff.TotalSeconds);
+                        _logger.Error("The previous cinnabarr-engine is still running; not starting another. Retrying in {0}s", backoff.TotalSeconds);
                     }
                     else
                     {
@@ -379,7 +379,7 @@ namespace NzbDrone.Core.Download.Engine
                         if (await WaitUntilHealthy(token))
                         {
                             SetStatus(EngineStatus.Running);
-                            _logger.Info("embarr-engine is running on 127.0.0.1:{0}", _port);
+                            _logger.Info("cinnabarr-engine is running on 127.0.0.1:{0}", _port);
 
                             EnsureDownloadClient(_port, _apiKey);
 
@@ -400,7 +400,7 @@ namespace NzbDrone.Core.Download.Engine
                         }
 
                         SetStatus(EngineStatus.Failed);
-                        _logger.Error("embarr-engine stopped responding; restarting in {0}s", backoff.TotalSeconds);
+                        _logger.Error("cinnabarr-engine stopped responding; restarting in {0}s", backoff.TotalSeconds);
                     }
                 }
                 catch (OperationCanceledException)
@@ -410,7 +410,7 @@ namespace NzbDrone.Core.Download.Engine
                 catch (Exception ex)
                 {
                     SetStatus(EngineStatus.Failed);
-                    _logger.Error(ex, "embarr-engine failed; restarting in {0}s", backoff.TotalSeconds);
+                    _logger.Error(ex, "cinnabarr-engine failed; restarting in {0}s", backoff.TotalSeconds);
                 }
 
                 try
@@ -420,7 +420,7 @@ namespace NzbDrone.Core.Download.Engine
                 catch (Exception ex)
                 {
                     // Never let cleanup end supervision, and still back off below.
-                    _logger.Error(ex, "Error while stopping embarr-engine; will retry");
+                    _logger.Error(ex, "Error while stopping cinnabarr-engine; will retry");
                 }
 
                 try
@@ -433,7 +433,7 @@ namespace NzbDrone.Core.Download.Engine
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error(ex, "Error while waiting to restart embarr-engine");
+                    _logger.Error(ex, "Error while waiting to restart cinnabarr-engine");
                 }
 
                 backoff = TimeSpan.FromTicks(Math.Min(backoff.Ticks * 2, Timings.MaxBackoff.Ticks));
@@ -445,7 +445,7 @@ namespace NzbDrone.Core.Download.Engine
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Error while stopping embarr-engine");
+                _logger.Error(ex, "Error while stopping cinnabarr-engine");
             }
         }
 
@@ -497,7 +497,7 @@ namespace NzbDrone.Core.Download.Engine
                     return false;
                 }
 
-                _logger.Debug("Starting embarr-engine: {0} on port {1}", EnginePath, _port);
+                _logger.Debug("Starting cinnabarr-engine: {0} on port {1}", EnginePath, _port);
 
                 process = _processLauncher.Start(EnginePath,
                     args,
@@ -570,7 +570,7 @@ namespace NzbDrone.Core.Download.Engine
 
                 if (!process.WaitForExit(timeout))
                 {
-                    _logger.Warn("embarr-engine didn't exit within {0}s; killing it", timeout.TotalSeconds);
+                    _logger.Warn("cinnabarr-engine didn't exit within {0}s; killing it", timeout.TotalSeconds);
                     process.Kill();
                 }
 
@@ -578,7 +578,7 @@ namespace NzbDrone.Core.Download.Engine
                 if (!process.WaitForExit(Timings.KillTimeout))
                 {
                     // Leave the pid file so the next start can stop it.
-                    _logger.Error("embarr-engine (pid {0}) is still running after being killed", process.Id);
+                    _logger.Error("cinnabarr-engine (pid {0}) is still running after being killed", process.Id);
                     return;
                 }
             }
@@ -627,7 +627,7 @@ namespace NzbDrone.Core.Download.Engine
                    Math.Abs(startTimeUtc.Ticks - storedTicks) < TimeSpan.TicksPerSecond;
         }
 
-        // An engine left running by a previous Embarr process that didn't shut down cleanly
+        // An engine left running by a previous Cinnabarr process that didn't shut down cleanly
         // would hold the profile lock and stop the new engine from starting.
         private void KillStaleEngine()
         {
@@ -671,7 +671,7 @@ namespace NzbDrone.Core.Download.Engine
 
                 verified = true;
 
-                _logger.Warn("Stopping embarr-engine left running by a previous session (pid {0})", pid);
+                _logger.Warn("Stopping cinnabarr-engine left running by a previous session (pid {0})", pid);
                 stale.Kill();
 
                 if (stale.WaitForExit(Timings.KillTimeout))
@@ -682,11 +682,11 @@ namespace NzbDrone.Core.Download.Engine
                     return;
                 }
 
-                _logger.Error("embarr-engine from a previous session (pid {0}) didn't exit; not starting another until it does", pid);
+                _logger.Error("cinnabarr-engine from a previous session (pid {0}) didn't exit; not starting another until it does", pid);
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Unable to check or stop embarr-engine left running by a previous session");
+                _logger.Error(ex, "Unable to check or stop cinnabarr-engine left running by a previous session");
             }
 
             if (stale == null)
@@ -762,7 +762,7 @@ namespace NzbDrone.Core.Download.Engine
 
                 if (ProcessExited())
                 {
-                    _logger.Error("embarr-engine exited unexpectedly");
+                    _logger.Error("cinnabarr-engine exited unexpectedly");
                     return;
                 }
 

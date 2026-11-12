@@ -33,7 +33,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         {
             _files = new Dictionary<string, string>();
             _engineFolder = Path.Combine("data".AsOsAgnostic(), "engine");
-            _client = new DownloadClientDefinition { Id = EngineClientId, Name = "Embarr Engine", Implementation = "QBittorrent" };
+            _client = new DownloadClientDefinition { Id = EngineClientId, Name = "Cinnabarr Engine", Implementation = "QBittorrent" };
 
             Mocker.GetMock<IEngineClientRegistry>().SetupGet(s => s.EngineFolder).Returns(_engineFolder);
             Mocker.GetMock<IEngineClientRegistry>().Setup(s => s.IsEngineClient(EngineClientId)).Returns(true);
@@ -51,7 +51,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             disk.Setup(d => d.ReadAllText(It.IsAny<string>())).Returns<string>(path => _files[path]);
         }
 
-        private string LinkPath => Path.Combine(_engineFolder, "embarr", Hash.ToLowerInvariant() + ".json");
+        private string LinkPath => Path.Combine(_engineFolder, "cinnabarr", Hash.ToLowerInvariant() + ".json");
 
         private EpisodeGrabbedEvent GivenGrab(int downloadClientId = EngineClientId, string downloadId = Hash)
         {
@@ -180,7 +180,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
                                                h.SeriesId == 7 &&
                                                h.SourceTitle == "Series.S01E02E03.1080p.WEB-DL-Group" &&
                                                h.Data[EngineLinkService.RestoredFromKey] == "EngineSidecar" &&
-                                               h.Data["DownloadClientName"] == "Embarr Engine");
+                                               h.Data["DownloadClientName"] == "Cinnabarr Engine");
             inserted.Should().Contain(h => h.EpisodeId == 21).And.Contain(h => h.EpisodeId == 22);
             inserted[0].Quality.Quality.Should().Be(Quality.Bluray1080p);
 
@@ -311,7 +311,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
             inserted[0].Quality.Quality.Should().Be(Quality.Bluray1080p);
             inserted[0].Date.Should().Be(link.Grabbed);
             inserted[0].Data[EngineLinkService.RestoredFromKey].Should().Be("EngineSidecar");
-            inserted[0].Data["DownloadClientName"].Should().Be("Embarr Engine");
+            inserted[0].Data["DownloadClientName"].Should().Be("Cinnabarr Engine");
 
             Mocker.GetMock<IDownloadHistoryRepository>()
                 .Verify(r => r.Insert(It.Is<DownloadHistory>(h => h.EventType == DownloadHistoryEventType.DownloadGrabbed && h.DownloadId == Hash && h.MovieId == 6 && h.DownloadClientId == EngineClientId)), Times.Once());
@@ -354,14 +354,14 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         public void should_remove_only_empty_staging_folders_of_the_torrent()
         {
             var root = @"C:\TV".AsOsAgnostic();
-            var torrentFolder = Path.Combine(root, ".embarr-staging", "abcdef01");
+            var torrentFolder = Path.Combine(root, ".cinnabarr-staging", "abcdef01");
             var link = new EngineLink
             {
                 SavePath = root,
                 Files = new List<EngineLinkFile>
                 {
-                    new EngineLinkFile { PendingPath = ".embarr-staging/abcdef01/0/.Show - S01E01.mkv.abcdef01.pending" },
-                    new EngineLinkFile { PendingPath = ".embarr-staging/abcdef01/1/.Show - S01E01.en.srt.abcdef01.pending" }
+                    new EngineLinkFile { PendingPath = ".cinnabarr-staging/abcdef01/0/.Show - S01E01.mkv.abcdef01.pending" },
+                    new EngineLinkFile { PendingPath = ".cinnabarr-staging/abcdef01/1/.Show - S01E01.en.srt.abcdef01.pending" }
                 }
             };
 

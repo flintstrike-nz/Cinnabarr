@@ -9,7 +9,7 @@ using IEngineStatusService = NzbDrone.Core.IndexerEngine.Indexers.IIndexerStatus
 namespace NzbDrone.Core.Indexers.Engine
 {
     /// <summary>
-    /// Gives the indexer engine the status service it expects, backed by Embarr's own indexer status
+    /// Gives the indexer engine the status service it expects, backed by Cinnabarr's own indexer status
     /// (back-off, health) so there is one source of truth. Session cookies and the engine's own
     /// "last RSS release" are kept in memory only: they are cheap to rebuild and never need migrating.
     /// </summary>

@@ -134,7 +134,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         public void should_find_engine_next_to_app()
         {
             Mocker.GetMock<IDiskProvider>()
-                .Setup(s => s.FileExists(It.Is<string>(p => Path.GetFileNameWithoutExtension(p) == "embarr-engine")))
+                .Setup(s => s.FileExists(It.Is<string>(p => Path.GetFileNameWithoutExtension(p) == "cinnabarr-engine")))
                 .Returns(true);
 
             var path = Subject.ResolveEnginePath();

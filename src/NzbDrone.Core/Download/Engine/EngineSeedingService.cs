@@ -263,16 +263,16 @@ namespace NzbDrone.Core.Download.Engine
             UpdateShareLimits(proxy, settings, torrent, rules, downloadId, link);
         }
 
-        // The engine's own share limits, so the goals still apply while Embarr is down. The engine stops a torrent as
+        // The engine's own share limits, so the goals still apply while Cinnabarr is down. The engine stops a torrent as
         // soon as either of its limits is reached, so a ratio limit is only written when reaching that ratio meets
         // every goal (a single "ratio" or "time or ratio" goal). Time is never written: the engine counts it from when
         // the torrent finished, which can be well before its files were imported. Otherwise the torrent is left
-        // unlimited and Embarr removes it.
+        // unlimited and Cinnabarr removes it.
         private void UpdateShareLimits(IQBittorrentProxy proxy, QBittorrentSettings settings, QBittorrentTorrent torrent, List<EngineSeedingRule> rules, string downloadId, EngineLink link)
         {
             var stopped = torrent.State is "pausedUP" or "stoppedUP";
 
-            // A start Embarr decided on earlier that hasn't happened yet (the request failed) is tried again; once the
+            // A start Cinnabarr decided on earlier that hasn't happened yet (the request failed) is tried again; once the
             // torrent runs, a later stop is the user's and is left alone.
             if (link.ResumeSeeding)
             {

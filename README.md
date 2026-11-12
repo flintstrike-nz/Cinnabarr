@@ -1,10 +1,10 @@
-# Embarr
+# Cinnabarr
 
-Embarr is one app for TV shows and movies: library management, indexer search and a built-in torrent downloader, with a single library, a single download queue and a single settings tree.
+Cinnabarr is one app for TV shows and movies: library management, indexer search and a built-in torrent downloader, with a single library, a single download queue and a single settings tree.
 
-It is built by merging [Sonarr](https://github.com/Sonarr/Sonarr) (the base of this repository), [Radarr](https://github.com/Radarr/Radarr), [Prowlarr](https://github.com/Prowlarr/Prowlarr) and a headless [qBittorrent](https://github.com/qbittorrent/qBittorrent) engine. Embarr is not affiliated with those projects; please don't ask them for support with Embarr.
+It is built by merging [Sonarr](https://github.com/Sonarr/Sonarr) (the base of this repository), [Radarr](https://github.com/Radarr/Radarr), [Prowlarr](https://github.com/Prowlarr/Prowlarr) and a headless [qBittorrent](https://github.com/qbittorrent/qBittorrent) engine. Cinnabarr is not affiliated with those projects; please don't ask them for support with Cinnabarr.
 
-**Status:** early development. See the [architecture and roadmap](docs/embarr/ROADMAP.md) for the design and the phase plan.
+**Status:** early development. See the [architecture and roadmap](docs/cinnabarr/ROADMAP.md) for the design and the phase plan.
 
 ## Contributing
 
@@ -12,7 +12,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Upstream README
 
-The rest of this file is Sonarr's original README, kept for reference and attribution until Embarr has its own documentation.
+The rest of this file is Sonarr's original README, kept for reference and attribution until Cinnabarr has its own documentation.
 
 ## Features
 

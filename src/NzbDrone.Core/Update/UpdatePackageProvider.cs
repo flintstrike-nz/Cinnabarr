@@ -9,7 +9,7 @@ namespace NzbDrone.Core.Update
         List<UpdatePackage> GetRecentUpdates(string branch, Version currentVersion, Version previousVersion = null);
     }
 
-    // Embarr doesn't use Sonarr's update channel. Until Embarr has its own
+    // Cinnabarr doesn't use Sonarr's update channel. Until Cinnabarr has its own
     // update source (roadmap Phase 7) no updates are offered.
     public class UpdatePackageProvider : IUpdatePackageProvider
     {

@@ -22,7 +22,7 @@ namespace NzbDrone.Core.Indexers.Engine
     }
 
     /// <summary>
-    /// Turns Embarr's search criteria into engine criteria. The result is a list of tiers: the first tier that
+    /// Turns Cinnabarr's search criteria into engine criteria. The result is a list of tiers: the first tier that
     /// finds releases wins and later tiers are not run (IDs first, then scene titles), as Sonarr's Newznab
     /// request generator does.
     /// </summary>

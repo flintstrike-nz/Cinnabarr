@@ -147,7 +147,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             {
                 var historyItems = FindHistory(downloadItem.DownloadId);
 
-                // Embarr's database may have lost the grab (for example after restoring an older backup):
+                // Cinnabarr's database may have lost the grab (for example after restoring an older backup):
                 // rebuild it from the link sidecar the engine keeps (roadmap §4.4 rule 5).
                 // A movie's grab is in its own history, so a torrent that has one is not lost.
                 if (isEngine && historyItems.Empty() && FindMovieHistory(downloadItem.DownloadId).Empty() && _engineLinkService.TryRestore(downloadClient, downloadItem.DownloadId))
@@ -156,7 +156,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                 }
 
                 // The info-hash is the only key for the built-in engine (roadmap §4.4 rule 1): a torrent
-                // Embarr has no record of is listed as Unlinked and is never matched to a series by name.
+                // Cinnabarr has no record of is listed as Unlinked and is never matched to a series by name.
                 // A movie's grab is kept in its own history.
                 var movieHistory = historyItems.Empty() ? FindMovieHistory(downloadItem.DownloadId) : new List<MovieHistory>();
                 var isMovie = movieHistory.Any();
@@ -499,7 +499,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                                         Languages = firstHistoryItem.Languages ?? new()
                                     };
 
-            // Embarr owns intent: the grabbed quality (including one restored from the sidecar) wins over
+            // Cinnabarr owns intent: the grabbed quality (including one restored from the sidecar) wins over
             // whatever the title parses as.
             var grabbedQuality = historyItems.FirstOrDefault(h => h.EventType == EpisodeHistoryEventType.Grabbed)?.Quality;
 

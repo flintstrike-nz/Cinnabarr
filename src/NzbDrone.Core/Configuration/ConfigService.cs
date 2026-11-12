@@ -186,7 +186,7 @@ namespace NzbDrone.Core.Configuration
         }
 
         // Where the indexer engine downloads its Cardigann definitions from: a zip of a repository laid out like
-        // Prowlarr/Indexers (definitions/v{n}/*.yml). Embarr's own fork by default; it never uses Prowlarr's servers.
+        // Prowlarr/Indexers (definitions/v{n}/*.yml). Cinnabarr's own fork by default; it never uses Prowlarr's servers.
         // Where movie information comes from. The Radarr project's metadata service by default (it reads TMDb for us,
         // so Cinnabarr needs no key); point this at another service with the same routes to change it.
         public string MovieMetadataUrl

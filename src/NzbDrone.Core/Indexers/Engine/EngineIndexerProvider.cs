@@ -14,10 +14,10 @@ namespace NzbDrone.Core.Indexers.Engine
 {
     public interface IEngineIndexerProvider
     {
-        /// <summary>The engine indexer that runs a saved Embarr indexer.</summary>
+        /// <summary>The engine indexer that runs a saved Cinnabarr indexer.</summary>
         EngineIndexer Get(IndexerDefinition definition);
 
-        /// <summary>Every indexer Embarr can add from a definition file.</summary>
+        /// <summary>Every indexer Cinnabarr can add from a definition file.</summary>
         IReadOnlyList<EngineDefinition> Templates();
 
         EngineDefinition FindTemplate(string definitionFile);

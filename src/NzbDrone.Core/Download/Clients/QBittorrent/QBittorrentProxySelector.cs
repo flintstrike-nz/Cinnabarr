@@ -18,7 +18,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         QBittorrentTorrentProperties GetTorrentProperties(string hash, QBittorrentSettings settings);
         List<QBittorrentTorrentFile> GetTorrentFiles(string hash, QBittorrentSettings settings);
 
-        // hold: the built-in engine's add, where nothing downloads until Embarr has prepared the torrent (roadmap §4.8)
+        // hold: the built-in engine's add, where nothing downloads until Cinnabarr has prepared the torrent (roadmap §4.8)
         void AddTorrentFromUrl(string torrentUrl, TorrentSeedConfiguration seedConfiguration, QBittorrentSettings settings, bool hold = false);
         void AddTorrentFromFile(string fileName, byte[] fileContent, TorrentSeedConfiguration seedConfiguration, QBittorrentSettings settings, bool hold = false);
 

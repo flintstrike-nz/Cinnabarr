@@ -27,7 +27,7 @@ namespace NzbDrone.Core.HealthCheck.Checks
             _client = client;
             _logger = logger;
 
-            // Test the proxy against the metadata service, the one upstream service Embarr
+            // Test the proxy against the metadata service, the one upstream service Cinnabarr
             // still depends on (until Phase 4), rather than Sonarr's general services API.
             _cloudRequestBuilder = cloudRequestBuilder.SkyHookTvdb;
         }
@@ -56,7 +56,7 @@ namespace NzbDrone.Core.HealthCheck.Checks
             var request = _cloudRequestBuilder.Create()
                 .SetSegment("route", "search")
                 .AddQueryParam("language", "eng")
-                .AddQueryParam("term", "embarr")
+                .AddQueryParam("term", "cinnabarr")
                 .Build();
 
             try

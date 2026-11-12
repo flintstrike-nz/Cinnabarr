@@ -1,6 +1,6 @@
-# Contributing to Embarr
+# Contributing to Cinnabarr
 
-Embarr is built in phases. The plan, design decisions and open questions are in [docs/embarr/ROADMAP.md](docs/embarr/ROADMAP.md).
+Cinnabarr is built in phases. The plan, design decisions and open questions are in [docs/cinnabarr/ROADMAP.md](docs/cinnabarr/ROADMAP.md).
 
 ## Before you start
 

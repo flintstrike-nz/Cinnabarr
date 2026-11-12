@@ -120,7 +120,7 @@ namespace NzbDrone.Core.Test.RootFolderTests
         [TestCase(".appledouble")]
         [TestCase("@eadir")]
         [TestCase(".grab")]
-        [TestCase(".embarr-staging")]
+        [TestCase(".cinnabarr-staging")]
         public void should_get_root_folder_with_subfolders_excluding_special_sub_folders(string subFolder)
         {
             var rootFolderPath = @"C:\Test\TV".AsOsAgnostic();
@@ -209,7 +209,7 @@ namespace NzbDrone.Core.Test.RootFolderTests
                 .Build();
 
             var letterFolder = Path.Combine(rootFolderPath, "S");
-            var stagingFolder = Path.Combine(rootFolderPath, ".embarr-staging");
+            var stagingFolder = Path.Combine(rootFolderPath, ".cinnabarr-staging");
 
             Mocker.GetMock<IRootFolderRepository>().Setup(s => s.Get(It.IsAny<int>())).Returns(rootFolder);
             Mocker.GetMock<ISeriesRepository>().Setup(s => s.AllSeriesPaths()).Returns(new Dictionary<int, string>());

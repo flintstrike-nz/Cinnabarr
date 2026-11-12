@@ -51,10 +51,10 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | ID | Item | Type | Requirements | Phase | Priority | Size | Depends on | Sequence | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | BL-001 | Fix the header and sidebar still reading Sonarr | Task | BRD-01 | 1 | M | S | none | Now | Done |
-| BL-002 | Phase 1e rename to Cinnabarr (UI, strings, logos, metadata, docs) | Story | BRD-02 | 1e | M | M | BL-004, BL-005 | Next | Blocked: owner theme and icons |
+| BL-002 | Phase 1e rename to Cinnabarr (UI, strings, logos, metadata, docs) | Story | BRD-02 | 1e | M | M | BL-004, BL-005 | Next | Partial: names, strings, login pages, metadata and docs now say Cinnabarr; logo, theme and icons need the owner |
 | BL-003 | Name clearance search before any public release | Task | BRD-03 | pre-release | M | S | none | Later | Ready |
-| BL-004 | Decide whether to rename the repo and docs/embarr folder | Decision | BRD-02 | 1e | S | XS | none | Next | Decision |
-| BL-005 | Rename the engine binary to cinnabarr-engine and check the code | Spike | ENG-17 | 1e | M | S | none | Next | Ready |
+| BL-004 | Decide whether to rename the repo and docs/cinnabarr folder | Decision | BRD-02 | 1e | S | XS | none | Next | Done: docs folder is docs/cinnabarr; renaming the GitHub repositories is left to the owner |
+| BL-005 | Rename the engine binary to cinnabarr-engine and check the code | Spike | ENG-17 | 1e | M | S | none | Next | Done (engine builds as cinnabarr-engine; CINNABARR_ENGINE_* variables) |
 
 ### Phase 4 close-out
 
@@ -211,8 +211,8 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 
 | ID | Item | Status |
 | --- | --- | --- |
-| BL-002 | Phase 1e rename to Cinnabarr (UI, strings, logos, metadata, docs) | Blocked: owner theme and icons |
-| BL-004 | Decide whether to rename the repo and docs/embarr folder | Decision |
+| BL-002 | Phase 1e rename to Cinnabarr (UI, strings, logos, metadata, docs) | Partial: names, strings, login pages, metadata and docs now say Cinnabarr; logo, theme and icons need the owner |
+| BL-004 | Decide whether to rename the repo and docs/cinnabarr folder | Done: docs folder is docs/cinnabarr; renaming the GitHub repositories is left to the owner |
 | BL-014 | Series metadata from TVDB directly, replacing Skyhook (4i) | Blocked: TVDB key and licence |
 | BL-015 | Movie metadata from TMDb directly, replacing the interim service (4i) | Blocked: TMDb key |
 | BL-058 | Decide the maximum number of version slots (decision 6) | Decision |

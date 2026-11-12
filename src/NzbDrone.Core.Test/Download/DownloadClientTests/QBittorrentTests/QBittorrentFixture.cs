@@ -789,7 +789,7 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.QBittorrentTests
 
             Mocker.GetMock<ITagRepository>()
                   .Setup(s => s.GetTags(It.IsAny<HashSet<int>>()))
-                  .Returns(new List<Tag> { new Tag { Id = 1, Label = "anime" }, new Tag { Id = 2, Label = "embarr-prepared" } });
+                  .Returns(new List<Tag> { new Tag { Id = 1, Label = "anime" }, new Tag { Id = 2, Label = "cinnabarr-prepared" } });
 
             await Subject.Download(remoteEpisode, CreateIndexer());
 

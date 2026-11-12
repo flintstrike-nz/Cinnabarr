@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace NzbDrone.Core.Download.Engine
 {
     // Link intent stored next to the engine's own state (roadmap §4.4 rule 5), one file per
-    // torrent at <AppData>/engine/embarr/<info-hash>.json. It holds external ids only, never
+    // torrent at <AppData>/engine/cinnabarr/<info-hash>.json. It holds external ids only, never
     // database ids, so a database restored from an older backup can rebuild the link.
     public class EngineLink
     {
@@ -25,7 +25,7 @@ namespace NzbDrone.Core.Download.Engine
         public double? TrackerSeedRatio { get; set; }
         public int? TrackerSeedMinutes { get; set; }
 
-        // Set while Embarr is starting a torrent its earlier share limits stopped, so a start that fails is retried.
+        // Set while Cinnabarr is starting a torrent its earlier share limits stopped, so a start that fails is retried.
         public bool ResumeSeeding { get; set; }
 
         // The grabbed quality; null in sidecars written before it was added, which fall back to parsing the title.
