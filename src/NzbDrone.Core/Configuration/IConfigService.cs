@@ -36,6 +36,9 @@ namespace NzbDrone.Core.Configuration
 
         // How many releases may download the same movie version at once (race mode, roadmap §4.9): 1 is off.
         int EngineRaceMaxSources { get; set; }
+
+        // The versions every new movie gets, as JSON (see DefaultVersionService); empty for none.
+        string DefaultMovieVersions { get; set; }
         bool AutoRedownloadFailed { get; set; }
         bool AutoRedownloadFailedFromInteractiveSearch { get; set; }
 

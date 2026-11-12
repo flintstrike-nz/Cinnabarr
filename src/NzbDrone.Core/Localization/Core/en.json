@@ -410,6 +410,8 @@
   "DefaultNameCopiedSpecification": "{name} - Copy",
   "DefaultNotFoundMessage": "You must be lost, nothing to see here.",
   "DefaultVersion": "Default",
+  "DefaultVersions": "Default Versions",
+  "DefaultVersionsCaption": "Extra versions every movie you add gets, each with its own quality profile (for example 4K with an Ultra-HD profile). Movies already in the library are not changed.",
   "Defaults": "Defaults",
   "Delay": "Delay",
   "DelayMinutes": "{delay} Minutes",

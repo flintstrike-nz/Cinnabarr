@@ -20,6 +20,7 @@ import { useIsWindows } from 'System/Status/useSystemStatus';
 import { InputChanged } from 'typings/inputs';
 import { SettingsStateChange } from 'typings/Settings/SettingsState';
 import translate from 'Utilities/String/translate';
+import DefaultMovieVersions from './DefaultMovieVersions';
 import Naming from './Naming/Naming';
 import AddRootFolder from './RootFolder/AddRootFolder';
 import {
@@ -698,6 +699,8 @@ function MediaManagement() {
               ) : null}
             </Form>
           ) : null}
+
+          <DefaultMovieVersions />
 
           <SectionHeading
             title={translate('RootFolders')}
