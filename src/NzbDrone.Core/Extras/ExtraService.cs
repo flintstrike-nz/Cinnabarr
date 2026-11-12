@@ -198,6 +198,13 @@ namespace NzbDrone.Core.Extras
             foreach (var episodeFile in episodeFiles)
             {
                 var localEpisodeFile = episodeFile;
+
+                // A file of an extra version covers the episodes recorded for it (loaded from there when asked for).
+                if (localEpisodeFile.VersionSlotId != 0)
+                {
+                    continue;
+                }
+
                 episodeFile.Episodes = new List<Episode>(episodes.Where(e => e.EpisodeFileId == localEpisodeFile.Id));
             }
 

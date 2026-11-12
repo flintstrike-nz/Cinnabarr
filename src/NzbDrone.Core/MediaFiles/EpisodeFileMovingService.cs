@@ -65,7 +65,11 @@ namespace NzbDrone.Core.MediaFiles
 
         public EpisodeFile MoveEpisodeFile(EpisodeFile episodeFile, Series series)
         {
-            var episodes = _episodeService.GetEpisodesByFileId(episodeFile.Id);
+            // A file of an extra version covers the episodes recorded for it, not the ones that have it as their own file.
+            var episodes = episodeFile.VersionSlotId == 0
+                ? _episodeService.GetEpisodesByFileId(episodeFile.Id)
+                : episodeFile.Episodes.Value;
+
             return MoveEpisodeFile(episodeFile, series, episodes);
         }
 
