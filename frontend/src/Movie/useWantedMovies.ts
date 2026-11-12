@@ -66,3 +66,23 @@ export const useSearchWantedMovies = () => {
       }),
   };
 };
+
+export interface WantedMovieVersion {
+  movieId: number;
+  movieTitle?: string;
+  year: number;
+  versionSlotId: number;
+  versionLabel?: string;
+  qualityProfileId: number;
+}
+
+const NO_VERSIONS: WantedMovieVersion[] = [];
+
+// The wanted versions of movies other than the movie's own (default) version.
+export const useWantedMovieVersions = (kind: WantedKind) => {
+  const result = useApiQuery<WantedMovieVersion[]>({
+    path: `/wanted/movie/${kind}/versions`,
+  });
+
+  return { ...result, data: result.data ?? NO_VERSIONS };
+};
