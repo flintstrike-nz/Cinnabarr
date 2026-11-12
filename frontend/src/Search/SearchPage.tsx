@@ -11,6 +11,7 @@ import PageHeading from 'Components/Page/PageHeading';
 import { icons, kinds } from 'Helpers/Props';
 import styles from 'Movie/Movie.module.css';
 import { useVersionSlots } from 'Movie/useVersionSlots';
+import { useSeriesVersions } from 'Series/useSeriesVersions';
 import { useQualityProfilesData } from 'Settings/Profiles/Quality/useQualityProfiles';
 import { InputChanged } from 'typings/inputs';
 import formatBytes from 'Utilities/Number/formatBytes';
@@ -117,8 +118,10 @@ function getMatchLink(item: SearchResult) {
 
 const NEW_VERSION = -1;
 
+// Exactly one of movieId and seriesId is set.
 interface VersionPickerProps {
   movieId: number;
+  seriesId: number;
   value: number;
   onChange: (value: number) => void;
   label: string;
@@ -127,9 +130,10 @@ interface VersionPickerProps {
   onProfileChange: (profileId: number) => void;
 }
 
-// "Download another version": which version of the movie a release is for, or a new one.
+// "Download another version": which version of the movie or series a release is for, or a new one.
 function VersionPicker({
   movieId,
+  seriesId,
   value,
   onChange,
   label,
@@ -137,7 +141,9 @@ function VersionPicker({
   profileId,
   onProfileChange,
 }: VersionPickerProps) {
-  const { data: slots } = useVersionSlots(movieId);
+  const { data: movieSlots } = useVersionSlots(movieId);
+  const { data: seriesVersions } = useSeriesVersions(seriesId);
+  const slots = seriesId ? seriesVersions : movieSlots;
   const profiles = useQualityProfilesData();
 
   const handleChange = useCallback(
@@ -211,6 +217,7 @@ function ResultRow({ item, isGrabbing, onGrab }: ResultRowProps) {
   const [newLabel, setNewLabel] = useState('');
   const [newProfileId, setNewProfileId] = useState(0);
   const movieId = item.mediaType === 'movie' ? item.mappedMovieId ?? 0 : 0;
+  const seriesId = item.mediaType === 'series' ? item.mappedSeriesId ?? 0 : 0;
 
   const handleGrabPress = useCallback(() => {
     const payload: GrabPayload = {
@@ -253,9 +260,10 @@ function ResultRow({ item, isGrabbing, onGrab }: ResultRowProps) {
         ) : (
           <>
             <Link to={getMatchLink(item)}>{item.mappedTitle}</Link>
-            {movieId ? (
+            {movieId || seriesId ? (
               <VersionPicker
                 movieId={movieId}
+                seriesId={seriesId}
                 value={version}
                 label={newLabel}
                 profileId={newProfileId}

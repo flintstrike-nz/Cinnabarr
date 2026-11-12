@@ -34,6 +34,7 @@ import { useCustomFiltersList } from 'Filters/useCustomFilters';
 import { align, icons, kinds } from 'Helpers/Props';
 import { SortDirection } from 'Helpers/Props/sortDirections';
 import { WantedMoviesSection } from 'Movie/WantedMovies';
+import WantedSeriesVersions from 'Series/WantedSeriesVersions';
 import { CheckInputChanged } from 'typings/inputs';
 import { TableOptionsChangePayload } from 'typings/Table';
 import getFilterValue from 'Utilities/Filter/getFilterValue';
@@ -358,6 +359,8 @@ function CutoffUnmetContent() {
               />
             </div>
           ) : null}
+
+          <WantedSeriesVersions kind="cutoff" />
 
           <WantedMoviesSection kind="cutoff" />
         </PageContentBody>

@@ -20,7 +20,7 @@ import { useIsWindows } from 'System/Status/useSystemStatus';
 import { InputChanged } from 'typings/inputs';
 import { SettingsStateChange } from 'typings/Settings/SettingsState';
 import translate from 'Utilities/String/translate';
-import DefaultMovieVersions from './DefaultMovieVersions';
+import DefaultVersions from './DefaultVersions';
 import Naming from './Naming/Naming';
 import AddRootFolder from './RootFolder/AddRootFolder';
 import {
@@ -700,7 +700,17 @@ function MediaManagement() {
             </Form>
           ) : null}
 
-          <DefaultMovieVersions />
+          <DefaultVersions
+            path="/settings/seriesversions"
+            legend={translate('DefaultSeriesVersions')}
+            caption={translate('DefaultSeriesVersionsCaption')}
+          />
+
+          <DefaultVersions
+            path="/settings/movieversions"
+            legend={translate('DefaultVersions')}
+            caption={translate('DefaultVersionsCaption')}
+          />
 
           <SectionHeading
             title={translate('RootFolders')}

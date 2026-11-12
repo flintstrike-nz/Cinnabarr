@@ -23,6 +23,10 @@ public class HistoryResource : RestResource
     public string? DownloadId { get; set; }
     public EpisodeHistoryEventType EventType { get; set; }
     public required Dictionary<string, string> Data { get; set; }
+
+    // The extra version of the series the event is about; 0 for the series' default version.
+    public int VersionSlotId { get; set; }
+    public string? VersionLabel { get; set; }
     public EpisodeResource? Episode { get; set; }
     public SeriesResource? Series { get; set; }
 }
@@ -47,7 +51,8 @@ public static class HistoryResourceMapper
             Date = model.Date,
             DownloadId = model.DownloadId,
             EventType = model.EventType,
-            Data = model.Data
+            Data = model.Data,
+            VersionSlotId = model.VersionSlotId
         };
     }
 }

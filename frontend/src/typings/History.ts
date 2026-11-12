@@ -87,5 +87,7 @@ export default interface History {
   downloadId: string;
   eventType: HistoryEventType;
   data: HistoryData;
+  versionSlotId?: number;
+  versionLabel?: string;
   id: number;
 }

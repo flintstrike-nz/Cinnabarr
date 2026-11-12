@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
@@ -8,6 +9,7 @@ using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Profiles.Qualities;
+using NzbDrone.Core.Qualities;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Core.Tv;
 using NzbDrone.Core.Tv.Events;
@@ -160,6 +162,91 @@ namespace NzbDrone.Core.Test.TvTests
             Subject.Delete(7);
 
             Mocker.GetMock<ISeriesVersionSlotRepository>().Verify(r => r.Delete(7), Times.Once());
+        }
+
+        private void GivenWantedSetup()
+        {
+            _series.Monitored = true;
+            _episodes[0].Monitored = true;
+            _episodes[0].AirDateUtc = DateTime.UtcNow.AddDays(-10);
+            _episodes[1].Monitored = true;
+            _episodes[1].AirDateUtc = DateTime.UtcNow.AddDays(-10);
+
+            Mocker.GetMock<ISeriesVersionSlotRepository>().Setup(r => r.All()).Returns(new List<SeriesVersionSlot>
+            {
+                new SeriesVersionSlot { Id = 7, SeriesId = 5, Label = "UHD", QualityProfileId = 2, Monitored = true },
+                new SeriesVersionSlot { Id = 8, SeriesId = 5, Label = "Off", QualityProfileId = 2, Monitored = false },
+                new SeriesVersionSlot { Id = 9, SeriesId = 6, Label = "UHD", QualityProfileId = 2, Monitored = true }
+            });
+
+            Mocker.GetMock<ISeriesService>().Setup(s => s.GetSeries(It.IsAny<IEnumerable<int>>())).Returns(new List<Series> { _series, new Series { Id = 6, Monitored = false } });
+            Mocker.GetMock<IEpisodeService>().Setup(s => s.GetEpisodeBySeries(5)).Returns(_episodes);
+        }
+
+        [Test]
+        public void should_list_the_episodes_a_monitored_version_of_a_monitored_series_is_missing()
+        {
+            GivenWantedSetup();
+
+            // The default file of episode 10 doesn't count for the version; episode 11 has the version's file.
+            _links.Add(new EpisodeVersionFile { EpisodeId = 11, VersionSlotId = 7, EpisodeFileId = 80 });
+            Mocker.GetMock<IMediaFileService>().Setup(m => m.Get(It.IsAny<IEnumerable<int>>())).Returns(new List<EpisodeFile> { new EpisodeFile { Id = 80 } });
+
+            var missing = Subject.GetMissing();
+
+            // Not the unmonitored version, and not the version of the unmonitored series.
+            var wanted = missing.Should().ContainSingle().Subject;
+
+            wanted.Series.VersionSlotId.Should().Be(7);
+            wanted.Series.Id.Should().Be(5);
+            wanted.Episodes.Select(e => e.Id).Should().Equal(10);
+            wanted.Episodes[0].HasFile.Should().BeFalse();
+        }
+
+        [Test]
+        public void should_not_list_an_episode_that_has_not_aired_or_is_not_monitored()
+        {
+            GivenWantedSetup();
+            _episodes[0].AirDateUtc = DateTime.UtcNow.AddDays(3);
+            _episodes[1].Monitored = false;
+
+            Subject.GetMissing().Should().BeEmpty();
+        }
+
+        [Test]
+        public void should_limit_the_wanted_versions_to_the_series_asked_for()
+        {
+            GivenWantedSetup();
+
+            Subject.GetMissing(new List<int> { 6 }).Should().BeEmpty();
+            Subject.GetMissing(new List<int> { 5 }).Should().ContainSingle();
+        }
+
+        [Test]
+        public void should_list_the_episodes_whose_file_for_the_version_is_below_the_cutoff()
+        {
+            GivenWantedSetup();
+
+            Mocker.GetMock<IQualityProfileService>().Setup(q => q.Get(2)).Returns(new QualityProfile
+            {
+                Id = 2,
+                UpgradeAllowed = true,
+                Cutoff = Quality.Bluray2160p.Id,
+                Items = NzbDrone.Core.Test.Qualities.QualityFixture.GetDefaultQualities(Quality.SDTV, Quality.HDTV720p, Quality.Bluray2160p)
+            });
+
+            _links.Add(new EpisodeVersionFile { EpisodeId = 10, VersionSlotId = 7, EpisodeFileId = 80 });
+            _links.Add(new EpisodeVersionFile { EpisodeId = 11, VersionSlotId = 7, EpisodeFileId = 81 });
+            Mocker.GetMock<IMediaFileService>().Setup(m => m.Get(It.IsAny<IEnumerable<int>>())).Returns(new List<EpisodeFile>
+            {
+                new EpisodeFile { Id = 80, Quality = new QualityModel(Quality.HDTV720p) },
+                new EpisodeFile { Id = 81, Quality = new QualityModel(Quality.Bluray2160p) }
+            });
+
+            var wanted = Subject.GetCutoffUnmet().Should().ContainSingle().Subject;
+
+            wanted.Episodes.Select(e => e.Id).Should().Equal(10);
+            wanted.Episodes[0].EpisodeFileId.Should().Be(80);
         }
     }
 }

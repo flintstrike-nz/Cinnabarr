@@ -16,6 +16,7 @@ export interface SeasonInteractiveSearchModalContentProps {
   episodeCount: number;
   seriesId: number;
   seasonNumber: number;
+  versionSlotId?: number;
   onModalClose(): void;
 }
 
@@ -23,16 +24,20 @@ function SeasonInteractiveSearchModalContent({
   episodeCount,
   seriesId,
   seasonNumber,
+  versionSlotId,
   onModalClose,
 }: SeasonInteractiveSearchModalContentProps) {
-  useClearReleasesOnUnmount({ seriesId, seasonNumber });
+  const searchPayload = useMemo(
+    () =>
+      versionSlotId
+        ? { seriesId, seasonNumber, versionSlotId }
+        : { seriesId, seasonNumber },
+    [seriesId, seasonNumber, versionSlotId]
+  );
+
+  useClearReleasesOnUnmount(searchPayload);
   const modalBodyRef = useRef<HTMLDivElement>(null);
   const [filter, setFilter] = useState('');
-
-  const searchPayload = useMemo(
-    () => ({ seriesId, seasonNumber }),
-    [seriesId, seasonNumber]
-  );
 
   return (
     <ModalContent onModalClose={onModalClose}>

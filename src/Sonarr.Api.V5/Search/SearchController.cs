@@ -11,6 +11,7 @@ using NzbDrone.Core.Languages;
 using NzbDrone.Core.Movies.Versions;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
+using NzbDrone.Core.Tv.Versions;
 using Sonarr.Api.V5.Release;
 using Sonarr.Http;
 using Sonarr.Http.REST;
@@ -43,8 +44,8 @@ public class SearchGrabResource
     public required int IndexerId { get; set; }
     public int? DownloadClientId { get; set; }
 
-    // For a movie release: the version of the movie it is for (0 or left out is the movie itself), or a new version to
-    // make for it (a label and a quality profile).
+    // For a movie or series release: the version of it that the release is for (0 or left out is the movie or series
+    // itself), or a new version to make for it (a label and a quality profile).
     public int VersionSlotId { get; set; }
     public string? NewVersionLabel { get; set; }
     public int NewVersionQualityProfileId { get; set; }
@@ -55,18 +56,21 @@ public class SearchController : Controller
 {
     private readonly ISearchForFreeText _searchService;
     private readonly IVersionSlotService _versionSlotService;
+    private readonly ISeriesVersionSlotService _seriesVersionSlotService;
     private readonly IDownloadService _downloadService;
     private readonly Logger _logger;
     private readonly ICached<RemoteMedia> _remoteCache;
 
     public SearchController(ISearchForFreeText searchService,
                             IVersionSlotService versionSlotService,
+                            ISeriesVersionSlotService seriesVersionSlotService,
                             IDownloadService downloadService,
                             ICacheManager cacheManager,
                             Logger logger)
     {
         _searchService = searchService;
         _versionSlotService = versionSlotService;
+        _seriesVersionSlotService = seriesVersionSlotService;
         _downloadService = downloadService;
         _logger = logger;
         _remoteCache = cacheManager.GetCache<RemoteMedia>(GetType(), "remotes");
@@ -154,6 +158,31 @@ public class SearchController : Controller
             remoteMovie.Movie = _versionSlotService.GetView(remoteMovie.Movie, slotId);
         }
 
+        // The same for a series release: it is grabbed for one of the series' versions, which may be made now.
+        NzbDrone.Core.Tv.Series? seriesOriginal = null;
+        List<NzbDrone.Core.Tv.Episode>? episodesOriginal = null;
+
+        if (remote is RemoteEpisode remoteEpisode && (release.VersionSlotId != 0 || !string.IsNullOrWhiteSpace(release.NewVersionLabel)))
+        {
+            var slotId = release.VersionSlotId;
+
+            if (slotId == 0)
+            {
+                slotId = _seriesVersionSlotService.Add(new SeriesVersionSlot
+                {
+                    SeriesId = remoteEpisode.Series.Id,
+                    Label = release.NewVersionLabel,
+                    QualityProfileId = release.NewVersionQualityProfileId,
+                    Monitored = true
+                }).Id;
+            }
+
+            seriesOriginal = remoteEpisode.Series;
+            episodesOriginal = remoteEpisode.Episodes;
+            remoteEpisode.Series = _seriesVersionSlotService.GetView(remoteEpisode.Series, slotId);
+            remoteEpisode.Episodes = _seriesVersionSlotService.GetEpisodeViews(remoteEpisode.Episodes, slotId);
+        }
+
         try
         {
             await _downloadService.DownloadReport(remote, release.DownloadClientId);
@@ -165,10 +194,16 @@ public class SearchController : Controller
         }
         finally
         {
-            // The cached release stays the movie's own, so it can still be grabbed for another version.
+            // The cached release stays the movie's or series' own, so it can still be grabbed for another version.
             if (movieOriginal != null && remote is RemoteMovie grabbed)
             {
                 grabbed.Movie = movieOriginal;
+            }
+
+            if (seriesOriginal != null && episodesOriginal != null && remote is RemoteEpisode grabbedEpisode)
+            {
+                grabbedEpisode.Series = seriesOriginal;
+                grabbedEpisode.Episodes = episodesOriginal;
             }
         }
 

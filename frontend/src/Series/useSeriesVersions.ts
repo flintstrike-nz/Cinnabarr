@@ -77,3 +77,21 @@ export const useDeleteSeriesVersion = (id: number) => {
 
   return { isDeleting: isPending, deleteError: error, deleteVersion: mutate };
 };
+
+// Searches indexers for the monitored missing episodes of one of the series' extra versions.
+export const useSearchSeriesVersion = () => {
+  const { isPending, error, mutate } = useApiMutation<
+    unknown,
+    { name: string; seriesId: number; versionSlotId: number }
+  >({
+    path: '/command',
+    method: 'POST',
+  });
+
+  return {
+    isSearching: isPending,
+    searchError: error,
+    searchVersion: (seriesId: number, versionSlotId: number) =>
+      mutate({ name: 'SeriesSearch', seriesId, versionSlotId }),
+  };
+};

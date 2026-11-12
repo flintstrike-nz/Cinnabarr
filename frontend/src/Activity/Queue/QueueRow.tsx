@@ -254,6 +254,8 @@ function QueueRow(props: QueueRowProps) {
                   />
                 ) : null}
 
+                {series && versionLabel ? ` · ${versionLabel}` : null}
+
                 {!series && movieId ? (
                   <>
                     <Link to={`/movie/${movieId}`}>{movieTitle}</Link>

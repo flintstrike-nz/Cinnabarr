@@ -28,6 +28,7 @@ import { align, icons, kinds } from 'Helpers/Props';
 import { SortDirection } from 'Helpers/Props/sortDirections';
 import InteractiveImportModal from 'InteractiveImport/InteractiveImportModal';
 import { WantedMoviesSection } from 'Movie/WantedMovies';
+import WantedSeriesVersions from 'Series/WantedSeriesVersions';
 import { CheckInputChanged } from 'typings/inputs';
 import { TableOptionsChangePayload } from 'typings/Table';
 import getFilterValue from 'Utilities/Filter/getFilterValue';
@@ -366,6 +367,8 @@ function MissingContent() {
               />
             </div>
           ) : null}
+
+          <WantedSeriesVersions kind="missing" />
 
           <WantedMoviesSection kind="missing" />
         </PageContentBody>

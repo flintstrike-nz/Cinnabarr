@@ -64,8 +64,8 @@ namespace Sonarr.Api.V5.Queue
                 SeriesId = model.Series?.Id,
                 MovieId = model.Movie?.Id,
                 MovieTitle = model.Movie?.Title,
-                VersionSlotId = model.Movie?.VersionSlotId ?? 0,
-                VersionLabel = model.Movie?.VersionLabel,
+                VersionSlotId = model.Movie?.VersionSlotId ?? model.Series?.VersionSlotId ?? 0,
+                VersionLabel = model.Movie?.VersionLabel ?? model.Series?.VersionLabel,
                 EpisodeIds = model.Episodes?.Select(e => e.Id).ToList() ?? [],
                 Seasons = model.Episodes?
                     .GroupBy(e => e.SeasonNumber)
