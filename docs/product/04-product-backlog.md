@@ -64,9 +64,9 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | BL-011 | Movie folder rename and token picker for movie naming (4e-5) | Story | NAM-05 | 4 | S | M | none | Next | Partial: moving a movie folder and renaming it to the folder format from Organize done; token picker open |
 | BL-012 | Movie extras: .nfo, artwork, and subtitles beside existing files on scan | Story | FIL-08 | 4 | S | M | none | Next | Done (checked in the real app; folder-wide artwork such as poster.jpg is not linked) |
 | BL-013 | Movie import lists (4f) | Story | LIB-08 | 4 | M | M | none | Next | Partial: Done for two sources (custom JSON list, TMDb trending/popular); other sources, exclusions and the UI language field open |
-| BL-014 | Series metadata from TVDB directly, replacing Skyhook (4i) | Story | MET-02, MET-06, IF-02, IF-04 | 4 | M | L | BL-094 | Now | Blocked: TVDB key and licence |
+| BL-014 | Series metadata from TVDB directly, replacing Skyhook (4i) | Story | MET-02, MET-06, IF-02, IF-04 | 4 | M | L | BL-094 | Now | Not needed: decided to keep Sonarr's metadata service for series |
 | BL-015 | Movie metadata from TMDb directly, replacing the interim service (4i) | Story | MET-03, IF-03 | 4 | M | M | BL-095 | Next | Blocked: TMDb key |
-| BL-016 | TheXEM scene mappings plus Cinnabarr's own list (4i) | Story | MET-05, MET-04 | 4 | M | M | BL-014 | Next | Ready |
+| BL-016 | TheXEM scene mappings plus Cinnabarr's own list (4i) | Story | MET-05, MET-04 | 4 | M | M | BL-014 | Next | Not needed: decided to keep Sonarr's scene mapping service |
 | BL-017 | Collections and credits on movie pages | Story | MET-06, LIB-06 | 4 | S | M | none | Next | Partial: credits and collection shown; collection pages and person pages open |
 | BL-018 | Discover tab and one Add search for TV and movies | Story | LIB-09, UI-02 | 4 | M | L | none | Next | Partial: movie Discover done; one Add search for series and movies, and series Discover, open |
 | BL-019 | Merged Activity: History and Blocklist for both media types | Story | UI-04 | 4 | M | M | none | Next | Done (paging and filters for the movie sections still open) |
@@ -150,8 +150,8 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | BL-080 | Fresh migration chain, or continue Sonarr's chain at 242? | Decision | CON-03 | 4 | M | XS | none | Now | Decision |
 | BL-081 | Align the API path: /api/v1 in the roadmap, /api/v5 in code | Decision | API-01 | 2–4 | M | XS | none | Now | Decision |
 | BL-090 | Decision 1: when to rename NzbDrone.* namespaces | Decision | NFR-12 | 4+ | S | XS | none | Later | Decision |
-| BL-091 | Decision 3: support an external torrent client? | Decision | CON-05 | later | S | XS | none | Later | Decision |
-| BL-092 | Decision 7: Plex naming template | Decision | VER-05 | 5 | S | XS | BL-055 | Next | Decision |
+| BL-091 | Decision 3: support an external torrent client? | Decision | CON-05 | later | S | XS | none | Later | Decided: external torrent clients are out of scope |
+| BL-092 | Decision 7: Plex naming template | Decision | VER-05 | 5 | S | XS | BL-055 | Next | Decided: Jellyfin naming is the default, Emby and Plex are presets (the preset work is BL-056) |
 | BL-093 | Decision 5: how a race winner is chosen | Decision | VER-03 | 5 | S | XS | none | Next | Decision |
 
 ### Quality
@@ -172,7 +172,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 
 | ID | Item | Type | Requirements | Phase | Priority | Size | Depends on | Sequence | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| BL-094 | Obtain a TVDB v4 project key and check its licence terms | Task | MET-06 | 4 | M | S | none | Now | Blocked: owner |
+| BL-094 | Obtain a TVDB v4 project key and check its licence terms | Task | MET-06 | 4 | M | S | none | Now | Not needed: no TVDB key is required while Sonarr's service is used |
 | BL-095 | Obtain a TMDb key and confirm attribution | Task | MET-06 | 4 | M | S | none | Now | Blocked: owner |
 | BL-096 | Decide whether the ownership marker ships in an earlier release | Decision | MIG-05 | 1e | M | XS | none | Now | Decision |
 
@@ -213,7 +213,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | --- | --- | --- |
 | BL-002 | Phase 1e rename to Cinnabarr (UI, strings, logos, metadata, docs) | Partial: names, strings, login pages, metadata and docs now say Cinnabarr; logo, theme and icons need the owner |
 | BL-004 | Decide whether to rename the repo and docs/cinnabarr folder | Done: docs folder is docs/cinnabarr; renaming the GitHub repositories is left to the owner |
-| BL-014 | Series metadata from TVDB directly, replacing Skyhook (4i) | Blocked: TVDB key and licence |
+| BL-014 | Series metadata from TVDB directly, replacing Skyhook (4i) | Not needed: decided to keep Sonarr's metadata service for series |
 | BL-015 | Movie metadata from TMDb directly, replacing the interim service (4i) | Blocked: TMDb key |
 | BL-058 | Decide the maximum number of version slots (decision 6) | Decision |
 | BL-070 | Ownership marker and start-up protection before Phase 7 | Decision |
@@ -221,10 +221,10 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | BL-080 | Fresh migration chain, or continue Sonarr's chain at 242? | Decision |
 | BL-081 | Align the API path: /api/v1 in the roadmap, /api/v5 in code | Decision |
 | BL-090 | Decision 1: when to rename NzbDrone.* namespaces | Decision |
-| BL-091 | Decision 3: support an external torrent client? | Decision |
-| BL-092 | Decision 7: Plex naming template | Decision |
+| BL-091 | Decision 3: support an external torrent client? | Decided: external torrent clients are out of scope |
+| BL-092 | Decision 7: Plex naming template | Decided: Jellyfin naming is the default, Emby and Plex are presets (the preset work is BL-056) |
 | BL-093 | Decision 5: how a race winner is chosen | Decision |
-| BL-094 | Obtain a TVDB v4 project key and check its licence terms | Blocked: owner |
+| BL-094 | Obtain a TVDB v4 project key and check its licence terms | Not needed: no TVDB key is required while Sonarr's service is used |
 | BL-095 | Obtain a TMDb key and confirm attribution | Blocked: owner |
 | BL-096 | Decide whether the ownership marker ships in an earlier release | Decision |
 | BL-121 | Create the private cinnabarr-definitions repository | Blocked: owner |
