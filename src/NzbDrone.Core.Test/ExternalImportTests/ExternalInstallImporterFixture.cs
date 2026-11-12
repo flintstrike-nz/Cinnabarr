@@ -4,6 +4,7 @@ using System.Linq;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
+using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.ExternalImport;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Indexers.Torznab;
@@ -141,6 +142,39 @@ namespace NzbDrone.Core.Test.ExternalImportTests
             created.Priority.Should().Be(10);
             ((TorznabSettings)created.Settings).BaseUrl.Should().Be("http://new");
             ((TorznabSettings)created.Settings).Categories.Should().NotBeEmpty();
+        }
+
+        [Test]
+        public void should_take_over_torrents_the_engine_does_not_have_and_whose_folder_can_be_reached()
+        {
+            var folder = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "cinnabarr-adopt-" + Guid.NewGuid().ToString("N"));
+            System.IO.Directory.CreateDirectory(folder);
+            var torrentFile = System.IO.Path.Combine(folder, "a.torrent");
+            System.IO.File.WriteAllBytes(torrentFile, new byte[] { 1, 2, 3 });
+
+            try
+            {
+                Mocker.GetMock<IQBittorrentBackupReader>().Setup(r => r.Read("/other")).Returns(new List<ExternalTorrent>
+                {
+                    new ExternalTorrent { Hash = "AAAA", Name = "New", SavePath = folder, Stopped = true, TorrentFile = torrentFile },
+                    new ExternalTorrent { Hash = "BBBB", Name = "Have", SavePath = folder, TorrentFile = torrentFile },
+                    new ExternalTorrent { Hash = "CCCC", Name = "Far", SavePath = "/not/here/at/all", TorrentFile = torrentFile }
+                });
+
+                Mocker.GetMock<IEngineControlService>().Setup(e => e.GetTorrentIds()).Returns(new HashSet<string> { "BBBB" });
+
+                var items = Subject.Import(Options(ExternalInstallKind.QBittorrent));
+
+                items.Select(i => i.Status).Should().Equal(ExternalImportStatus.Add, ExternalImportStatus.Exists, ExternalImportStatus.Skipped);
+                items[2].Reason.Should().Contain("can't be reached");
+
+                Mocker.GetMock<IEngineControlService>().Verify(e => e.AdoptTorrentFile("a.torrent", It.IsAny<byte[]>(), folder, true), Times.Once());
+                Mocker.GetMock<IEngineControlService>().Verify(e => e.AdoptTorrentFile(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<bool>()), Times.Once());
+            }
+            finally
+            {
+                System.IO.Directory.Delete(folder, true);
+            }
         }
 
         [Test]

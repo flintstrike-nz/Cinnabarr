@@ -55,6 +55,10 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         void AddManualTorrentFromUrl(string torrentUrl, QBittorrentSettings settings);
         void AddManualTorrentFromFile(string fileName, byte[] fileContent, QBittorrentSettings settings);
 
+        // Adds a torrent that is already downloaded where savePath says, with no Cinnabarr tags (so it isn't prepared or
+        // changed): the engine checks the files and carries on seeding.
+        void AdoptTorrentFromFile(string fileName, byte[] fileContent, string savePath, bool stopped, QBittorrentSettings settings);
+
         QBittorrentTransferInfo GetTransferInfo(QBittorrentSettings settings);
         bool GetAlternativeSpeedLimitsEnabled(QBittorrentSettings settings);
         void ToggleAlternativeSpeedLimits(QBittorrentSettings settings);

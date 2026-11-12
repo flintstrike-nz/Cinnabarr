@@ -4,6 +4,8 @@ Cinnabarr is in early development, and some names inside it (the program file is
 
 ## Running it
 
+In Docker, see [DOCKER.md](DOCKER.md): one image holds the app and the engine. Without Docker:
+
 1. Build or unpack Cinnabarr, and run `Sonarr.dll` with .NET 10: `dotnet Sonarr.dll --nobrowser --data=<folder>`. The data folder holds the database, settings, logs and the engine's own profile; give it a folder of its own.
 2. The built-in download engine is a separate program, `cinnabarr-engine`. Put it next to the app, or set `CINNABARR_ENGINE_PATH` to its full path. Cinnabarr starts it, restarts it if it stops, and stops it on exit.
 3. Open `http://<host>:8989`. On a fresh data folder you create a user name and password first.
@@ -21,7 +23,7 @@ Cinnabarr is in early development, and some names inside it (the program file is
 
 - **Library → Add New** (series) and **Add Movie** search the metadata services. Series metadata comes from Sonarr's services and movie metadata from Radarr's.
 - **Library → Library Import / Import Movies** find folders already on disk and match them to titles.
-- **Library → Import from Another Install** reads the data folder of an existing Sonarr, Radarr or Prowlarr and brings over series, movies or Torznab indexers. The other install is only read. If it saw its media at other paths (a container), fill in the two path boxes so `/tv/...` there becomes `/media/tv/...` here. Use *Preview* first. The files are found again by a scan, so the paths must be reachable. Episode-level monitoring, history, blocklist and custom formats are not brought over.
+- **Library → Import from Another Install** reads the data folder of an existing Sonarr, Radarr or Prowlarr and brings over series, movies or Torznab indexers, or takes over the torrents of a qBittorrent (point it at the profile folder that holds `BT_backup`; the torrents' folders must be reachable here, and they are checked and go on seeding). The other install is only read. If it saw its media at other paths (a container), fill in the two path boxes so `/tv/...` there becomes `/media/tv/...` here. Use *Preview* first. The files are found again by a scan, so the paths must be reachable. Episode-level monitoring, history, blocklist and custom formats are not brought over.
 - **Discover** lists trending and popular movies; **Settings → Import Lists** keeps lists in sync.
 
 ## How downloads work

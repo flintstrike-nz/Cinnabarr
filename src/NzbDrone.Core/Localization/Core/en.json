@@ -1084,7 +1084,7 @@
   "ICalTagsSeriesHelpText": "Feed will only contain series with at least one matching tag",
   "ImportAll": "Import All",
   "ImportExternal": "Import from Another Install",
-  "ImportExternalCaption": "Bring over the library of an existing Sonarr or Radarr, or the Torznab indexers of a Prowlarr, from its data folder (the folder with its database). The other install is only read, never changed. Files are found again by a scan once a series or movie is added, so the path must be reachable here.",
+  "ImportExternalCaption": "Bring over the library of an existing Sonarr or Radarr, the Torznab indexers of a Prowlarr, or the torrents of a qBittorrent (its profile folder, with BT_backup in it), from its data folder. The other install is only read, never changed. For a library, files are found again by a scan once a series or movie is added; for torrents, the folder they are in must be reachable here, and they are checked and go on seeding.",
   "ImportExternalFolder": "Data folder of the other install",
   "ImportExternalKind": "Kind of install",
   "ImportExternalPathFrom": "Path there starts with (optional)",

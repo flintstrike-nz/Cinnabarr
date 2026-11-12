@@ -119,6 +119,7 @@ function ImportExternal() {
             <option value="sonarr">Sonarr</option>
             <option value="radarr">Radarr</option>
             <option value="prowlarr">Prowlarr</option>
+            <option value="qbittorrent">qBittorrent</option>
           </select>
 
           <TextInput

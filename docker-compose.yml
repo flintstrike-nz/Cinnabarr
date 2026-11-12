@@ -1,0 +1,22 @@
+# Cinnabarr with Docker Compose. Change the two media paths on the left to where your library is.
+#
+# The media folders are mounted at the same path inside the container as the library will use, and the engine runs in
+# the same container, so there is no download folder and no path mapping to set up.
+services:
+  cinnabarr:
+    build: .
+    # image: ghcr.io/flintstrike-nz/cinnabarr:latest   # once images are published
+    container_name: cinnabarr
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Pacific/Auckland
+    ports:
+      - "8989:8989"          # the web interface
+      - "51413:51413"        # the engine's torrent port (TCP)
+      - "51413:51413/udp"    # and UDP
+    volumes:
+      - ./config:/config
+      - /path/to/tv:/tv
+      - /path/to/movies:/movies

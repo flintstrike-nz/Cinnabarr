@@ -203,6 +203,21 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             }
         }
 
+        public void AdoptTorrentFromFile(string fileName, byte[] fileContent, string savePath, bool stopped, QBittorrentSettings settings)
+        {
+            var request = BuildRequest(settings).Resource("/api/v2/torrents/add")
+                                                .Post()
+                                                .AddFormUpload("torrents", fileName, fileContent)
+                                                .AddFormParameter("savepath", savePath)
+                                                .AddFormParameter("autoTMM", "false")
+                                                .AddFormParameter(GetApiVersion(settings) >= new Version(2, 11, 0) ? "stopped" : "paused", stopped ? "true" : "false");
+
+            if (ProcessRequest(request, settings) == "Fails.")
+            {
+                throw new DownloadClientException("Download client failed to add torrent");
+            }
+        }
+
         public void AddManualTorrentFromFile(string fileName, byte[] fileContent, QBittorrentSettings settings)
         {
             var request = BuildRequest(settings).Resource("/api/v2/torrents/add")
