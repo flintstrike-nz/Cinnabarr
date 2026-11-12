@@ -60,6 +60,51 @@ namespace NzbDrone.Core.Test.Download.DownloadApprovedReportsTests
             Mocker.GetMock<IDownloadService>().Verify(s => s.DownloadReport(second.RemoteMovie, It.IsAny<int?>()), Times.Never());
         }
 
+        private static DownloadDecision VersionDecision(int movieId, int slotId, string guid)
+        {
+            var movie = new Movie { Id = movieId };
+            movie.Slot = new NzbDrone.Core.Movies.Versions.VersionSlot { Id = slotId, MovieId = movieId };
+
+            return new DownloadDecision(new RemoteMovie
+            {
+                Movie = movie,
+                Release = new ReleaseInfo { Title = $"Movie {movieId} {slotId}", Guid = guid, IndexerId = 1, DownloadProtocol = DownloadProtocol.Torrent }
+            });
+        }
+
+        [Test]
+        public async Task should_grab_a_release_for_each_version_of_a_movie()
+        {
+            var versionOne = VersionDecision(1, 0, "a");
+            var versionTwo = VersionDecision(1, 7, "b");
+
+            var processed = await Subject.ProcessDecisions(new List<DownloadDecision> { versionOne, versionTwo });
+
+            processed.Grabbed.Should().Equal(versionOne, versionTwo);
+        }
+
+        [Test]
+        public async Task should_not_grab_the_same_release_for_two_versions()
+        {
+            var versionOne = VersionDecision(1, 0, "a");
+            var versionTwo = VersionDecision(1, 7, "a");
+
+            var processed = await Subject.ProcessDecisions(new List<DownloadDecision> { versionOne, versionTwo });
+
+            processed.Grabbed.Should().ContainSingle().Which.Should().BeSameAs(versionOne);
+        }
+
+        [Test]
+        public async Task should_not_grab_a_second_release_for_the_same_version()
+        {
+            var first = VersionDecision(1, 7, "a");
+            var second = VersionDecision(1, 7, "b");
+
+            var processed = await Subject.ProcessDecisions(new List<DownloadDecision> { first, second });
+
+            processed.Grabbed.Should().ContainSingle().Which.Should().BeSameAs(first);
+        }
+
         [Test]
         public async Task should_not_grab_a_rejected_movie_decision_and_report_it_rejected()
         {

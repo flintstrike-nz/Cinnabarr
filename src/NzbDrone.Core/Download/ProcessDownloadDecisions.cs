@@ -179,8 +179,13 @@ namespace NzbDrone.Core.Download
             if (report.RemoteMovie != null)
             {
                 var movieId = report.RemoteMovie.Movie.Id;
+                var slotId = report.RemoteMovie.Movie.VersionSlotId;
+                var release = report.RemoteMovie.Release;
 
-                return decisions.Any(d => d.RemoteMovie?.Movie.Id == movieId);
+                // One movie version takes one release, and one release goes to one version.
+                return decisions.Any(d => d.RemoteMovie != null &&
+                                          ((d.RemoteMovie.Movie.Id == movieId && d.RemoteMovie.Movie.VersionSlotId == slotId) ||
+                                           (!string.IsNullOrEmpty(release.Guid) && d.RemoteMovie.Release.Guid == release.Guid && d.RemoteMovie.Release.IndexerId == release.IndexerId)));
             }
 
             var episodeIds = report.RemoteEpisode.Episodes.Select(e => e.Id).ToList();

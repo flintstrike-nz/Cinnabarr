@@ -33,7 +33,7 @@ namespace NzbDrone.Core.DecisionEngine
                                            .SelectMany(g => g.OrderByDescending(decision => decision, episodeComparer));
 
             var movieDecisions = decisions.Where(c => c.RemoteMovie?.Movie != null)
-                                          .GroupBy(c => c.RemoteMovie.Movie.Id)
+                                          .GroupBy(c => (c.RemoteMovie.Movie.Id, c.RemoteMovie.Movie.VersionSlotId))
                                           .SelectMany(g => g.OrderByDescending(decision => decision, movieComparer));
 
             var unmatched = decisions.Where(c => c.RemoteEpisode?.Series == null && c.RemoteMovie?.Movie == null);

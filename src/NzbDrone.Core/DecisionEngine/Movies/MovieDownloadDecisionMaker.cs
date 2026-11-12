@@ -8,6 +8,7 @@ using NzbDrone.Common.Serializer;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.DecisionEngine.Movies.Specifications;
 using NzbDrone.Core.Movies;
+using NzbDrone.Core.Movies.Versions;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
 
@@ -25,16 +26,19 @@ namespace NzbDrone.Core.DecisionEngine.Movies
         private readonly IEnumerable<IMovieDecisionEngineSpecification> _specifications;
         private readonly IMovieParsingService _parsingService;
         private readonly ICustomFormatCalculationService _formatCalculator;
+        private readonly IVersionSlotService _versionSlotService;
         private readonly Logger _logger;
 
         public MovieDownloadDecisionMaker(IEnumerable<IMovieDecisionEngineSpecification> specifications,
                                           IMovieParsingService parsingService,
                                           ICustomFormatCalculationService formatCalculator,
+                                          IVersionSlotService versionSlotService,
                                           Logger logger)
         {
             _specifications = specifications;
             _parsingService = parsingService;
             _formatCalculator = formatCalculator;
+            _versionSlotService = versionSlotService;
             _logger = logger;
         }
 
@@ -128,8 +132,54 @@ namespace NzbDrone.Core.DecisionEngine.Movies
                     }
 
                     yield return decision;
+
+                    // A release found by RSS is also decided for each of the movie's other versions, each with its own
+                    // profile; the default version's decision comes first. When more than one accepts the release, only one
+                    // of them is grabbed (the release is not downloaded twice).
+                    if (searchedMovie == null && !pushedRelease && decision.RemoteMovie?.Movie != null)
+                    {
+                        foreach (var versionDecision in GetVersionDecisions(decision.RemoteMovie, information))
+                        {
+                            yield return versionDecision;
+                        }
+                    }
                 }
             }
+        }
+
+        private IEnumerable<DownloadDecision> GetVersionDecisions(RemoteMovie remoteMovie, MovieReleaseDecisionInformation information)
+        {
+            var decisions = new List<DownloadDecision>();
+
+            try
+            {
+                foreach (var slot in _versionSlotService.GetByMovie(remoteMovie.Movie.Id))
+                {
+                    var view = _versionSlotService.GetView(remoteMovie.Movie, slot.Id);
+                    var forVersion = new RemoteMovie
+                    {
+                        Release = remoteMovie.Release,
+                        ReleaseSource = remoteMovie.ReleaseSource,
+                        ParsedMovieInfo = remoteMovie.ParsedMovieInfo,
+                        MovieMatchType = remoteMovie.MovieMatchType,
+                        MovieRequested = remoteMovie.MovieRequested,
+                        Languages = remoteMovie.Languages,
+                        CustomFormats = remoteMovie.CustomFormats,
+                        Movie = view,
+                        DownloadAllowed = true
+                    };
+
+                    forVersion.CustomFormatScore = view.QualityProfile?.CalculateCustomFormatScore(forVersion.CustomFormats) ?? 0;
+
+                    decisions.Add(GetDecisionForReport(forVersion, information));
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.Error(e, "Couldn't process release '{0}' for the versions of '{1}'.", remoteMovie.Release.Title, remoteMovie.Movie.Title);
+            }
+
+            return decisions;
         }
 
         private DownloadDecision GetDecisionForReport(RemoteMovie remoteMovie, MovieReleaseDecisionInformation information)
