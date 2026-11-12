@@ -111,7 +111,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | BL-055 | Verify Emby, Jellyfin and Plex multi-version conventions | Spike | VER-05 | 5 | M | S | none | Next | Done as desk research (forums and docs, not tested against running servers); Plex naming still a decision (BL-092) |
 | BL-056 | Version label in file names | Task | NAM-04 | 5 | M | S | BL-050, BL-055 | Next | Partial: {Version} in movie file names done; series not done |
 | BL-059 | Verify subtitle language, forced and SDH naming, and copy numbers | Spike | NAM-02 | 2 | S | S | none | Now | Done (checked against the real engine: language, forced and SDH names; copy numbers only unit-tested) |
-| BL-057 | Default version slots and race defaults in Settings | Story | SET-02 | 5 | S | M | BL-050 | Next | Ready |
+| BL-057 | Default version slots and race defaults in Settings | Story | SET-02 | 5 | S | M | BL-050 | Next | Done for movies: Media Management lists the default versions every new movie gets; race defaults are in Download Clients settings (BL-053) |
 | BL-058 | Decide the maximum number of version slots (decision 6) | Decision | VER-01 | 5 | S | XS | none | Next | Decided for now: at most 8 versions per movie (adjustable) |
 
 ### Migration

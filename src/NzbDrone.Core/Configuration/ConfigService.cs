@@ -242,6 +242,13 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("EngineOrphanGraceDays", value); }
         }
 
+        public string DefaultMovieVersions
+        {
+            get { return GetValue("DefaultMovieVersions", string.Empty); }
+
+            set { SetValue("DefaultMovieVersions", value); }
+        }
+
         public int EngineRaceMaxSources
         {
             get { return GetValueInt("EngineRaceMaxSources", 1); }
