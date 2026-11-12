@@ -45,6 +45,21 @@ namespace NzbDrone.Core.Tv
         public int Runtime { get; set; }
         public List<MediaCover.MediaCover> Images { get; set; }
         public SeriesTypes SeriesType { get; set; }
+
+        // Not stored. Null for the series itself; for a view of one of its extra version slots (see
+        // SeriesVersionSlotService.GetView) the slot, whose profile and monitored state take the series' own place.
+        public Versions.SeriesVersionSlot Slot { get; internal set; }
+
+        public int VersionSlotId => Slot?.Id ?? 0;
+
+        // The slot's label, for the {Version} part of file names.
+        public string VersionLabel => Slot?.Label;
+
+        public Series ShallowCopy()
+        {
+            return (Series)MemberwiseClone();
+        }
+
         public string Network { get; set; }
         public bool UseSceneNumbering { get; set; }
         public string TitleSlug { get; set; }

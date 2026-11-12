@@ -44,6 +44,7 @@ import { Image, SeriesStatus, Statistics } from 'Series/Series';
 import SeriesGenres from 'Series/SeriesGenres';
 import SeriesPoster from 'Series/SeriesPoster';
 import { getSeriesStatusDetails } from 'Series/SeriesStatus';
+import SeriesVersions from 'Series/SeriesVersions';
 import {
   useSeriesIndex,
   useSingleSeries,
@@ -889,6 +890,8 @@ function SeriesDetails({ seriesId }: SeriesDetailsProps) {
           </div>
 
           <div className={styles.contentContainer}>
+            <SeriesVersions seriesId={seriesId} />
+
             {overview ? (
               <section className={styles.overviewSection}>
                 <div className={styles.overviewFrame} aria-hidden="true">

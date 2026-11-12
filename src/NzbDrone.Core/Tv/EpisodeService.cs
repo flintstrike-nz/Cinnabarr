@@ -293,6 +293,12 @@ namespace NzbDrone.Core.Tv
 
         public void Handle(EpisodeFileAddedEvent message)
         {
+            // A file of an extra version is not an episode's own file.
+            if (message.EpisodeFile.VersionSlotId != 0)
+            {
+                return;
+            }
+
             foreach (var episode in message.EpisodeFile.Episodes.Value)
             {
                 _episodeRepository.SetFileId(episode, message.EpisodeFile.Id);
