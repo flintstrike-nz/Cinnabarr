@@ -233,6 +233,11 @@ namespace NzbDrone.Core.Download.Engine
             history.Data.Add("TorrentInfoHash", downloadId);
             history.Data.Add(RestoredFromKey, "EngineSidecar");
 
+            if (link.VersionSlotId != 0)
+            {
+                history.Data.Add(MovieHistory.VERSION_SLOT_ID, link.VersionSlotId.ToString());
+            }
+
             _movieHistoryRepository.Insert(history);
 
             // The download-level grab makes the restored torrent count as unfinished, so reconcile can report it if it
@@ -321,6 +326,7 @@ namespace NzbDrone.Core.Download.Engine
             {
                 MediaType = MovieMediaType,
                 TmdbId = remoteMovie.Movie.TmdbId,
+                VersionSlotId = remoteMovie.Movie.VersionSlotId,
                 SourceTitle = remoteMovie.Release?.Title,
                 Indexer = remoteMovie.Release?.Indexer,
                 TrackerSeedRatio = remoteMovie.SeedConfiguration?.Ratio,

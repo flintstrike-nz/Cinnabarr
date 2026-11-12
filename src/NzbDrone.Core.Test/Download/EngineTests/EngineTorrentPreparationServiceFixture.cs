@@ -10,6 +10,7 @@ using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.Download.History;
 using NzbDrone.Core.History;
 using NzbDrone.Core.Movies;
+using NzbDrone.Core.Movies.Versions;
 using NzbDrone.Core.Qualities;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Core.Tv;
@@ -30,6 +31,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         [SetUp]
         public void Setup()
         {
+            Mocker.GetMock<IVersionSlotService>().Setup(s => s.GetView(It.IsAny<Movie>(), It.IsAny<int>())).Returns<Movie, int>((m, _) => m);
             _settings = new QBittorrentSettings();
             _proxy = new Mock<IQBittorrentProxy>();
             _torrent = new QBittorrentTorrent { Hash = Hash, Name = "Show.S01", State = "stoppedDL", HasMetadata = true, Tags = EngineTorrentTags.Held };

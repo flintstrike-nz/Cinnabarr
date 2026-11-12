@@ -27,6 +27,10 @@ public class ReleasePushResource : RestResource
     public int IndexerFlags { get; set; }
     public int? DownloadClientId { get; set; }
     public string? DownloadClientName { get; set; }
+
+    // To push a release for one version of a movie: the movie and the version slot (0 is the movie itself).
+    public int MovieId { get; set; }
+    public int VersionSlotId { get; set; }
 }
 
 public static class ReleasePushResourceMapper

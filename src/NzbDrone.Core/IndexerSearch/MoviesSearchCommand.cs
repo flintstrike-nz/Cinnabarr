@@ -7,6 +7,9 @@ namespace NzbDrone.Core.IndexerSearch
     {
         public List<int> MovieIds { get; set; }
 
+        // Search for one version slot of the movie (0 is the movie itself).
+        public int VersionSlotId { get; set; }
+
         public override bool SendUpdatesToClient => true;
 
         public MoviesSearchCommand()

@@ -70,7 +70,7 @@ namespace NzbDrone.Core.MediaFiles.MovieImport
                 {
                     // check if already imported
                     if (importResults.Select(r => r.ImportDecision.LocalMovie.Movie)
-                                         .Select(m => m.Id).Contains(localMovie.Movie.Id))
+                                         .Select(m => (m.Id, m.VersionSlotId)).Contains((localMovie.Movie.Id, localMovie.Movie.VersionSlotId)))
                     {
                         importResults.Add(new ImportResult(importDecision, "Movie has already been imported"));
                         continue;

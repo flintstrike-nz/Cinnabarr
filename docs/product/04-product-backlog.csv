@@ -27,18 +27,18 @@ BL-040,Engine,"Per-row priority, speed and share limits on the Downloads page",S
 BL-041,Engine,Health check for torrents past their seeding goal,Task,SEED-05,2,S,S,none,Next,Done (movie torrents follow the global and tracker goals; there is no per-movie rule)
 BL-042,Engine,"Verify removing one file from a seeding torrent (priority, delete, recheck)",Spike,SEED-04,2,M,S,none,Now,"Partial: checked against the real engine for a movie upgrade replacing a torrent's only video (priority, delete, torrent removed); a pack with one video replaced is only unit-tested"
 BL-043,Engine,Verify pre-download and post-completion checks against sample files,Spike,"FIL-02, FIL-03",2,M,M,none,Now,"Done (checked against the real engine: sample excluded before download, short clip rejected after)"
-BL-044,Engine,Sidecar: add slot label and seeding rule fields; restore test,Story,"ENG-08, NFR-03","2, 5",M,M,BL-050,Next,Ready
+BL-044,Engine,Sidecar: add slot label and seeding rule fields; restore test,Story,"ENG-08, NFR-03","2, 5",M,M,BL-050,Next,"Partial: the movie link carries the version slot; the seeding rule field is still to do"
 BL-045,Engine,Verify backups include the engine profile; restore test,Spike,MIG-06,2,M,S,none,Now,Done (full restore and restart not run)
 BL-046,Engine,Engine push channel (SSE or websocket) instead of polling,Story,ENG-18,Later,C,L,none,Later,Ready
 BL-047,Engine,Engine legal notice shown once at first run,Task,SET-03,2,M,S,none,Next,Done (wording is a placeholder; needs owner and legal review)
 BL-048,Engine,"Complete Downloads settings: port, UPnP, interface binding, privacy, pre-allocation",Story,SET-04,2,S,M,none,Next,"Partial: port, UPnP, interface, limits, privacy, encryption done; alternative-speed schedule open"
 BL-050,Versions,Version slot schema and a default slot per item,Story,VER-01,5,M,XL,BL-044,Next,"Partial: movie version slots stored (table, file slot id, API with a limit of 8 versions, default slot is the movie itself); nothing uses them yet (BL-051)"
-BL-051,Versions,"Per-slot Wanted, cutoff and upgrades",Story,VER-01,5,M,L,BL-050,Next,Ready
+BL-051,Versions,"Per-slot Wanted, cutoff and upgrades",Story,VER-01,5,M,L,BL-050,Next,"Partial: a version of a movie can be searched, grabbed, downloaded straight into its file and imported (checked on the real engine); the Wanted lists, RSS and the screens are still to do"
 BL-052,Versions,Download another version from Search,Story,VER-02,5,S,M,BL-050,Next,Ready
 BL-053,Versions,"Race mode per file, with winner rules and loser cleanup",Story,"VER-03, VER-04",5,S,XL,"BL-050, BL-093",Next,Ready
 BL-054,Versions,Race groups on the Downloads page,Story,VER-03,5,S,M,BL-053,Next,Ready
 BL-055,Versions,"Verify Emby, Jellyfin and Plex multi-version conventions",Spike,VER-05,5,M,S,none,Next,"Done as desk research (forums and docs, not tested against running servers); Plex naming still a decision (BL-092)"
-BL-056,Versions,Version label in file names,Task,NAM-04,5,M,S,"BL-050, BL-055",Next,"Partial: naming presets (Jellyfin default, Emby, Plex) done; the {Version} label waits for version slots (BL-050)"
+BL-056,Versions,Version label in file names,Task,NAM-04,5,M,S,"BL-050, BL-055",Next,"Partial: {Version} in movie file names done; series not done"
 BL-059,Versions,"Verify subtitle language, forced and SDH naming, and copy numbers",Spike,NAM-02,2,S,S,none,Now,"Done (checked against the real engine: language, forced and SDH names; copy numbers only unit-tested)"
 BL-057,Versions,Default version slots and race defaults in Settings,Story,SET-02,5,S,M,BL-050,Next,Ready
 BL-058,Versions,Decide the maximum number of version slots (decision 6),Decision,VER-01,5,S,XS,none,Next,"Decided for now: at most 8 versions per movie (adjustable)"

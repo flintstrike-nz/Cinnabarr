@@ -28,6 +28,8 @@ namespace NzbDrone.Core.Organizer
         private static readonly Regex MovieTokenRegex = new Regex(@"(?<tag>\{(?<prefix>[-{ ._\[(]*)(?:imdb(?:id)?-|tmdb(?:id)?-|edition-))?\{(?<prefix>[-{ ._\[(]*)(?<token>(?:[a-z0-9]+)(?:(?<separator>[- ._]+)(?:[a-z0-9]+))?)(?::(?<customFormat>[ ,a-z0-9|+-]+(?<![- ])))?(?<suffix>[-} ._)\]]*)\}",
                                                                   RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
+        private static readonly Regex VersionTokenRegex = new Regex(@"\{[^{}]*\bVersion\b[^{}]*\}", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
         public static readonly Regex ReleaseYearRegex = new Regex(@"\{[-{ ._\[(]*Release[- ._]Year[-} ._)\]]*\}", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         public static readonly Regex MovieTitleRegex = new Regex(@"(?<token>\{(?:Movie)(?<separator>[- ._])(?:Clean)?(?:OriginalTitle|Title(?:The)?)(?::(?<customFormat>[a-z0-9|-]+))?\})",
@@ -39,7 +41,7 @@ namespace NzbDrone.Core.Organizer
 
             if (!namingConfig.RenameMovies)
             {
-                return GetOriginalTitle(movieFile, false);
+                return WithVersionLabel(GetOriginalTitle(movieFile, false), movie, namingConfig);
             }
 
             if (namingConfig.StandardMovieFormat.IsNullOrWhiteSpace())
@@ -80,7 +82,19 @@ namespace NzbDrone.Core.Organizer
                 }
             }
 
+            // A version of the movie other than the default one is told apart by its label, as Jellyfin and Emby read
+            // "Movie (Year) - Label.ext"; a format with its own {Version} token places it itself.
+            if (!VersionTokenRegex.IsMatch(pattern) && components.Count > 0)
+            {
+                components[^1] = WithVersionLabel(components[^1], movie, namingConfig);
+            }
+
             return Path.Combine(components.ToArray());
+        }
+
+        private static string WithVersionLabel(string name, Movie movie, NamingConfig namingConfig)
+        {
+            return movie.VersionLabel.IsNullOrWhiteSpace() ? name : $"{name} - {CleanFileName(movie.VersionLabel, namingConfig)}";
         }
 
         public string BuildFilePath(Movie movie, string fileName, string extension)
@@ -189,6 +203,7 @@ namespace NzbDrone.Core.Organizer
         private static void AddMovieIdTokens(Dictionary<string, Func<TokenMatch, string>> tokenHandlers, Movie movie)
         {
             tokenHandlers["{ImdbId}"] = m => movie.MovieMetadata.Value.ImdbId ?? string.Empty;
+            tokenHandlers["{Version}"] = m => movie.VersionLabel ?? string.Empty;
             tokenHandlers["{TmdbId}"] = m => movie.MovieMetadata.Value.TmdbId.ToString();
         }
 

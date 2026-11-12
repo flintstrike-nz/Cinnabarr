@@ -16,6 +16,7 @@ using NzbDrone.Core.MediaFiles.MovieImport;
 using NzbDrone.Core.MediaFiles.MovieImport.Aggregation;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Movies;
+using NzbDrone.Core.Movies.Versions;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Test.Common;
@@ -42,6 +43,7 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         [SetUp]
         public void Setup()
         {
+            Mocker.GetMock<IVersionSlotService>().Setup(s => s.GetView(It.IsAny<Movie>(), It.IsAny<int>())).Returns<Movie, int>((m, _) => m);
             _settings = new QBittorrentSettings();
             _proxy = new Mock<IQBittorrentProxy>();
             _approve = true;

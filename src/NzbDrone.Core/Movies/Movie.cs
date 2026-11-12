@@ -4,6 +4,7 @@ using System.Linq;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.MediaFiles;
+using NzbDrone.Core.Movies.Versions;
 using NzbDrone.Core.Profiles.Qualities;
 
 namespace NzbDrone.Core.Movies
@@ -36,6 +37,21 @@ namespace NzbDrone.Core.Movies
         public int MovieFileId { get; set; }
 
         public bool HasFile => MovieFileId > 0;
+
+        // Not stored. 0 for the movie itself; for a view of one of its extra version slots (see VersionSlotService.GetView)
+        // the slot's id, with the slot's profile, monitored state and file in place of the movie's own.
+        // Not stored. Set only by GetView, which makes the view; null for the movie itself.
+        public VersionSlot Slot { get; internal set; }
+
+        public int VersionSlotId => Slot?.Id ?? 0;
+
+        // The slot's label, for the {Version} part of file names.
+        public string VersionLabel => Slot?.Label;
+
+        public Movie ShallowCopy()
+        {
+            return (Movie)MemberwiseClone();
+        }
 
         // compatibility properties
         public string Title

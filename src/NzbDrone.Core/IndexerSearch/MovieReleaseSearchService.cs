@@ -11,6 +11,7 @@ using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Indexers.History;
 using NzbDrone.Core.IndexerSearch.Definitions;
 using NzbDrone.Core.Movies;
+using NzbDrone.Core.Movies.Versions;
 using NzbDrone.Core.Parser.Model;
 
 namespace NzbDrone.Core.IndexerSearch
@@ -19,24 +20,30 @@ namespace NzbDrone.Core.IndexerSearch
     {
         Task<List<DownloadDecision>> MovieSearch(int movieId, bool userInvokedSearch, bool interactiveSearch);
         Task<List<DownloadDecision>> MovieSearch(Movie movie, bool userInvokedSearch, bool interactiveSearch);
+
+        // The same for one of the movie's version slots (0 is the movie itself).
+        Task<List<DownloadDecision>> MovieSearch(int movieId, int versionSlotId, bool userInvokedSearch, bool interactiveSearch);
     }
 
     public class MovieReleaseSearchService : ISearchForMovieReleases
     {
         private readonly IIndexerFactory _indexerFactory;
         private readonly IMovieService _movieService;
+        private readonly IVersionSlotService _versionSlotService;
         private readonly IMakeMovieDownloadDecision _makeDownloadDecision;
         private readonly IIndexerQueryService _indexerQueryService;
         private readonly Logger _logger;
 
         public MovieReleaseSearchService(IIndexerFactory indexerFactory,
                                          IMovieService movieService,
+                                         IVersionSlotService versionSlotService,
                                          IMakeMovieDownloadDecision makeDownloadDecision,
                                          IIndexerQueryService indexerQueryService,
                                          Logger logger)
         {
             _indexerFactory = indexerFactory;
             _movieService = movieService;
+            _versionSlotService = versionSlotService;
             _makeDownloadDecision = makeDownloadDecision;
             _indexerQueryService = indexerQueryService;
             _logger = logger;
@@ -45,6 +52,11 @@ namespace NzbDrone.Core.IndexerSearch
         public Task<List<DownloadDecision>> MovieSearch(int movieId, bool userInvokedSearch, bool interactiveSearch)
         {
             return MovieSearch(_movieService.GetMovie(movieId), userInvokedSearch, interactiveSearch);
+        }
+
+        public Task<List<DownloadDecision>> MovieSearch(int movieId, int versionSlotId, bool userInvokedSearch, bool interactiveSearch)
+        {
+            return MovieSearch(_versionSlotService.GetView(_movieService.GetMovie(movieId), versionSlotId), userInvokedSearch, interactiveSearch);
         }
 
         public async Task<List<DownloadDecision>> MovieSearch(Movie movie, bool userInvokedSearch, bool interactiveSearch)

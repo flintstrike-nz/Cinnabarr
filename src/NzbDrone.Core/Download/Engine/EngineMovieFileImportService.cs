@@ -17,6 +17,7 @@ using NzbDrone.Core.MediaFiles.MovieImport;
 using NzbDrone.Core.MediaFiles.MovieImport.Aggregation;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Movies;
+using NzbDrone.Core.Movies.Versions;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
 
@@ -52,6 +53,7 @@ namespace NzbDrone.Core.Download.Engine
         private readonly IMovieHistoryService _historyService;
         private readonly IMovieService _movieService;
         private readonly IMovieFileService _movieFileService;
+        private readonly IVersionSlotService _versionSlotService;
         private readonly IAggregationService _aggregationService;
         private readonly ILocalMovieCustomFormatCalculationService _formatCalculator;
         private readonly IMakeImportDecision _importDecisionMaker;
@@ -77,6 +79,7 @@ namespace NzbDrone.Core.Download.Engine
                                             IMovieHistoryService historyService,
                                             IMovieService movieService,
                                             IMovieFileService movieFileService,
+                                            IVersionSlotService versionSlotService,
                                             IAggregationService aggregationService,
                                             ILocalMovieCustomFormatCalculationService formatCalculator,
                                             IMakeImportDecision importDecisionMaker,
@@ -96,6 +99,7 @@ namespace NzbDrone.Core.Download.Engine
             _historyService = historyService;
             _movieService = movieService;
             _movieFileService = movieFileService;
+            _versionSlotService = versionSlotService;
             _aggregationService = aggregationService;
             _formatCalculator = formatCalculator;
             _importDecisionMaker = importDecisionMaker;
@@ -191,16 +195,17 @@ namespace NzbDrone.Core.Download.Engine
 
             var engineFiles = proxy.GetTorrentFiles(hash, settings);
             var movieId = grabs.First().MovieId;
+            var slotId = grabs.MaxBy(g => g.Date).VersionSlotId;
 
             void Save() => _engineLinkService.Save(downloadId, link);
 
-            var movie = _movieService.GetMovie(movieId);
+            var movie = GetMovie(movieId, slotId);
 
             if (!_reconciled.ContainsKey(downloadId))
             {
                 Reconcile(link, movie, Save);
                 _reconciled[downloadId] = true;
-                movie = _movieService.GetMovie(movieId);
+                movie = GetMovie(movieId, slotId);
             }
 
             // Shared by every file, so the blocklist and search happen once per grab.
@@ -212,7 +217,7 @@ namespace NzbDrone.Core.Download.Engine
             }
 
             // The video's import changed the movie's file: read it again before recording the subtitles.
-            movie = _movieService.GetMovie(movieId);
+            movie = GetMovie(movieId, slotId);
 
             foreach (var file in link.Files.Where(f => f.IsSubtitle))
             {
@@ -245,6 +250,12 @@ namespace NzbDrone.Core.Download.Engine
 
         // After a database restore, a file the link records as imported may no longer be in the library: record it
         // again (in place) and report the download as completed again.
+        // The movie as the version the torrent is for (the default one is the movie itself).
+        private Movie GetMovie(int movieId, int slotId)
+        {
+            return _versionSlotService.GetView(_movieService.GetMovie(movieId), slotId);
+        }
+
         private void Reconcile(EngineLink link, Movie movie, Action save)
         {
             var lost = link.Files

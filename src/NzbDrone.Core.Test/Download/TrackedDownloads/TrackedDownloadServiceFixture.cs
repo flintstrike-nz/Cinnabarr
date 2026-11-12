@@ -13,6 +13,8 @@ using NzbDrone.Core.History;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Indexers.TorrentRss;
 using NzbDrone.Core.Languages;
+using NzbDrone.Core.Movies;
+using NzbDrone.Core.Movies.Versions;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
@@ -29,6 +31,7 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
         [SetUp]
         public void SetUp()
         {
+            Mocker.GetMock<IVersionSlotService>().Setup(s => s.GetView(It.IsAny<Movie>(), It.IsAny<int>())).Returns<Movie, int>((m, _) => m);
             Mocker.GetMock<IMovieHistoryService>()
                 .Setup(s => s.FindByDownloadId(It.IsAny<string>()))
                 .Returns([]);

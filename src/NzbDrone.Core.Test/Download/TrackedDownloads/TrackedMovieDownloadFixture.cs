@@ -14,6 +14,7 @@ using NzbDrone.Core.Languages;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Movies;
 using NzbDrone.Core.Movies.Events;
+using NzbDrone.Core.Movies.Versions;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
@@ -34,6 +35,7 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
         public void SetUp()
         {
             _client = new DownloadClientDefinition { Id = 1, Name = "Cinnabarr Engine", Protocol = DownloadProtocol.Torrent };
+            Mocker.GetMock<IVersionSlotService>().Setup(s => s.GetView(It.IsAny<Movie>(), It.IsAny<int>())).Returns<Movie, int>((m, _) => m);
             _movie = new Movie { Id = 8, MovieMetadata = new MovieMetadata { TmdbId = 603, Title = "The Matrix", Year = 1999 } };
 
             Mocker.GetMock<IEngineClientRegistry>().Setup(s => s.IsEngineClient(1)).Returns(true);
@@ -86,6 +88,58 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
             tracked.RemoteEpisode.Should().BeNull();
             tracked.IsUnlinked.Should().BeFalse();
             tracked.Indexer.Should().Be("Site");
+        }
+
+        [Test]
+        public void should_track_a_download_grabbed_for_a_version_of_the_movie_as_that_version()
+        {
+            var view = new Movie { Id = 8, Slot = new VersionSlot { Id = 3, Label = "4K" } };
+
+            Mocker.GetMock<IMovieHistoryService>()
+                  .Setup(s => s.FindByDownloadId(Hash))
+                  .Returns(new List<MovieHistory>
+                  {
+                      new()
+                      {
+                          MovieId = 8,
+                          EventType = MovieHistoryEventType.Grabbed,
+                          DownloadId = Hash,
+                          Date = DateTime.UtcNow,
+                          SourceTitle = "The.Matrix.1999.2160p.BluRay.x265-GRP",
+                          Quality = new QualityModel(Quality.Bluray2160p),
+                          Data = { [MovieHistory.VERSION_SLOT_ID] = "3" }
+                      }
+                  });
+
+            Mocker.GetMock<IVersionSlotService>().Setup(s => s.GetView(_movie, 3)).Returns(view);
+
+            var tracked = Subject.TrackDownload(_client, Item());
+
+            tracked.RemoteMovie.Movie.Should().BeSameAs(view);
+            tracked.RemoteMovie.Movie.VersionSlotId.Should().Be(3);
+        }
+
+        [Test]
+        public void should_list_a_download_without_a_movie_when_its_version_is_gone()
+        {
+            Mocker.GetMock<IMovieHistoryService>()
+                  .Setup(s => s.FindByDownloadId(Hash))
+                  .Returns(new List<MovieHistory>
+                  {
+                      new()
+                      {
+                          MovieId = 8,
+                          EventType = MovieHistoryEventType.Grabbed,
+                          DownloadId = Hash,
+                          Date = DateTime.UtcNow,
+                          SourceTitle = "The.Matrix.1999.2160p.BluRay.x265-GRP",
+                          Data = { [MovieHistory.VERSION_SLOT_ID] = "3" }
+                      }
+                  });
+
+            Mocker.GetMock<IVersionSlotService>().Setup(s => s.GetView(_movie, 3)).Throws(new InvalidOperationException("gone"));
+
+            Subject.TrackDownload(_client, Item()).RemoteMovie.Should().BeNull();
         }
 
         [Test]

@@ -44,11 +44,11 @@ public class MovieReleaseController : Controller
     // An interactive search: every release found, with the decision made about it.
     [HttpGet]
     [Produces("application/json")]
-    public async Task<Ok<List<MovieReleaseResource>>> GetReleases([FromQuery] int movieId)
+    public async Task<Ok<List<MovieReleaseResource>>> GetReleases([FromQuery] int movieId, [FromQuery] int versionSlotId = 0)
     {
         try
         {
-            var decisions = await _releaseSearchService.MovieSearch(movieId, true, true);
+            var decisions = await _releaseSearchService.MovieSearch(movieId, versionSlotId, true, true);
             var prioritized = _prioritizeDownloadDecision.PrioritizeDecisions(decisions);
 
             var result = new List<MovieReleaseResource>();
