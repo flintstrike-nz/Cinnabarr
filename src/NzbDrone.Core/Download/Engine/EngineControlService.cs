@@ -83,6 +83,12 @@ namespace NzbDrone.Core.Download.Engine
         void SetForceStart(string downloadId, bool enabled);
         void Recheck(string downloadId);
 
+        // Moves a download in the engine's queue: "top", "up", "down" or "bottom".
+        void MoveInQueue(string downloadId, string move);
+
+        // A download's own speed limits in KiB/s; 0 is unlimited.
+        void SetSpeedLimits(string downloadId, int downloadLimit, int uploadLimit);
+
         // Adds a torrent by hand (roadmap §6.2) and returns its download id. Like a grab it is held until only its video
         // and subtitle files are chosen; it is listed as Unlinked until Manual Import links it to the library.
         string AddMagnet(string magnetLink);
@@ -339,6 +345,36 @@ namespace NzbDrone.Core.Download.Engine
         public void Recheck(string downloadId)
         {
             RunOnTorrent(downloadId, false, (proxy, settings, hash) => proxy.RecheckTorrent(hash, settings));
+        }
+
+        public void MoveInQueue(string downloadId, string move)
+        {
+            if (move is not ("top" or "up" or "down" or "bottom"))
+            {
+                throw new EngineControlException("the queue move has to be top, up, down or bottom");
+            }
+
+            Run((proxy, settings) =>
+            {
+                if (!proxy.GetPreferencesJson(settings).Value<bool?>("queueing_enabled").GetValueOrDefault())
+                {
+                    throw new EngineControlException("limiting how many torrents are active (queueing) is off, so there is no queue to move in; turn it on in the engine network settings");
+                }
+
+                return true;
+            });
+
+            RunOnTorrent(downloadId, false, (proxy, settings, hash) => proxy.MoveTorrentInQueue(hash, move, settings));
+        }
+
+        public void SetSpeedLimits(string downloadId, int downloadLimit, int uploadLimit)
+        {
+            if (downloadLimit < 0 || uploadLimit < 0)
+            {
+                throw new EngineControlException("a speed limit can't be negative (0 means no limit)");
+            }
+
+            RunOnTorrent(downloadId, false, (proxy, settings, hash) => proxy.SetTorrentSpeedLimits(hash, downloadLimit * 1024L, uploadLimit * 1024L, settings));
         }
 
         private void RunOnTorrent(string downloadId, bool starts, Action<IQBittorrentProxy, QBittorrentSettings, string> action)

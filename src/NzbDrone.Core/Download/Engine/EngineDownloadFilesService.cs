@@ -42,6 +42,11 @@ namespace NzbDrone.Core.Download.Engine
         public bool IsForceStarted { get; set; }
         public bool IsAwaitingPreparation { get; set; }
 
+        // The download's own speed limits in KiB/s (0 is unlimited) and its place in the engine's queue.
+        public int DownloadLimit { get; set; }
+        public int UploadLimit { get; set; }
+        public int QueuePosition { get; set; }
+
         public double? Ratio { get; set; }
         public List<EngineDownloadFile> Files { get; set; } = new();
     }
@@ -104,6 +109,9 @@ namespace NzbDrone.Core.Download.Engine
                 IsPaused = torrent?.State is "pausedDL" or "pausedUP" or "stoppedDL" or "stoppedUP",
                 IsForceStarted = torrent?.State?.StartsWith("forced", StringComparison.Ordinal) == true,
                 IsAwaitingPreparation = torrent != null && EngineTorrentTags.IsAwaitingPreparation(torrent.Tags),
+                DownloadLimit = (int)(Math.Max(0, torrent?.DownloadLimit ?? 0) / 1024),
+                UploadLimit = (int)(Math.Max(0, torrent?.UploadLimit ?? 0) / 1024),
+                QueuePosition = torrent?.QueuePosition ?? 0,
                 Ratio = ratio,
                 Files = link.Files
                     .OrderBy(f => f.IsSubtitle ? f.VideoIndex ?? f.Index : f.Index)

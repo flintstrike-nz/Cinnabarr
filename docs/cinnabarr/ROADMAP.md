@@ -1345,3 +1345,5 @@ Backlog BL-057 (default versions): `Settings → Media Management → Default Ve
 Backlog BL-022 (bulk tags): the movie library's select mode has Add Tag and Remove Tag drop-downs that change the tags of every selected movie. Checked in the browser (add then remove on one movie).
 
 Backlog BL-048 (alternative-speed schedule): Settings → Download Clients → Engine Network has a schedule for the alternative limits (start and end time, and every day, weekdays, weekends or one day), saved to the engine's own scheduler. Checked against the real engine (saved through the API and read back from the engine).
+
+Backlog BL-040 (per-download controls): the detail panel of an engine download on the Downloads page can move it in the engine's queue (top, up, down, bottom; refused with an explanation while queueing is off) and set its own download and upload limits in KiB/s (0 is none). The files resource reports the current limits and queue position. Share limits per download are left to the seeding rules, which would otherwise fight a hand-set value. Checked against the real engine through the API.

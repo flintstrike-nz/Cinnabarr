@@ -89,7 +89,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | ID | Item | Type | Requirements | Phase | Priority | Size | Depends on | Sequence | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | BL-032 | Verify that Dismiss works for grabs missing from the engine | Spike | ENG-07 | 2 | S | XS | none | Now | Done (checked against the real engine) |
-| BL-040 | Per-row priority, speed and share limits on the Downloads page | Story | ENG-11 | 2 | C | M | none | Later | Ready |
+| BL-040 | Per-row priority, speed and share limits on the Downloads page | Story | ENG-11 | 2 | C | M | none | Later | Done for priority and speed limits: the download detail panel has Queue top/up/down/bottom and its own download and upload limits. Share limits stay with the seeding rules (BL-044) |
 | BL-041 | Health check for torrents past their seeding goal | Task | SEED-05 | 2 | S | S | none | Next | Done (movie torrents follow the global and tracker goals; there is no per-movie rule) |
 | BL-042 | Verify removing one file from a seeding torrent (priority, delete, recheck) | Spike | SEED-04 | 2 | M | S | none | Now | Partial: checked against the real engine for a movie upgrade replacing a torrent's only video (priority, delete, torrent removed); a pack with one video replaced is only unit-tested |
 | BL-043 | Verify pre-download and post-completion checks against sample files | Spike | FIL-02, FIL-03 | 2 | M | M | none | Now | Done (checked against the real engine: sample excluded before download, short clip rejected after) |

@@ -54,6 +54,20 @@ public class EngineDownloadController : Controller
         return Control(() => _engineControlService.Recheck(downloadId));
     }
 
+    // move: top, up, down or bottom.
+    [HttpPost("{downloadId}/queue")]
+    public NoContent MoveInQueue([FromRoute] string downloadId, [FromQuery] string move)
+    {
+        return Control(() => _engineControlService.MoveInQueue(downloadId, move));
+    }
+
+    // The download's own speed limits in KiB/s; 0 is unlimited.
+    [HttpPut("{downloadId}/limits")]
+    public NoContent SetLimits([FromRoute] string downloadId, [FromQuery] int download = 0, [FromQuery] int upload = 0)
+    {
+        return Control(() => _engineControlService.SetSpeedLimits(downloadId, download, upload));
+    }
+
     private static NoContent Control(Action action)
     {
         try

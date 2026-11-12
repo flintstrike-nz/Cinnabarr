@@ -36,6 +36,12 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         void SetLocation(string hash, string location, QBittorrentSettings settings);
         void RecheckTorrent(string hash, QBittorrentSettings settings);
 
+        // Moves a torrent in the engine's queue ("top", "up", "down" or "bottom"). Throws when queueing is off.
+        void MoveTorrentInQueue(string hash, string move, QBittorrentSettings settings);
+
+        // A torrent's own speed limits in bytes per second; 0 is unlimited.
+        void SetTorrentSpeedLimits(string hash, long downloadLimit, long uploadLimit, QBittorrentSettings settings);
+
         // Sets a torrent's ratio limit and clears both its seeding time limits (total and inactive).
         void SetShareLimitsWithoutTimeLimits(string hash, double ratioLimit, QBittorrentSettings settings);
 

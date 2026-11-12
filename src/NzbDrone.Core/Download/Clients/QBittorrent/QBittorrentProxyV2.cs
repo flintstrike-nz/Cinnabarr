@@ -464,6 +464,41 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             ProcessRequest(request, settings);
         }
 
+        public void MoveTorrentInQueue(string hash, string move, QBittorrentSettings settings)
+        {
+            var resource = move switch
+            {
+                "top" => "topPrio",
+                "up" => "increasePrio",
+                "down" => "decreasePrio",
+                "bottom" => "bottomPrio",
+                _ => throw new ArgumentException("Unknown queue move", nameof(move))
+            };
+
+            var request = BuildRequest(settings).Resource("/api/v2/torrents/" + resource)
+                                                .Post()
+                                                .AddFormParameter("hashes", hash);
+
+            ProcessRequest(request, settings);
+        }
+
+        public void SetTorrentSpeedLimits(string hash, long downloadLimit, long uploadLimit, QBittorrentSettings settings)
+        {
+            var download = BuildRequest(settings).Resource("/api/v2/torrents/setDownloadLimit")
+                                                 .Post()
+                                                 .AddFormParameter("hashes", hash)
+                                                 .AddFormParameter("limit", downloadLimit.ToString());
+
+            ProcessRequest(download, settings);
+
+            var upload = BuildRequest(settings).Resource("/api/v2/torrents/setUploadLimit")
+                                               .Post()
+                                               .AddFormParameter("hashes", hash)
+                                               .AddFormParameter("limit", uploadLimit.ToString());
+
+            ProcessRequest(upload, settings);
+        }
+
         public void SetLocation(string hash, string location, QBittorrentSettings settings)
         {
             var request = BuildRequest(settings).Resource("/api/v2/torrents/setLocation")
