@@ -11,6 +11,7 @@ import CalendarPage from 'Calendar/CalendarPage';
 import NotFound from 'Components/NotFound';
 import LibraryIndex from 'Library/LibraryIndex';
 import AddNewMovie from 'Movie/AddNewMovie';
+import ImportExternal from 'Movie/ImportExternal';
 import ImportMovies from 'Movie/ImportMovies';
 import MovieCalendar from 'Movie/MovieCalendar';
 import MovieDetails from 'Movie/MovieDetails';
@@ -65,6 +66,7 @@ export function appRouteElements() {
 
       <Route path="/add/movie" element={<AddNewMovie />} />
       <Route path="/add/import/movie" element={<ImportMovies />} />
+      <Route path="/add/import/external" element={<ImportExternal />} />
 
       <Route path="/search" element={<SearchPage />} />
       <Route path="/movies" element={<MoviesIndex />} />
