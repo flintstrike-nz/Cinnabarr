@@ -11,6 +11,7 @@ using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Movies;
+using NzbDrone.Core.Movies.Versions;
 using NzbDrone.Core.Organizer;
 
 namespace NzbDrone.Core.MediaFiles
@@ -25,6 +26,7 @@ namespace NzbDrone.Core.MediaFiles
                                           IExecute<RenameMovieCommand>
     {
         private readonly IMovieService _movieService;
+        private readonly IVersionSlotService _versionSlotService;
         private readonly IMovieFileService _movieFileService;
         private readonly IMoveMovieFiles _movieFileMover;
         private readonly IEventAggregator _eventAggregator;
@@ -38,9 +40,11 @@ namespace NzbDrone.Core.MediaFiles
                                       IEventAggregator eventAggregator,
                                       IBuildMovieFileNames filenameBuilder,
                                       IDiskProvider diskProvider,
+                                      IVersionSlotService versionSlotService,
                                       Logger logger)
         {
             _movieService = movieService;
+            _versionSlotService = versionSlotService;
             _movieFileService = movieFileService;
             _movieFileMover = movieFileMover;
             _eventAggregator = eventAggregator;
@@ -69,8 +73,10 @@ namespace NzbDrone.Core.MediaFiles
             {
                 var movieFilePath = Path.Combine(movie.Path, file.RelativePath);
 
-                var newName = _filenameBuilder.BuildFileName(movie, file);
-                var newPath = _filenameBuilder.BuildFilePath(movie, newName, Path.GetExtension(movieFilePath));
+                // A file of one of the movie's versions is named as that version.
+                var named = ViewOf(movie, file);
+                var newName = _filenameBuilder.BuildFileName(named, file);
+                var newPath = _filenameBuilder.BuildFilePath(named, newName, Path.GetExtension(movieFilePath));
 
                 if (!movieFilePath.PathEquals(newPath, StringComparison.Ordinal))
                 {
@@ -86,6 +92,11 @@ namespace NzbDrone.Core.MediaFiles
             }
         }
 
+        private Movie ViewOf(Movie movie, MovieFile file)
+        {
+            return file.VersionSlotId == 0 ? movie : _versionSlotService.GetView(movie, file.VersionSlotId);
+        }
+
         private List<RenamedMovieFile> RenameFiles(List<MovieFile> movieFiles, Movie movie)
         {
             var renamed = new List<RenamedMovieFile>();
@@ -98,7 +109,7 @@ namespace NzbDrone.Core.MediaFiles
                 try
                 {
                     _logger.Debug("Renaming movie file: {0}", movieFile);
-                    _movieFileMover.MoveMovieFile(movieFile, movie);
+                    _movieFileMover.MoveMovieFile(movieFile, ViewOf(movie, movieFile));
 
                     _movieFileService.Update(movieFile);
                     _movieService.UpdateMovie(movie);
