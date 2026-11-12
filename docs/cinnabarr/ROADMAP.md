@@ -1341,3 +1341,5 @@ Backlog BL-053 (race mode for movies): `Settings → Download Clients → Race S
 Backlog BL-054 (race groups on the Downloads page): queue rows that are racing for the same movie version (two or more unfinished downloads of one movie and version) show "Racing N sources" after the title. They are not grouped into one expandable row yet. Checked in the browser with canned queue data.
 
 Backlog BL-057 (default versions): `Settings → Media Management → Default Versions` holds a list of versions (a label and a quality profile) that every movie gets when it is added or imported (`settings/movieversions`; labels must be different, the profile must exist, at most 7). Movies already in the library are not changed. The race defaults are in `Settings → Download Clients` (BL-053). Checked by adding a movie through the API and in the browser.
+
+Backlog BL-022 (bulk tags): the movie library's select mode has Add Tag and Remove Tag drop-downs that change the tags of every selected movie. Checked in the browser (add then remove on one movie).
