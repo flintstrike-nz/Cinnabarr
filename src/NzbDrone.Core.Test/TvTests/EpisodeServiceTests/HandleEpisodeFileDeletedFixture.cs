@@ -30,6 +30,7 @@ namespace NzbDrone.Core.Test.TvTests.EpisodeServiceTests
             _episodeFile = Builder<EpisodeFile>
                 .CreateNew()
                 .With(e => e.SeriesId = _series.Id)
+                .With(e => e.VersionSlotId = 0)
                 .Build();
         }
 

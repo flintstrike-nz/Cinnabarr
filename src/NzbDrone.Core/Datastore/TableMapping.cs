@@ -129,6 +129,9 @@ namespace NzbDrone.Core.Datastore
 
             Mapper.Entity<Series>("Series").RegisterModel()
                   .Ignore(s => s.RootFolderPath)
+                  .Ignore(s => s.Slot)
+                  .Ignore(s => s.VersionSlotId)
+                  .Ignore(s => s.VersionLabel)
                   .Ignore(s => s.Translations)
                   .HasOne(s => s.QualityProfile, s => s.QualityProfileId);
 
@@ -137,7 +140,13 @@ namespace NzbDrone.Core.Datastore
             Mapper.Entity<EpisodeFile>("EpisodeFiles").RegisterModel()
                   .HasOne(f => f.Series, f => f.SeriesId)
                   .LazyLoad(x => x.Episodes,
-                            (db, parent) => db.Query<Episode>(new SqlBuilder(db.DatabaseType).Where<Episode>(c => c.EpisodeFileId == parent.Id)).ToList(),
+                            (db, parent) => parent.VersionSlotId == 0
+                                ? db.Query<Episode>(new SqlBuilder(db.DatabaseType).Where<Episode>(c => c.EpisodeFileId == parent.Id)).ToList()
+
+                                // A file of an extra version covers the episodes recorded for it.
+                                : db.Query<Episode>(new SqlBuilder(db.DatabaseType)
+                                    .Join<Episode, NzbDrone.Core.Tv.Versions.EpisodeVersionFile>((e, l) => e.Id == l.EpisodeId)
+                                    .Where<NzbDrone.Core.Tv.Versions.EpisodeVersionFile>(l => l.EpisodeFileId == parent.Id)).ToList(),
                             t => t.Id > 0)
                   .Ignore(f => f.Path);
 
@@ -168,6 +177,8 @@ namespace NzbDrone.Core.Datastore
             Mapper.Entity<MovieSubtitleFile>("MovieSubtitleFiles").RegisterModel();
             Mapper.Entity<MovieOtherExtraFile>("MovieOtherExtraFiles").RegisterModel();
             Mapper.Entity<VersionSlot>("VersionSlots").RegisterModel();
+            Mapper.Entity<NzbDrone.Core.Tv.Versions.SeriesVersionSlot>("SeriesVersionSlots").RegisterModel();
+            Mapper.Entity<NzbDrone.Core.Tv.Versions.EpisodeVersionFile>("EpisodeVersionFiles").RegisterModel();
             Mapper.Entity<NzbDrone.Core.Reorganise.ReorganiseJournalEntry>("ReorganiseJournal").RegisterModel();
             Mapper.Entity<OtherExtraFile>("ExtraFiles").RegisterModel();
 

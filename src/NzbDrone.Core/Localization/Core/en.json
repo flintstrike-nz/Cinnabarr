@@ -2532,6 +2532,7 @@
   "SeriesType": "Series Type",
   "SeriesTypes": "Series Types",
   "SeriesTypesHelpText": "Series type is used for renaming, parsing and searching",
+  "SeriesVersionFiles": "Episodes with a file",
   "SetIndexerFlags": "Set Indexer Flags",
   "SetIndexerFlagsModalTitle": "{modalTitle} - Set Indexer Flags",
   "SetPermissions": "Set Permissions",

@@ -49,6 +49,12 @@ namespace NzbDrone.Core.Tv
         public Series Series { get; set; }
 
         public bool HasFile => EpisodeFileId > 0;
+
+        public Episode ShallowCopy()
+        {
+            return (Episode)MemberwiseClone();
+        }
+
         public bool AbsoluteEpisodeNumberAdded { get; set; }
 
         public override string ToString()

@@ -30,6 +30,9 @@ namespace NzbDrone.Core.MediaFiles
         public List<Language> Languages { get; set; }
         public ReleaseType ReleaseType { get; set; }
 
+        // 0 for an episode's own file; otherwise the extra version slot of the series the file belongs to.
+        public int VersionSlotId { get; set; }
+
         public override string ToString()
         {
             return string.Format("[{0}] {1}", Id, RelativePath);
