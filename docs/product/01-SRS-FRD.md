@@ -77,7 +77,7 @@ The product principles are in ROADMAP §1 and bind every requirement: one librar
 
 ### 2.6 Assumptions and dependencies
 
-- The owner obtains and keeps TVDB, TMDb and IMDb access (BL-094, BL-095), with licence terms checked before public release (MET-06).
+- Series metadata stays on Sonarr's service, so no TVDB key is needed (BL-094 is not needed). Movies use the Radarr project's service. A TMDb key and attribution (BL-095) are only needed if movie metadata is later taken directly, and licence terms for the services in use are checked before public release (MET-06).
 - The owner's indexer definitions fork stays reachable, with a bundled snapshot as the fallback (IDX-02, IDX-03).
 - yt-dlp and ffmpeg are available to Addendum C. yt-dlp breaks often, so its version is pinned.
 - GitHub Actions may not run on this repository, so local checks are the gate (AGENTS.md).
@@ -186,10 +186,10 @@ Each table lists one group of functional requirements. A requirement shows its s
 | ID | Requirement | Statement | Priority | Phase | Status |
 | --- | --- | --- | --- | --- | --- |
 | MET-01 | Interim movie metadata | Until Phase 4i, movie metadata shall come from the Radarr project's metadata service. | M | 4a | Done |
-| MET-02 | Series metadata from TVDB | Series data shall come from TVDB directly, replacing Sonarr's Skyhook service. | M | 4i | Open |
+| MET-02 | Series metadata from Sonarr's service | Series data comes from Sonarr's Skyhook service (which reads TVDB). The owner has no TVDB key and chose to keep using it (changed from "TVDB directly"). | M | 4i | Decided: keep Skyhook |
 | MET-03 | Movie metadata from TMDb | Movie data shall come from TMDb directly with the owner's key, replacing the interim service. | M | 4i | Open |
 | MET-04 | IMDb identifiers | IMDb IDs and ratings shall come via TMDb external IDs. IMDb datasets are optional. | S | 4i | Open |
-| MET-05 | Scene mappings | Scene name mappings shall come from TheXEM plus Cinnabarr's own list, not Sonarr's services. | M | 4i | Open |
+| MET-05 | Scene mappings | Scene name mappings come from Sonarr's scene mapping service, as in Sonarr (changed from TheXEM plus an own list, which needed the TVDB work). | M | 4i | Decided: keep Sonarr's service |
 | MET-06 | Metadata licence terms | Metadata use shall comply with the TVDB, TMDb and IMDb terms. Attribution and project keys shall be in place before any public release. | M | 4i | Open |
 
 #### 3.1.9 Search and indexers
@@ -270,7 +270,7 @@ Each table lists one group of functional requirements. A requirement shows its s
 | IF-01 | Engine private API | The host shall call the engine's private API (a qBittorrent WebAPI subset) on 127.0.0.1 with the API key. Calls used: app/version, app/setPreferences, transfer/info, transfer/speedLimitsMode, torrents/stop/start/recheck, file priority and rename, share limits, tags. | M | 2 | Done |
 | IF-02 | Metadata providers | TVDB v4 (project key), TMDb (key), IMDb datasets (optional) and TheXEM for scene mappings. | M | 4i | Open |
 | IF-03 | Interim movie metadata service | Radarr project's metadata service, used for movies until Phase 4i. | M | 4a | Partial |
-| IF-04 | Sonarr metadata service (Skyhook) | Still called for series data until Phase 4i replaces it. | M | base | Partial |
+| IF-04 | Sonarr metadata service (Skyhook) | Called for series data, scene mappings, daily-series data and the TMDb import-list proxy; kept by decision. It is a third party's service, so its availability and terms are a risk (MET-06). | M | base | Done |
 | IF-05 | Indexer definitions fork | flintstrike-nz/Indexers, zip download of definitions/v{n} files. | M | 3 | Done |
 
 ### 3.3 Non-functional requirements

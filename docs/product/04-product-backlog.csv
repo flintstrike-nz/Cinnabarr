@@ -8,9 +8,9 @@ BL-010,Phase 4 close-out,Movies straight into the final place via the engine (4e
 BL-011,Phase 4 close-out,Movie folder rename and token picker for movie naming (4e-5),Story,NAM-05,4,S,M,none,Next,Partial: moving a movie folder and renaming it to the folder format from Organize done; token picker open
 BL-012,Phase 4 close-out,"Movie extras: .nfo, artwork, and subtitles beside existing files on scan",Story,FIL-08,4,S,M,none,Next,Done (checked in the real app; folder-wide artwork such as poster.jpg is not linked)
 BL-013,Phase 4 close-out,Movie import lists (4f),Story,LIB-08,4,M,M,none,Next,"Partial: Done for two sources (custom JSON list, TMDb trending/popular); other sources, exclusions and the UI language field open"
-BL-014,Phase 4 close-out,"Series metadata from TVDB directly, replacing Skyhook (4i)",Story,"MET-02, MET-06, IF-02, IF-04",4,M,L,BL-094,Now,Blocked: TVDB key and licence
+BL-014,Phase 4 close-out,"Series metadata from TVDB directly, replacing Skyhook (4i)",Story,"MET-02, MET-06, IF-02, IF-04",4,M,L,BL-094,Now,"Not needed: decided to keep Sonarr's metadata service for series"
 BL-015,Phase 4 close-out,"Movie metadata from TMDb directly, replacing the interim service (4i)",Story,"MET-03, IF-03",4,M,M,BL-095,Next,Blocked: TMDb key
-BL-016,Phase 4 close-out,TheXEM scene mappings plus Cinnabarr's own list (4i),Story,"MET-05, MET-04",4,M,M,BL-014,Next,Ready
+BL-016,Phase 4 close-out,TheXEM scene mappings plus Cinnabarr's own list (4i),Story,"MET-05, MET-04",4,M,M,BL-014,Next,"Not needed: decided to keep Sonarr's scene mapping service"
 BL-017,Phase 4 close-out,Collections and credits on movie pages,Story,"MET-06, LIB-06",4,S,M,none,Next,Partial: credits and collection shown; collection pages and person pages open
 BL-018,Phase 4 close-out,Discover tab and one Add search for TV and movies,Story,"LIB-09, UI-02",4,M,L,none,Next,"Partial: movie Discover done; one Add search for series and movies, and series Discover, open"
 BL-019,Phase 4 close-out,Merged Activity: History and Blocklist for both media types,Story,UI-04,4,M,M,none,Next,Done (paging and filters for the movie sections still open)
@@ -68,10 +68,10 @@ BL-086,Release,Translation project once Phase 4 is complete,Task,NFR-10,4+,C,M,n
 BL-087,Release,Phase 7 follow-up items: legacy backup identity and rollback limits,Task,MIG-04,7,S,S,none,Next,Ready
 BL-088,Process,Set up the backlog in GitHub Projects (see 04-product-backlog.md),Task,n/a,n/a,M,XS,none,Now,Ready
 BL-090,Decisions,Decision 1: when to rename NzbDrone.* namespaces,Decision,NFR-12,4+,S,XS,none,Later,Decision
-BL-091,Decisions,Decision 3: support an external torrent client?,Decision,CON-05,later,S,XS,none,Later,Decision
-BL-092,Decisions,Decision 7: Plex naming template,Decision,VER-05,5,S,XS,BL-055,Next,Decision
+BL-091,Decisions,Decision 3: support an external torrent client?,Decision,CON-05,later,S,XS,none,Later,"Decided: external torrent clients are out of scope"
+BL-092,Decisions,Decision 7: Plex naming template,Decision,VER-05,5,S,XS,BL-055,Next,"Decided: Jellyfin naming is the default, Emby and Plex are presets (the preset work is BL-056)"
 BL-093,Decisions,Decision 5: how a race winner is chosen,Decision,VER-03,5,S,XS,none,Next,Decision
-BL-094,Owner inputs,Obtain a TVDB v4 project key and check its licence terms,Task,MET-06,4,M,S,none,Now,Blocked: owner
+BL-094,Owner inputs,Obtain a TVDB v4 project key and check its licence terms,Task,MET-06,4,M,S,none,Now,"Not needed: no TVDB key is required while Sonarr's service is used"
 BL-095,Owner inputs,Obtain a TMDb key and confirm attribution,Task,MET-06,4,M,S,none,Now,Blocked: owner
 BL-096,Owner inputs,Decide whether the ownership marker ships in an earlier release,Decision,MIG-05,1e,M,XS,none,Now,Decision
 BL-100,Addendum A,"Settle the add-request and 'already in Cinnabarr' contract, shared with Addendum B",Spike,"A-03, B-01",after 4–5,M,S,none,Future,Ready
