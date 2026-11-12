@@ -314,6 +314,38 @@ namespace NzbDrone.Core.Test.Download.EngineTests
         }
 
         [Test]
+        public void should_save_the_goals_with_the_link_while_the_series_is_known()
+        {
+            GivenSeries(null, new EngineSeedingRule { Mode = EngineSeedingMode.Time, Minutes = 60 }, null);
+
+            Subject.Process(GivenClient());
+
+            _link.SeedingRules.Should().ContainSingle().Which.Minutes.Should().Be(60);
+            Mocker.GetMock<IEngineLinkService>().Verify(l => l.Save(Hash.ToUpperInvariant(), _link), Times.AtLeastOnce());
+        }
+
+        [Test]
+        public void should_keep_the_saved_goals_when_the_series_is_no_longer_in_the_library()
+        {
+            _link.TvdbId = 77;
+            _link.SeedingRules = new List<EngineSeedingRule> { new EngineSeedingRule { Mode = EngineSeedingMode.Time, Minutes = 60 } };
+
+            var rule = Subject.GetRules(Hash.ToUpperInvariant(), _link).Should().ContainSingle().Which;
+
+            rule.Source.Should().Be("saved");
+            rule.Minutes.Should().Be(60);
+        }
+
+        [Test]
+        public void should_not_use_saved_goals_for_a_movie()
+        {
+            _link.MediaType = EngineLinkService.MovieMediaType;
+            _link.SeedingRules = new List<EngineSeedingRule> { new EngineSeedingRule { Mode = EngineSeedingMode.Time, Minutes = 60 } };
+
+            Subject.GetRules(Hash.ToUpperInvariant(), _link).Should().ContainSingle().Which.Source.Should().Be("global");
+        }
+
+        [Test]
         public void should_give_each_imported_video_its_own_goals()
         {
             GivenSeries(null, new EngineSeedingRule { Mode = EngineSeedingMode.Time, Minutes = 60 }, null);

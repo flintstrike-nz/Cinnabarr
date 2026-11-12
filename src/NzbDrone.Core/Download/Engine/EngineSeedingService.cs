@@ -125,7 +125,7 @@ namespace NzbDrone.Core.Download.Engine
             var episodes = GetEpisodeLookup(series);
             var trackerRule = GetTrackerRule(downloadId, link);
 
-            return videos.SelectMany(v => GetRules(series, episodes, v, trackerRule))
+            return videos.SelectMany(v => ApplySidecar(link, series, GetRules(series, episodes, v, trackerRule), trackerRule))
                 .DefaultIfEmpty(GetGlobalRule())
                 .Distinct()
                 .ToList();
@@ -144,7 +144,7 @@ namespace NzbDrone.Core.Download.Engine
             var episodes = GetEpisodeLookup(series);
             var trackerRule = GetTrackerRule(downloadId, link);
 
-            return videos.ToDictionary(v => v.Index, v => GetRules(series, episodes, v, trackerRule));
+            return videos.ToDictionary(v => v.Index, v => ApplySidecar(link, series, GetRules(series, episodes, v, trackerRule), trackerRule));
         }
 
         // A video's goals: for each of its episodes, the most specific goal set (episode, season, series, global), and
@@ -175,6 +175,43 @@ namespace NzbDrone.Core.Download.Engine
             }
 
             return rules;
+        }
+
+        // A series link whose series isn't in the library (a restored database) keeps the goals saved with it.
+        private static List<EngineSeedingRule> ApplySidecar(EngineLink link, Series series, List<EngineSeedingRule> rules, EngineSeedingRule trackerRule)
+        {
+            if (series != null || link.MediaType == EngineLinkService.MovieMediaType || link.SeedingRules == null || link.SeedingRules.Count == 0)
+            {
+                return rules;
+            }
+
+            var saved = link.SeedingRules.Select(r => Describe(r, "saved")).ToList();
+
+            if (trackerRule != null)
+            {
+                saved.Add(trackerRule);
+            }
+
+            return saved;
+        }
+
+        // The goals a series' files had, saved with the link when they change (series links only).
+        private void RememberRules(string downloadId, EngineLink link, Series series, List<EngineSeedingRule> rules)
+        {
+            if (series == null || link.MediaType == EngineLinkService.MovieMediaType)
+            {
+                return;
+            }
+
+            var current = rules.Select(r => new EngineSeedingRule { Mode = r.Mode, Minutes = r.Minutes, Ratio = r.Ratio }).ToList();
+
+            if (link.SeedingRules != null && link.SeedingRules.Select(r => (r.Mode, r.Minutes, r.Ratio)).SequenceEqual(current.Select(r => (r.Mode, r.Minutes, r.Ratio))))
+            {
+                return;
+            }
+
+            link.SeedingRules = current;
+            _engineLinkService.Save(downloadId, link);
         }
 
         // The series' episodes by season and episode number, read once for all of a torrent's files.
@@ -225,7 +262,9 @@ namespace NzbDrone.Core.Download.Engine
             var series = _seriesService.FindByTvdbId(link.TvdbId);
             var episodes = GetEpisodeLookup(series);
             var trackerRule = GetTrackerRule(downloadId, link);
-            var rulesByVideo = videos.ToDictionary(v => v, v => GetRules(series, episodes, v, trackerRule));
+            var rulesByVideo = videos.ToDictionary(v => v, v => ApplySidecar(link, series, GetRules(series, episodes, v, trackerRule), trackerRule));
+
+            RememberRules(downloadId, link, series, rulesByVideo.Values.SelectMany(r => r).Where(r => r != trackerRule && r.Source != "tracker").Distinct().ToList());
             var rules = rulesByVideo.Values.SelectMany(r => r).Distinct().ToList();
             var now = DateTime.UtcNow;
             var ratio = Math.Max(0, (double)torrent.Ratio);
