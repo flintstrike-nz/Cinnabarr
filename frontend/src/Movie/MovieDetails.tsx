@@ -24,6 +24,7 @@ import {
   useGrabMovieRelease,
   useMovieReleases,
 } from './MovieRelease';
+import MovieVersions from './MovieVersions';
 import {
   useDeleteMovie,
   useMovie,
@@ -34,6 +35,7 @@ import {
 import styles from './Movie.module.css';
 
 interface InteractiveSearchProps {
+  versionSlotId: number;
   movieId: number;
 }
 
@@ -79,8 +81,12 @@ function ReleaseRow({ item, isGrabbing, onGrab }: ReleaseRowProps) {
   );
 }
 
-function InteractiveSearch({ movieId }: InteractiveSearchProps) {
-  const { data, isFetching, error } = useMovieReleases(movieId, true);
+function InteractiveSearch({ movieId, versionSlotId }: InteractiveSearchProps) {
+  const { data, isFetching, error } = useMovieReleases(
+    movieId,
+    true,
+    versionSlotId
+  );
   const { isGrabbing, grabError, grabRelease } = useGrabMovieRelease();
 
   if (isFetching) {
@@ -132,7 +138,8 @@ function MovieDetails() {
   const { updateMovie } = useUpdateMovie();
   const { searchMovie, isSearching } = useSearchMovie();
   const { deleteMovie, isDeleting } = useDeleteMovie(id);
-  const [showSearch, setShowSearch] = useState(false);
+  // The version an interactive search is open for (0 is the movie itself); null when it is closed.
+  const [searchSlotId, setSearchSlotId] = useState<number | null>(null);
   const [isOrganizeOpen, setIsOrganizeOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const { refreshMovie, isRefreshing } = useRefreshMovie();
@@ -150,7 +157,11 @@ function MovieDetails() {
   }, [searchMovie, id]);
 
   const handleInteractiveSearchPress = useCallback(() => {
-    setShowSearch((value) => !value);
+    setSearchSlotId((value) => (value === null ? 0 : null));
+  }, []);
+
+  const handleVersionSearchPress = useCallback((slotId: number) => {
+    setSearchSlotId(slotId);
   }, []);
 
   const handleEditToggle = useCallback(() => {
@@ -286,7 +297,18 @@ function MovieDetails() {
           </div>
         </div>
 
-        {showSearch ? <InteractiveSearch movieId={movie.id} /> : null}
+        {searchSlotId === null ? null : (
+          <InteractiveSearch
+            key={searchSlotId}
+            movieId={movie.id}
+            versionSlotId={searchSlotId}
+          />
+        )}
+
+        <MovieVersions
+          movieId={movie.id}
+          onInteractiveSearch={handleVersionSearchPress}
+        />
 
         <ConfirmModal
           isOpen={isDeleteFilesConfirmOpen}

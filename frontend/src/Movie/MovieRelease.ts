@@ -35,10 +35,14 @@ export interface MovieRelease {
 const DEFAULT_RELEASES: MovieRelease[] = [];
 
 // An interactive search: only runs once asked for, as it queries every indexer.
-export const useMovieReleases = (movieId: number, isEnabled: boolean) => {
+export const useMovieReleases = (
+  movieId: number,
+  isEnabled: boolean,
+  versionSlotId = 0
+) => {
   const result = useApiQuery<MovieRelease[]>({
     path: '/release/movie',
-    queryParams: { movieId },
+    queryParams: { movieId, versionSlotId },
     queryOptions: {
       enabled: isEnabled && movieId > 0,
       refetchOnWindowFocus: false,

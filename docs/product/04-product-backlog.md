@@ -104,7 +104,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | ID | Item | Type | Requirements | Phase | Priority | Size | Depends on | Sequence | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | BL-050 | Version slot schema and a default slot per item | Story | VER-01 | 5 | M | XL | BL-044 | Next | Partial: movie version slots stored (table, file slot id, API with a limit of 8 versions, default slot is the movie itself); nothing uses them yet (BL-051) |
-| BL-051 | Per-slot Wanted, cutoff and upgrades | Story | VER-01 | 5 | M | L | BL-050 | Next | Partial: a version of a movie can be searched, grabbed, downloaded straight into its file and imported (checked on the real engine); the Wanted lists, RSS and the screens are still to do |
+| BL-051 | Per-slot Wanted, cutoff and upgrades | Story | VER-01 | 5 | M | L | BL-050 | Next | Partial: the movie page lists the versions (profile, monitored, file), adds, changes and deletes them, and searches each (automatic and interactive); the Wanted lists and RSS per version, Search page and series are still to do |
 | BL-052 | Download another version from Search | Story | VER-02 | 5 | S | M | BL-050 | Next | Ready |
 | BL-053 | Race mode per file, with winner rules and loser cleanup | Story | VER-03, VER-04 | 5 | S | XL | BL-050, BL-093 | Next | Ready |
 | BL-054 | Race groups on the Downloads page | Story | VER-03 | 5 | S | M | BL-053 | Next | Ready |

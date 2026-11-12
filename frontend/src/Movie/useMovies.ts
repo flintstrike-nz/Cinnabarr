@@ -109,7 +109,7 @@ export const useDeleteMovie = (id: number) => {
 export const useSearchMovie = () => {
   const { isPending, error, mutate } = useApiMutation<
     unknown,
-    { name: string; movieIds: number[] }
+    { name: string; movieIds: number[]; versionSlotId?: number }
   >({
     path: '/command',
     method: 'POST',
@@ -118,8 +118,9 @@ export const useSearchMovie = () => {
   return {
     isSearching: isPending,
     searchError: error,
-    searchMovie: (movieId: number) =>
-      mutate({ name: 'MoviesSearch', movieIds: [movieId] }),
+    // versionSlotId: one of the movie's versions (0 or left out is the movie itself)
+    searchMovie: (movieId: number, versionSlotId = 0) =>
+      mutate({ name: 'MoviesSearch', movieIds: [movieId], versionSlotId }),
   };
 };
 
