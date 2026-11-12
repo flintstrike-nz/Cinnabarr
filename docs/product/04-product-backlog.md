@@ -72,7 +72,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | BL-019 | Merged Activity: History and Blocklist for both media types | Story | UI-04 | 4 | M | M | none | Next | Done (paging and filters for the movie sections still open) |
 | BL-020 | One Wanted page for episodes and movies | Story | LIB-05 | 4 | S | M | none | Next | Done |
 | BL-021 | Calendar grid filters, iCal feed and agenda include movies | Story | UI-03 | 4 | S | M | none | Next | Done (status colours and detail popup for movie blocks still open) |
-| BL-022 | Library bulk actions on the merged grid, and bulk tags | Story | UI-05, LIB-01 | 4 | S | M | none | Next | Partial: select mode with bulk search, monitor, quality profile and delete done; bulk tags open |
+| BL-022 | Library bulk actions on the merged grid, and bulk tags | Story | UI-05, LIB-01 | 4 | S | M | none | Next | Done for movies: select mode with bulk search, monitor, quality profile, add/remove tag and delete (series have their own editor) |
 | BL-023 | Movie folder import: import all matched, re-match, nested folder formats | Story | LIB-07 | 4 | S | M | none | Next | Partial: re-match and Import All done; nested folder formats open |
 | BL-024 | Movie media-info detail (audio and subtitle streams) | Task | LIB-06 | 4 | C | S | none | Later | Done (not checked with a real file) |
 | BL-025 | Search page gaps: grab titles not in the library, category and indexer filters, sortable columns | Story | IDX-11 | 4 | S | M | none | Next | Partial: sorting, indexer filter and add links done; category filters and grabbing without adding open |

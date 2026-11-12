@@ -9,6 +9,7 @@ import PageContentBody from 'Components/Page/PageContentBody';
 import PageHeading from 'Components/Page/PageHeading';
 import { icons, kinds } from 'Helpers/Props';
 import { useQualityProfilesData } from 'Settings/Profiles/Quality/useQualityProfiles';
+import { useSortedTagList } from 'Tags/useTags';
 import formatBytes from 'Utilities/Number/formatBytes';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
@@ -20,6 +21,7 @@ import styles from './Movie.module.css';
 function MoviesIndex() {
   const { data: movies, isLoading, error } = useMovies();
   const profiles = useQualityProfilesData();
+  const tags = useSortedTagList();
   const { applyToMovies, isApplying, applyError } = useBulkMovies();
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -71,6 +73,31 @@ function MoviesIndex() {
         applyToMovies({
           movies: selected,
           action: { type: 'profile', qualityProfileId },
+        });
+      }
+    },
+    [applyToMovies, selected]
+  );
+
+  const handleAddTagChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      const tagId = Number(event.target.value);
+
+      if (tagId) {
+        applyToMovies({ movies: selected, action: { type: 'addTag', tagId } });
+      }
+    },
+    [applyToMovies, selected]
+  );
+
+  const handleRemoveTagChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      const tagId = Number(event.target.value);
+
+      if (tagId) {
+        applyToMovies({
+          movies: selected,
+          action: { type: 'removeTag', tagId },
         });
       }
     },
@@ -150,6 +177,40 @@ function MoviesIndex() {
                 </option>
               ))}
             </select>
+
+            {tags.length ? (
+              <>
+                <select
+                  className={styles.select}
+                  aria-label={translate('AddTag')}
+                  value=""
+                  disabled={isApplying}
+                  onChange={handleAddTagChange}
+                >
+                  <option value="">{translate('AddTag')}</option>
+                  {tags.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  className={styles.select}
+                  aria-label={translate('RemoveTag')}
+                  value=""
+                  disabled={isApplying}
+                  onChange={handleRemoveTagChange}
+                >
+                  <option value="">{translate('RemoveTag')}</option>
+                  {tags.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </>
+            ) : null}
 
             <Button
               kind={kinds.DANGER}
