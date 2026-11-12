@@ -190,6 +190,9 @@ namespace NzbDrone.Core.Datastore
 
             Mapper.Entity<Movie>("Movies").RegisterModel()
                   .Ignore(s => s.RootFolderPath)
+                  .Ignore(s => s.Slot)
+                  .Ignore(s => s.VersionSlotId)
+                  .Ignore(s => s.VersionLabel)
                   .Ignore(s => s.Title)
                   .Ignore(s => s.Year)
                   .Ignore(s => s.TmdbId)

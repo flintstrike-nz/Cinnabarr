@@ -10,6 +10,8 @@ using NzbDrone.Core.DecisionEngine.Movies;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.IndexerSearch;
+using NzbDrone.Core.Movies;
+using NzbDrone.Core.Movies.Versions;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Profiles.Qualities;
 using Sonarr.Http;
@@ -22,6 +24,8 @@ public class ReleasePushController : RestController<ReleasePushResource>
 {
     private readonly IMakeDownloadDecision _downloadDecisionMaker;
     private readonly IMakeMovieDownloadDecision _movieDecisionMaker;
+    private readonly IMovieService _movieService;
+    private readonly IVersionSlotService _versionSlotService;
     private readonly IProcessDownloadDecisions _downloadDecisionProcessor;
     private readonly IIndexerFactory _indexerFactory;
     private readonly IDownloadClientFactory _downloadClientFactory;
@@ -33,6 +37,8 @@ public class ReleasePushController : RestController<ReleasePushResource>
 
     public ReleasePushController(IMakeDownloadDecision downloadDecisionMaker,
                              IMakeMovieDownloadDecision movieDecisionMaker,
+                             IMovieService movieService,
+                             IVersionSlotService versionSlotService,
                              IProcessDownloadDecisions downloadDecisionProcessor,
                              IIndexerFactory indexerFactory,
                              IDownloadClientFactory downloadClientFactory,
@@ -41,6 +47,8 @@ public class ReleasePushController : RestController<ReleasePushResource>
     {
         _downloadDecisionMaker = downloadDecisionMaker;
         _movieDecisionMaker = movieDecisionMaker;
+        _movieService = movieService;
+        _versionSlotService = versionSlotService;
         _downloadDecisionProcessor = downloadDecisionProcessor;
         _indexerFactory = indexerFactory;
         _downloadClientFactory = downloadClientFactory;
@@ -75,11 +83,21 @@ public class ReleasePushController : RestController<ReleasePushResource>
 
         lock (PushLock)
         {
-            // A pushed release is for a series or for a movie; the one that finds its title in the library wins.
-            var seriesDecision = _downloadDecisionMaker.GetRssDecision(new List<ReleaseInfo> { info }, true).FirstOrDefault();
-            var movieDecision = _movieDecisionMaker.GetRssDecision(new List<ReleaseInfo> { info }, true).FirstOrDefault();
+            if (release.VersionSlotId != 0)
+            {
+                // A release for one version of a movie is decided as that version (its profile and file), as a search for it would be.
+                var view = _versionSlotService.GetView(_movieService.GetMovie(release.MovieId), release.VersionSlotId);
 
-            decision = FreeTextSearchService.Pick(seriesDecision, movieDecision);
+                decision = _movieDecisionMaker.GetSearchDecision(new List<ReleaseInfo> { info }, view, true).FirstOrDefault();
+            }
+            else
+            {
+                // A pushed release is for a series or for a movie; the one that finds its title in the library wins.
+                var seriesDecision = _downloadDecisionMaker.GetRssDecision(new List<ReleaseInfo> { info }, true).FirstOrDefault();
+                var movieDecision = _movieDecisionMaker.GetRssDecision(new List<ReleaseInfo> { info }, true).FirstOrDefault();
+
+                decision = FreeTextSearchService.Pick(seriesDecision, movieDecision);
+            }
 
             _downloadDecisionProcessor.ProcessDecision(decision, downloadClientId).GetAwaiter().GetResult();
         }

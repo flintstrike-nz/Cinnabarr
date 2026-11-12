@@ -9,6 +9,7 @@ using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Movies;
+using NzbDrone.Core.Movies.Versions;
 using NzbDrone.Core.Queue;
 
 namespace NzbDrone.Core.IndexerSearch
@@ -16,6 +17,7 @@ namespace NzbDrone.Core.IndexerSearch
     public class MovieSearchService : IExecute<MoviesSearchCommand>, IExecute<MissingMoviesSearchCommand>, IExecute<CutoffUnmetMoviesSearchCommand>
     {
         private readonly IMovieService _movieService;
+        private readonly IVersionSlotService _versionSlotService;
         private readonly IMovieCutoffService _movieCutoffService;
         private readonly IQueueService _queueService;
         private readonly ISearchForMovieReleases _releaseSearchService;
@@ -23,6 +25,7 @@ namespace NzbDrone.Core.IndexerSearch
         private readonly Logger _logger;
 
         public MovieSearchService(IMovieService movieService,
+                                  IVersionSlotService versionSlotService,
                                   IMovieCutoffService movieCutoffService,
                                   IQueueService queueService,
                                   ISearchForMovieReleases releaseSearchService,
@@ -30,6 +33,7 @@ namespace NzbDrone.Core.IndexerSearch
                                   Logger logger)
         {
             _movieService = movieService;
+            _versionSlotService = versionSlotService;
             _movieCutoffService = movieCutoffService;
             _queueService = queueService;
             _releaseSearchService = releaseSearchService;
@@ -43,6 +47,7 @@ namespace NzbDrone.Core.IndexerSearch
 
             // An automatic search only looks for monitored movies that are out; one you ask for is always searched.
             var movies = _movieService.GetMovies(message.MovieIds)
+                .Select(m => _versionSlotService.GetView(m, message.VersionSlotId))
                 .Where(m => (m.Monitored && m.IsAvailable()) || userInvokedSearch)
                 .ToList();
 
@@ -81,9 +86,9 @@ namespace NzbDrone.Core.IndexerSearch
         // A movie that is already downloading doesn't need another search.
         private List<Movie> NotInQueue(List<Movie> movies)
         {
-            var queued = _queueService.GetQueue().Where(q => q.Movie != null).Select(q => q.Movie.Id).ToHashSet();
+            var queued = _queueService.GetQueue().Where(q => q.Movie != null).Select(q => (q.Movie.Id, q.Movie.VersionSlotId)).ToHashSet();
 
-            return movies.Where(m => !queued.Contains(m.Id)).ToList();
+            return movies.Where(m => !queued.Contains((m.Id, m.VersionSlotId))).ToList();
         }
 
         public async Task SearchForBulkMovies(List<Movie> movies, bool userInvokedSearch)
@@ -93,17 +98,19 @@ namespace NzbDrone.Core.IndexerSearch
             var downloadedCount = 0;
 
             // The movies searched longest ago go first.
-            foreach (var movie in movies.GroupBy(m => m.Id).OrderBy(g => g.Min(m => m.LastSearchTime ?? DateTime.MinValue)))
+            foreach (var movie in movies.GroupBy(m => (m.Id, m.VersionSlotId)).OrderBy(g => g.Min(m => m.LastSearchTime ?? DateTime.MinValue)))
             {
                 List<DownloadDecision> decisions;
 
                 try
                 {
-                    decisions = await _releaseSearchService.MovieSearch(movie.Key, userInvokedSearch, false);
+                    decisions = movie.Key.VersionSlotId == 0
+                        ? await _releaseSearchService.MovieSearch(movie.Key.Id, userInvokedSearch, false)
+                        : await _releaseSearchService.MovieSearch(movie.Key.Id, movie.Key.VersionSlotId, userInvokedSearch, false);
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error(ex, "Unable to search for movie: [{0}]", movie.Key);
+                    _logger.Error(ex, "Unable to search for movie: [{0}]", movie.Key.Id);
                     continue;
                 }
 

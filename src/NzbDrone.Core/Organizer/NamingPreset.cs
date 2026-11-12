@@ -37,7 +37,7 @@ namespace NzbDrone.Core.Organizer
                 SeasonFolderFormat = "Season {season:00}",
                 SpecialsFolderFormat = "Specials",
                 RenameMovies = true,
-                StandardMovieFormat = "{Movie Title} ({Release Year})",
+                StandardMovieFormat = "{Movie Title} ({Release Year}){ - Version}",
                 MovieFolderFormat = "{Movie Title} ({Release Year}) " + movieId
             };
         }

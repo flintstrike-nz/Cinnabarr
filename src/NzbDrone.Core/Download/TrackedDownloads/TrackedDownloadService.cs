@@ -12,6 +12,7 @@ using NzbDrone.Core.Download.History;
 using NzbDrone.Core.History;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Movies.Events;
+using NzbDrone.Core.Movies.Versions;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Tv;
@@ -45,6 +46,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         private readonly IParsingService _parsingService;
         private readonly IMovieParsingService _movieParsingService;
         private readonly IMovieHistoryService _movieHistoryService;
+        private readonly IVersionSlotService _versionSlotService;
         private readonly IHistoryService _historyService;
         private readonly ISeriesService _seriesService;
         private readonly IEpisodeService _episodeService;
@@ -61,6 +63,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         public TrackedDownloadService(IParsingService parsingService,
                                       IMovieParsingService movieParsingService,
                                       IMovieHistoryService movieHistoryService,
+                                      IVersionSlotService versionSlotService,
                                       IHistoryService historyService,
                                       ISeriesService seriesService,
                                       IEpisodeService episodeService,
@@ -76,6 +79,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             _parsingService = parsingService;
             _movieParsingService = movieParsingService;
             _movieHistoryService = movieHistoryService;
+            _versionSlotService = versionSlotService;
             _historyService = historyService;
             _seriesService = seriesService;
             _episodeService = episodeService;
@@ -435,6 +439,17 @@ namespace NzbDrone.Core.Download.TrackedDownloads
 
             if (remoteMovie?.Movie == null)
             {
+                return;
+            }
+
+            // A download for one of the movie's extra versions is that version of it.
+            try
+            {
+                remoteMovie.Movie = _versionSlotService.GetView(remoteMovie.Movie, grabbed.VersionSlotId);
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug(ex, "Unable to find the version of the movie for download '{0}'", grabbed.SourceTitle);
                 return;
             }
 

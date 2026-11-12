@@ -73,6 +73,7 @@ namespace NzbDrone.Core.Parser.Model
             {
                 DateAdded = DateTime.UtcNow,
                 MovieId = Movie.Id,
+                VersionSlotId = Movie.VersionSlotId,
                 Path = Path.CleanFilePath(),
                 Quality = Quality,
                 MediaInfo = MediaInfo,

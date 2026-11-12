@@ -7,6 +7,7 @@ using NzbDrone.Core.Download.Clients.QBittorrent;
 using NzbDrone.Core.Download.History;
 using NzbDrone.Core.History;
 using NzbDrone.Core.Movies;
+using NzbDrone.Core.Movies.Versions;
 using NzbDrone.Core.Tv;
 
 namespace NzbDrone.Core.Download.Engine
@@ -36,6 +37,7 @@ namespace NzbDrone.Core.Download.Engine
         private readonly IEngineFileMapper _engineFileMapper;
         private readonly ISeriesService _seriesService;
         private readonly IMovieService _movieService;
+        private readonly IVersionSlotService _versionSlotService;
         private readonly IEpisodeService _episodeService;
         private readonly Logger _logger;
 
@@ -48,6 +50,7 @@ namespace NzbDrone.Core.Download.Engine
                                                IEngineFileMapper engineFileMapper,
                                                ISeriesService seriesService,
                                                IMovieService movieService,
+                                               IVersionSlotService versionSlotService,
                                                IEpisodeService episodeService,
                                                Logger logger)
         {
@@ -60,6 +63,7 @@ namespace NzbDrone.Core.Download.Engine
             _engineFileMapper = engineFileMapper;
             _seriesService = seriesService;
             _movieService = movieService;
+            _versionSlotService = versionSlotService;
             _episodeService = episodeService;
             _logger = logger;
         }
@@ -207,7 +211,7 @@ namespace NzbDrone.Core.Download.Engine
                 ? null
                 : link.Files != null
                     ? new EngineFileMap { SavePath = link.SavePath, Files = link.Files }
-                    : _engineFileMapper.MapMovie(downloadId, _movieService.GetMovie(grab.MovieId), grab.Quality, grab.SourceTitle, files);
+                    : _engineFileMapper.MapMovie(downloadId, _versionSlotService.GetView(_movieService.GetMovie(grab.MovieId), grab.VersionSlotId), grab.Quality, grab.SourceTitle, files);
 
             // Once mapped, files may already carry their pending names, so the whitelist can't be re-run.
             var noVideo = link != null ? map == null : !files.Any(f => EngineFileWhitelist.IsVideo(f.Name));

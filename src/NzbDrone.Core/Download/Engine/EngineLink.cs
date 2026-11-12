@@ -16,6 +16,9 @@ namespace NzbDrone.Core.Download.Engine
 
         // For a movie link (MediaType "movie"); TvdbId and Episodes are then empty.
         public int TmdbId { get; set; }
+
+        // For a movie link: the version slot the grab is for (0 is the movie's default slot).
+        public int VersionSlotId { get; set; }
         public List<EngineLinkEpisode> Episodes { get; set; } = new();
         public string SourceTitle { get; set; }
         public string Indexer { get; set; }

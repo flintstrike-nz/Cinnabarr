@@ -8,6 +8,7 @@ using NzbDrone.Core.Download;
 using NzbDrone.Core.IndexerSearch;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Movies;
+using NzbDrone.Core.Movies.Versions;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Queue;
 using NzbDrone.Core.Test.Framework;
@@ -25,6 +26,7 @@ namespace NzbDrone.Core.Test.IndexerSearchTests
         [SetUp]
         public void SetUp()
         {
+            Mocker.GetMock<IVersionSlotService>().Setup(s => s.GetView(It.IsAny<Movie>(), It.IsAny<int>())).Returns<Movie, int>((m, _) => m);
             Mocker.GetMock<ISearchForMovieReleases>()
                   .Setup(s => s.MovieSearch(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()))
                   .ReturnsAsync(new List<DownloadDecision>());
@@ -44,6 +46,39 @@ namespace NzbDrone.Core.Test.IndexerSearchTests
             }
 
             Mocker.GetMock<ISearchForMovieReleases>().Verify(s => s.MovieSearch(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Exactly(ids.Length));
+        }
+
+        [Test]
+        public void should_search_the_version_asked_for_as_that_version()
+        {
+            var movie = Movie(1);
+            var view = Movie(1);
+            view.Slot = new VersionSlot { Id = 4, Label = "4K" };
+
+            Mocker.GetMock<IMovieService>().Setup(s => s.GetMovies(It.IsAny<IEnumerable<int>>())).Returns(new List<Movie> { movie });
+            Mocker.GetMock<IVersionSlotService>().Setup(s => s.GetView(movie, 4)).Returns(view);
+            Mocker.GetMock<ISearchForMovieReleases>()
+                  .Setup(s => s.MovieSearch(1, 4, It.IsAny<bool>(), false))
+                  .ReturnsAsync(new List<DownloadDecision>());
+
+            Subject.Execute(new MoviesSearchCommand(new List<int> { 1 }) { VersionSlotId = 4, Trigger = CommandTrigger.Manual });
+
+            Mocker.GetMock<ISearchForMovieReleases>().Verify(s => s.MovieSearch(1, 4, It.IsAny<bool>(), false), Times.Once());
+            Mocker.GetMock<ISearchForMovieReleases>().Verify(s => s.MovieSearch(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never());
+        }
+
+        [Test]
+        public void a_version_in_the_queue_does_not_stop_the_search_for_another_version_of_the_movie()
+        {
+            var queuedView = Movie(1);
+            queuedView.Slot = new VersionSlot { Id = 4, Label = "4K" };
+
+            Mocker.GetMock<IQueueService>().Setup(q => q.GetQueue()).Returns(new List<NzbDrone.Core.Queue.Queue> { new NzbDrone.Core.Queue.Queue { Movie = queuedView } });
+            Mocker.GetMock<IMovieService>().Setup(s => s.MoviesWithoutFiles(It.IsAny<PagingSpec<Movie>>())).Returns(new PagingSpec<Movie> { Records = new List<Movie> { Movie(1) } });
+
+            Subject.Execute(new MissingMoviesSearchCommand { Trigger = CommandTrigger.Manual });
+
+            VerifySearched(1);
         }
 
         [Test]

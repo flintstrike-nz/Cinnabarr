@@ -37,7 +37,7 @@ namespace NzbDrone.Core.DecisionEngine.Movies.Specifications
         public DownloadSpecDecision IsSatisfiedBy(RemoteMovie subject, MovieReleaseDecisionInformation information)
         {
             var matchingMovies = _queueService.GetQueue()
-                .Where(q => q.RemoteMovie?.Movie != null && q.RemoteMovie.Movie.Id == subject.Movie.Id)
+                .Where(q => q.RemoteMovie?.Movie != null && q.RemoteMovie.Movie.Id == subject.Movie.Id && q.RemoteMovie.Movie.VersionSlotId == subject.Movie.VersionSlotId)
                 .ToList();
 
             foreach (var queueItem in matchingMovies)

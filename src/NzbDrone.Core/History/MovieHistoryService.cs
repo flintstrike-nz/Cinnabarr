@@ -84,6 +84,7 @@ namespace NzbDrone.Core.History
             history.Data.Add("ReleaseSource", remote.ReleaseSource.ToString());
             history.Data.Add("IndexerFlags", release.IndexerFlags.ToString());
             history.Data.Add("IndexerId", release.IndexerId.ToString());
+            AddVersionSlot(history, remote.Movie.VersionSlotId);
 
             if (remote.ParsedMovieInfo.ReleaseHash.IsNotNullOrWhiteSpace())
             {
@@ -146,6 +147,7 @@ namespace NzbDrone.Core.History
             history.Data.Add("CustomFormatScore", message.MovieInfo.CustomFormatScore.ToString());
             history.Data.Add("Size", message.MovieInfo.Size.ToString());
             history.Data.Add("IndexerFlags", message.ImportedMovie.IndexerFlags.ToString());
+            AddVersionSlot(history, message.ImportedMovie.VersionSlotId);
 
             _historyRepository.Insert(history);
         }
@@ -172,8 +174,17 @@ namespace NzbDrone.Core.History
             history.Data.Add("ReleaseGroup", message.MovieFile.ReleaseGroup);
             history.Data.Add("Size", message.MovieFile.Size.ToString());
             history.Data.Add("IndexerFlags", message.MovieFile.IndexerFlags.ToString());
+            AddVersionSlot(history, message.MovieFile.VersionSlotId);
 
             _historyRepository.Insert(history);
+        }
+
+        private static void AddVersionSlot(MovieHistory history, int slotId)
+        {
+            if (slotId != 0)
+            {
+                history.Data.Add(MovieHistory.VERSION_SLOT_ID, slotId.ToString());
+            }
         }
 
         public void Handle(MoviesDeletedEvent message)

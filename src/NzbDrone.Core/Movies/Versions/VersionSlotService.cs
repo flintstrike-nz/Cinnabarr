@@ -7,6 +7,7 @@ using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Movies.Events;
+using NzbDrone.Core.Profiles.Qualities;
 
 namespace NzbDrone.Core.Movies.Versions
 {
@@ -15,6 +16,11 @@ namespace NzbDrone.Core.Movies.Versions
         // The extra slots of a movie, oldest first. The default slot is not among them.
         List<VersionSlot> GetByMovie(int movieId);
         VersionSlot Get(int id);
+
+        // The movie as one of its version slots sees it: the slot's quality profile, monitored state (the movie's too)
+        // and file, so the decision engine and the importer can work on a slot unchanged. The default slot is the movie
+        // itself. A view is only for reading and deciding: never save it (it has the movie's id).
+        Movie GetView(Movie movie, int slotId);
         VersionSlot Add(VersionSlot slot);
         VersionSlot Update(VersionSlot slot);
         void Delete(int id);
@@ -27,11 +33,13 @@ namespace NzbDrone.Core.Movies.Versions
 
         private readonly IVersionSlotRepository _repository;
         private readonly IMovieFileService _movieFileService;
+        private readonly IQualityProfileService _qualityProfileService;
 
-        public VersionSlotService(IVersionSlotRepository repository, IMovieFileService movieFileService)
+        public VersionSlotService(IVersionSlotRepository repository, IMovieFileService movieFileService, IQualityProfileService qualityProfileService)
         {
             _repository = repository;
             _movieFileService = movieFileService;
+            _qualityProfileService = qualityProfileService;
         }
 
         public List<VersionSlot> GetByMovie(int movieId)
@@ -42,6 +50,33 @@ namespace NzbDrone.Core.Movies.Versions
         public VersionSlot Get(int id)
         {
             return _repository.Get(id);
+        }
+
+        public Movie GetView(Movie movie, int slotId)
+        {
+            if (slotId == VersionSlot.DefaultSlotId)
+            {
+                return movie;
+            }
+
+            var slot = _repository.Get(slotId);
+
+            if (slot.MovieId != movie.Id)
+            {
+                throw new NzbDroneClientException(HttpStatusCode.BadRequest, "This version belongs to another movie");
+            }
+
+            var file = _movieFileService.GetFilesByMovie(movie.Id).FirstOrDefault(f => f.VersionSlotId == slotId);
+            var view = movie.ShallowCopy();
+
+            view.Slot = slot;
+            view.QualityProfileId = slot.QualityProfileId;
+            view.QualityProfile = _qualityProfileService.Get(slot.QualityProfileId);
+            view.Monitored = movie.Monitored && slot.Monitored;
+            view.MovieFileId = file?.Id ?? 0;
+            view.MovieFile = file;
+
+            return view;
         }
 
         public VersionSlot Add(VersionSlot slot)
