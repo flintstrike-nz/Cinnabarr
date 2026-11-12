@@ -12,6 +12,7 @@ export interface MovieHistoryItem {
   id: number;
   movieId: number;
   movieTitle?: string;
+  versionLabel?: string;
   sourceTitle: string;
   quality: QualityModel;
   date: string;

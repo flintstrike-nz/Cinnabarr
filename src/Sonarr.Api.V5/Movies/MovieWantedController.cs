@@ -3,11 +3,22 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Movies;
+using NzbDrone.Core.Movies.Versions;
 using NzbDrone.Core.RootFolders;
 using Sonarr.Http;
 using Sonarr.Http.Extensions;
 
 namespace Sonarr.Api.V5.Movies;
+
+public class MovieVersionWantedResource
+{
+    public int MovieId { get; set; }
+    public string? MovieTitle { get; set; }
+    public int Year { get; set; }
+    public int VersionSlotId { get; set; }
+    public string? VersionLabel { get; set; }
+    public int QualityProfileId { get; set; }
+}
 
 // Movies that still need a file (missing) or whose file is below the quality profile's cutoff.
 [V5ApiController("wanted/movie")]
@@ -24,12 +35,43 @@ public class MovieWantedController : Controller
     private readonly IMovieService _movieService;
     private readonly IMovieCutoffService _movieCutoffService;
     private readonly IRootFolderService _rootFolderService;
+    private readonly IVersionSlotService _versionSlotService;
 
-    public MovieWantedController(IMovieService movieService, IMovieCutoffService movieCutoffService, IRootFolderService rootFolderService)
+    public MovieWantedController(IMovieService movieService, IMovieCutoffService movieCutoffService, IRootFolderService rootFolderService, IVersionSlotService versionSlotService)
     {
         _movieService = movieService;
         _movieCutoffService = movieCutoffService;
         _rootFolderService = rootFolderService;
+        _versionSlotService = versionSlotService;
+    }
+
+    // The monitored versions (other than the movie itself) of monitored movies that have no file yet.
+    [HttpGet("missing/versions")]
+    [Produces("application/json")]
+    public Ok<List<MovieVersionWantedResource>> GetMissingVersions()
+    {
+        return TypedResults.Ok(_versionSlotService.GetMissingViews().Select(ToVersionResource).ToList());
+    }
+
+    // The monitored versions (other than the movie itself) whose file is below their profile's cutoff.
+    [HttpGet("cutoff/versions")]
+    [Produces("application/json")]
+    public Ok<List<MovieVersionWantedResource>> GetCutoffUnmetVersions()
+    {
+        return TypedResults.Ok(_versionSlotService.GetCutoffUnmetViews().Select(ToVersionResource).ToList());
+    }
+
+    private static MovieVersionWantedResource ToVersionResource(Movie view)
+    {
+        return new MovieVersionWantedResource
+        {
+            MovieId = view.Id,
+            MovieTitle = view.Title,
+            Year = view.Year,
+            VersionSlotId = view.VersionSlotId,
+            VersionLabel = view.VersionLabel,
+            QualityProfileId = view.QualityProfileId
+        };
     }
 
     [HttpGet("missing")]

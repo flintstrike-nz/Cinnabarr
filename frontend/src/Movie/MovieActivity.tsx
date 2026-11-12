@@ -61,6 +61,7 @@ export function MovieHistorySection() {
                 <td>{getEventLabel(item.eventType)}</td>
                 <td>
                   <Link to={`/movie/${item.movieId}`}>{item.movieTitle}</Link>
+                  {item.versionLabel ? ` · ${item.versionLabel}` : null}
                 </td>
                 <td>{item.sourceTitle}</td>
                 <td>{item.quality.quality.name}</td>

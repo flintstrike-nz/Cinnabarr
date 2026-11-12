@@ -6,6 +6,7 @@ using NzbDrone.Core.History;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Languages;
 using NzbDrone.Core.Movies;
+using NzbDrone.Core.Movies.Versions;
 using NzbDrone.Core.Qualities;
 using Sonarr.Http;
 using Sonarr.Http.REST;
@@ -16,6 +17,10 @@ public class MovieHistoryResource : RestResource
 {
     public int MovieId { get; set; }
     public string? MovieTitle { get; set; }
+
+    // The version of the movie the event is about (0 is the movie itself); the label is left out when the version is gone.
+    public int VersionSlotId { get; set; }
+    public string? VersionLabel { get; set; }
     public required string SourceTitle { get; set; }
     public required List<Language> Languages { get; set; }
     public required QualityModel Quality { get; set; }
@@ -45,11 +50,13 @@ public class MovieHistoryController : Controller
 
     private readonly IMovieHistoryService _historyService;
     private readonly IMovieService _movieService;
+    private readonly IVersionSlotService _versionSlotService;
 
-    public MovieHistoryController(IMovieHistoryService historyService, IMovieService movieService)
+    public MovieHistoryController(IMovieHistoryService historyService, IMovieService movieService, IVersionSlotService versionSlotService)
     {
         _historyService = historyService;
         _movieService = movieService;
+        _versionSlotService = versionSlotService;
     }
 
     // With a movieId: that movie's events. Without one: the most recent events of all movies (last 30 days, capped).
@@ -67,11 +74,19 @@ public class MovieHistoryController : Controller
             _ => new Dictionary<int, string>()
         };
 
+        var labels = items.Where(h => h.VersionSlotId != 0)
+                          .Select(h => h.MovieId)
+                          .Distinct()
+                          .SelectMany(id => _versionSlotService.GetByMovie(id))
+                          .ToDictionary(slot => slot.Id, slot => slot.Label);
+
         return TypedResults.Ok(items.Select(h => new MovieHistoryResource
         {
             Id = h.Id,
             MovieId = h.MovieId,
             MovieTitle = titles.GetValueOrDefault(h.MovieId),
+            VersionSlotId = h.VersionSlotId,
+            VersionLabel = labels.GetValueOrDefault(h.VersionSlotId),
             SourceTitle = h.SourceTitle,
             Languages = h.Languages ?? [],
             Quality = h.Quality,

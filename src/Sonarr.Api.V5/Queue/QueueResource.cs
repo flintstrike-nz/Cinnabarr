@@ -15,6 +15,10 @@ namespace Sonarr.Api.V5.Queue
         public int? SeriesId { get; set; }
         public int? MovieId { get; set; }
         public string? MovieTitle { get; set; }
+
+        // For a movie download made for one of the movie's other versions: which one (0 is the movie itself).
+        public int VersionSlotId { get; set; }
+        public string? VersionLabel { get; set; }
         public IEnumerable<int> EpisodeIds { get; set; } = [];
         public List<QueueSeasonResource> Seasons { get; set; } = [];
         public SeriesResource? Series { get; set; }
@@ -60,6 +64,8 @@ namespace Sonarr.Api.V5.Queue
                 SeriesId = model.Series?.Id,
                 MovieId = model.Movie?.Id,
                 MovieTitle = model.Movie?.Title,
+                VersionSlotId = model.Movie?.VersionSlotId ?? 0,
+                VersionLabel = model.Movie?.VersionLabel,
                 EpisodeIds = model.Episodes?.Select(e => e.Id).ToList() ?? [],
                 Seasons = model.Episodes?
                     .GroupBy(e => e.SeasonNumber)

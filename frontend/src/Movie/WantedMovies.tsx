@@ -9,17 +9,79 @@ import { kinds } from 'Helpers/Props';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
 import MoviePoster from './MoviePoster';
-import { useHasMovies } from './useMovies';
+import { useHasMovies, useSearchMovie } from './useMovies';
 import {
   useSearchWantedMovies,
   useWantedMovies,
+  useWantedMovieVersions,
   WantedKind,
+  WantedMovieVersion,
 } from './useWantedMovies';
 import styles from './Movie.module.css';
 
 interface WantedSectionProps {
   kind: WantedKind;
   title: string;
+}
+
+interface WantedVersionRowProps {
+  item: WantedMovieVersion;
+  isSearching: boolean;
+  onSearch: (movieId: number, versionSlotId: number) => void;
+}
+
+function WantedVersionRow({
+  item,
+  isSearching,
+  onSearch,
+}: WantedVersionRowProps) {
+  const handleSearchPress = useCallback(() => {
+    onSearch(item.movieId, item.versionSlotId);
+  }, [item, onSearch]);
+
+  return (
+    <tr>
+      <td>
+        <Link to={`/movie/${item.movieId}`}>{item.movieTitle}</Link>
+      </td>
+      <td>{item.year}</td>
+      <td>{item.versionLabel}</td>
+      <td>
+        <Button isDisabled={isSearching} onPress={handleSearchPress}>
+          {translate('Search')}
+        </Button>
+      </td>
+    </tr>
+  );
+}
+
+// The wanted versions of movies (a version with no file, or one below its profile's cutoff).
+function WantedVersions({ kind }: { kind: WantedKind }) {
+  const { data } = useWantedMovieVersions(kind);
+  const { isSearching, searchMovie } = useSearchMovie();
+
+  if (!data.length) {
+    return null;
+  }
+
+  return (
+    <>
+      <h3>{translate('Versions')}</h3>
+
+      <table className={styles.table}>
+        <tbody>
+          {data.map((item) => (
+            <WantedVersionRow
+              key={`${item.movieId}-${item.versionSlotId}`}
+              item={item}
+              isSearching={isSearching}
+              onSearch={searchMovie}
+            />
+          ))}
+        </tbody>
+      </table>
+    </>
+  );
 }
 
 function WantedSection({ kind, title }: WantedSectionProps) {
@@ -78,6 +140,8 @@ function WantedSection({ kind, title }: WantedSectionProps) {
           </tbody>
         </table>
       ) : null}
+
+      <WantedVersions kind={kind} />
     </section>
   );
 }
