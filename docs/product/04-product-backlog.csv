@@ -1,7 +1,7 @@
 ID,Epic,Item,Type,Requirements,Phase,Priority,Size,Depends on,Sequence,Status
 BL-001,Rebrand,Fix the header and sidebar still reading Sonarr,Task,BRD-01,1,M,S,none,Now,Done
 BL-002,Rebrand,"Phase 1e rename to Cinnabarr (UI, strings, logos, metadata, docs)",Story,BRD-02,1e,M,M,"BL-004, BL-005",Next,"Done: names, strings, login pages, metadata, docs, logo, theme and icons (from the owner's logo and brand spec)"
-BL-003,Rebrand,Name clearance search before any public release,Task,BRD-03,pre-release,M,S,none,Later,Ready
+BL-003,Rebrand,Name clearance search before any public release,Task,BRD-03,pre-release,M,S,none,Later,"Done as a web search (nothing found, see docs/cinnabarr/NAME_CLEARANCE.md); a trademark register search by the owner is still needed before release"
 BL-004,Rebrand,Decide whether to rename the repo and docs/cinnabarr folder,Decision,BRD-02,1e,S,XS,none,Next,"Done: docs folder is docs/cinnabarr; renaming the GitHub repositories is left to the owner"
 BL-005,Rebrand,Rename the engine binary to cinnabarr-engine and check the code,Spike,ENG-17,1e,M,S,none,Next,"Done (engine builds as cinnabarr-engine; CINNABARR_ENGINE_* variables)"
 BL-010,Phase 4 close-out,Movies straight into the final place via the engine (4e-4),Story,"ENG-15, FIL-07",4,M,L,none,Now,"Done for one movie video with its subtitles (checked against the real engine); upgrade replacement only unit-tested; a movie link is restored from its sidecar after a database restore (checked)"
@@ -61,9 +61,9 @@ BL-079,Release,Optional v3 compatibility shims for Overseerr and Jellyseerr,Stor
 BL-080,Decisions,"Fresh migration chain, or continue Sonarr's chain at 242?",Decision,CON-03,4,M,XS,none,Now,Decision
 BL-081,Decisions,"Align the API path: /api/v1 in the roadmap, /api/v5 in code",Decision,API-01,2–4,M,XS,none,Now,Decision
 BL-082,Quality,Clear the 18 baseline test failures,Task,NFR-07,all,M,M,none,Now,Done
-BL-083,Quality,Confirm the CI gate: GitHub Actions or local checks only,Spike,PKG-06,1,M,XS,none,Now,Ready
-BL-084,Quality,"Browser check for each UI step (Playwright), recorded per PR",Task,UI-09,all,S,S,none,Now,Ready
-BL-085,Release,"User documentation for install, migration and settings",Story,PKG-05,7,S,M,BL-071,Later,Ready
+BL-083,Quality,Confirm the CI gate: GitHub Actions or local checks only,Spike,PKG-06,1,M,XS,none,Now,"Decided: GitHub Actions do not run on this repository, so the local checks are the gate (whole-solution build with analyzers as errors, the filtered test run, yarn lint, typecheck and build)"
+BL-084,Quality,"Browser check for each UI step (Playwright), recorded per PR",Task,UI-09,all,S,S,none,Now,"Done as practice: each UI change was checked in a real browser and the check is named in its PR and roadmap note"
+BL-085,Release,"User documentation for install, migration and settings",Story,PKG-05,7,S,M,BL-071,Later,"Partial: docs/cinnabarr/USER_GUIDE.md covers running, set-up, adding, downloads, versions and tidying as the app works today; install packages and the migration chapter wait for Phase 7"
 BL-086,Release,Translation project once Phase 4 is complete,Task,NFR-10,4+,C,M,none,Later,Ready
 BL-087,Release,Phase 7 follow-up items: legacy backup identity and rollback limits,Task,MIG-04,7,S,S,none,Next,Ready
 BL-088,Process,Set up the backlog in GitHub Projects (see 04-product-backlog.md),Task,n/a,n/a,M,XS,none,Now,Ready

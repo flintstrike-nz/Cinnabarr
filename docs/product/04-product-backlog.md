@@ -52,7 +52,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | BL-001 | Fix the header and sidebar still reading Sonarr | Task | BRD-01 | 1 | M | S | none | Now | Done |
 | BL-002 | Phase 1e rename to Cinnabarr (UI, strings, logos, metadata, docs) | Story | BRD-02 | 1e | M | M | BL-004, BL-005 | Next | Done: names, strings, login pages, metadata, docs, logo, theme and icons (from the owner's logo and brand spec) |
-| BL-003 | Name clearance search before any public release | Task | BRD-03 | pre-release | M | S | none | Later | Ready |
+| BL-003 | Name clearance search before any public release | Task | BRD-03 | pre-release | M | S | none | Later | Done as a web search (nothing found, see docs/cinnabarr/NAME_CLEARANCE.md); a trademark register search by the owner is still needed before release |
 | BL-004 | Decide whether to rename the repo and docs/cinnabarr folder | Decision | BRD-02 | 1e | S | XS | none | Next | Done: docs folder is docs/cinnabarr; renaming the GitHub repositories is left to the owner |
 | BL-005 | Rename the engine binary to cinnabarr-engine and check the code | Spike | ENG-17 | 1e | M | S | none | Next | Done (engine builds as cinnabarr-engine; CINNABARR_ENGINE_* variables) |
 
@@ -139,7 +139,7 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | BL-077 | Bundle a definitions snapshot in each release | Task | IDX-03 | 7 | M | S | BL-075 | Later | Ready |
 | BL-078 | Remove the Sonarr v3 API once the frontend no longer uses it | Task | API-02 | 7 | S | M | none | Later | Ready |
 | BL-079 | Optional v3 compatibility shims for Overseerr and Jellyseerr | Story | API-03 | 7 | C | M | BL-078, BL-091 | Later | Decision |
-| BL-085 | User documentation for install, migration and settings | Story | PKG-05 | 7 | S | M | BL-071 | Later | Ready |
+| BL-085 | User documentation for install, migration and settings | Story | PKG-05 | 7 | S | M | BL-071 | Later | Partial: docs/cinnabarr/USER_GUIDE.md covers running, set-up, adding, downloads, versions and tidying as the app works today; install packages and the migration chapter wait for Phase 7 |
 | BL-086 | Translation project once Phase 4 is complete | Task | NFR-10 | 4+ | C | M | none | Later | Ready |
 | BL-087 | Phase 7 follow-up items: legacy backup identity and rollback limits | Task | MIG-04 | 7 | S | S | none | Next | Ready |
 
@@ -159,8 +159,8 @@ Use **GitHub Projects (v2)** on `flintstrike-nz/EmbarrPre1`, with [04-product-ba
 | ID | Item | Type | Requirements | Phase | Priority | Size | Depends on | Sequence | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | BL-082 | Clear the 18 baseline test failures | Task | NFR-07 | all | M | M | none | Now | Done |
-| BL-083 | Confirm the CI gate: GitHub Actions or local checks only | Spike | PKG-06 | 1 | M | XS | none | Now | Ready |
-| BL-084 | Browser check for each UI step (Playwright), recorded per PR | Task | UI-09 | all | S | S | none | Now | Ready |
+| BL-083 | Confirm the CI gate: GitHub Actions or local checks only | Spike | PKG-06 | 1 | M | XS | none | Now | Decided: GitHub Actions do not run on this repository, so the local checks are the gate (whole-solution build with analyzers as errors, the filtered test run, yarn lint, typecheck and build) |
+| BL-084 | Browser check for each UI step (Playwright), recorded per PR | Task | UI-09 | all | S | S | none | Now | Done as practice: each UI change was checked in a real browser and the check is named in its PR and roadmap note |
 
 ### Process
 
