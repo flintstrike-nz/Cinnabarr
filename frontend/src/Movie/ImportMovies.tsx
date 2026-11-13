@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Button from 'Components/Link/Button';
 import Link from 'Components/Link/Link';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
+import ImportMediaTabs from 'Components/Page/ImportMediaTabs';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import PageHeading from 'Components/Page/PageHeading';
@@ -198,6 +199,8 @@ function ImportMovies() {
           scope={translate('Movies')}
           title={translate('ImportMovies')}
         />
+
+        <ImportMediaTabs />
 
         <div className={styles.actions}>
           <select
