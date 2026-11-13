@@ -1,4 +1,5 @@
 using System;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace NzbDrone.Common
@@ -26,6 +27,22 @@ namespace NzbDrone.Common
             }
 
             return $"{mCrc:x8}";
+        }
+
+        public static string ComputeSha256Hash(string rawData)
+        {
+            using var sha256Hash = SHA256.Create();
+            var hashBytes = sha256Hash.ComputeHash(Encoding.UTF8.GetBytes(rawData));
+
+            return Convert.ToHexString(hashBytes);
+        }
+
+        public static string CalculateMd5(string s)
+        {
+            using var md5 = MD5.Create();
+            var hashBytes = md5.ComputeHash(Encoding.ASCII.GetBytes(s));
+
+            return Convert.ToHexString(hashBytes);
         }
 
         public static string AnonymousToken()

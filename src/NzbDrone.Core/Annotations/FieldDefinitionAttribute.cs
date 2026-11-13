@@ -37,6 +37,13 @@ namespace NzbDrone.Core.Annotations
             Label = label;
         }
 
+        // Prowlarr's indexers write the label first: [FieldOption("H.264")].
+        public FieldOptionAttribute(string text, [CallerLineNumber] int order = 0)
+        {
+            Order = order;
+            Label = text;
+        }
+
         public int Order { get; private set; }
         public string Label { get; set; }
         public string Hint { get; set; }
