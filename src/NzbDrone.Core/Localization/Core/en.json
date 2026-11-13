@@ -1612,6 +1612,8 @@
   "MediaManagementSettingsSummary": "Naming, file management settings and root folders",
   "Medium": "Medium",
   "Menu": "Menu",
+  "MergeCountIntoSeries": "Merge {count} into Series",
+  "MergeIntoSeries": "Merge into Series",
   "Message": "Message",
   "Metadata": "Metadata",
   "MetadataKometaDeprecated": "Kometa files will no longer be created, support will be removed completely in v5",

@@ -63,6 +63,8 @@ namespace NzbDrone.Core.Test.MediaFiles
         public void should_skip_files_that_exist_in_disk()
         {
             var episodeFiles = Builder<EpisodeFile>.CreateListOfSize(10)
+                .All()
+                .With(c => c.VersionSlotId = 0)
                 .Build();
 
             GivenEpisodeFiles(episodeFiles);
@@ -76,6 +78,8 @@ namespace NzbDrone.Core.Test.MediaFiles
         public void should_delete_non_existent_files()
         {
             var episodeFiles = Builder<EpisodeFile>.CreateListOfSize(10)
+                .All()
+                .With(c => c.VersionSlotId = 0)
                 .Random(2)
                 .With(c => c.RelativePath = DELETED_PATH)
                 .Build();
@@ -91,6 +95,8 @@ namespace NzbDrone.Core.Test.MediaFiles
         public void should_delete_files_that_dont_belong_to_any_episodes()
         {
             var episodeFiles = Builder<EpisodeFile>.CreateListOfSize(10)
+                .All()
+                .With(c => c.VersionSlotId = 0)
                                 .Random(10)
                                 .With(c => c.RelativePath = "ExistingPath")
                                 .Build();
@@ -117,6 +123,8 @@ namespace NzbDrone.Core.Test.MediaFiles
         public void should_not_update_episode_when_episodeFile_exists()
         {
             var episodeFiles = Builder<EpisodeFile>.CreateListOfSize(10)
+                .All()
+                .With(c => c.VersionSlotId = 0)
                                 .Random(10)
                                 .With(c => c.RelativePath = "ExistingPath")
                                 .Build();
@@ -126,6 +134,43 @@ namespace NzbDrone.Core.Test.MediaFiles
             Subject.Clean(_series, FilesOnDisk(episodeFiles));
 
             Mocker.GetMock<IEpisodeService>().Verify(c => c.UpdateEpisode(It.IsAny<Episode>()), Times.Never());
+        }
+
+        [Test]
+        public void should_keep_a_file_of_an_extra_version_that_has_episodes_recorded_for_it()
+        {
+            var versionFile = new EpisodeFile
+            {
+                Id = 900,
+                VersionSlotId = 7,
+                RelativePath = "Season 1/Show - 4K.mkv",
+                Episodes = new NzbDrone.Core.Datastore.LazyLoaded<List<Episode>>(new List<Episode> { _episodes[0] })
+            };
+
+            GivenFilesAreNotAttachedToEpisode();
+            GivenEpisodeFiles(new List<EpisodeFile> { versionFile });
+
+            Subject.Clean(_series, FilesOnDisk(new List<EpisodeFile> { versionFile }));
+
+            Mocker.GetMock<IMediaFileService>().Verify(c => c.Delete(It.IsAny<EpisodeFile>(), It.IsAny<DeleteMediaFileReason>()), Times.Never());
+        }
+
+        [Test]
+        public void should_delete_a_file_of_an_extra_version_that_has_no_episodes_recorded_for_it()
+        {
+            var versionFile = new EpisodeFile
+            {
+                Id = 900,
+                VersionSlotId = 7,
+                RelativePath = "Season 1/Show - 4K.mkv",
+                Episodes = new NzbDrone.Core.Datastore.LazyLoaded<List<Episode>>(new List<Episode>())
+            };
+
+            GivenEpisodeFiles(new List<EpisodeFile> { versionFile });
+
+            Subject.Clean(_series, FilesOnDisk(new List<EpisodeFile> { versionFile }));
+
+            Mocker.GetMock<IMediaFileService>().Verify(c => c.Delete(versionFile, DeleteMediaFileReason.NoLinkedEpisodes), Times.Once());
         }
     }
 }

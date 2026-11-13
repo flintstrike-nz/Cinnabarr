@@ -12,11 +12,12 @@ import PageContentBody from 'Components/Page/PageContentBody';
 import PageHeading from 'Components/Page/PageHeading';
 import { kinds } from 'Helpers/Props';
 import useRootFolders, { useRootFolder } from 'RootFolder/useRootFolders';
+import useSeries from 'Series/useSeries';
 import { useQualityProfilesData } from 'Settings/Profiles/Quality/useQualityProfiles';
 import translate from 'Utilities/String/translate';
 import ImportSeriesFooter from './ImportSeriesFooter';
 import ImportSeriesList from './ImportSeriesList';
-import { clearImportSeries } from './importSeriesStore';
+import { clearImportSeries, updateImportSeriesItem } from './importSeriesStore';
 import styles from './ImportSeries.module.css';
 
 function ImportSeries() {
@@ -48,6 +49,25 @@ function ImportSeries() {
         }) ?? [],
     };
   }, [rootFolders, rootFolderId]);
+
+  const { data: librarySeries } = useSeries();
+
+  // A folder whose name belongs to a series already in the library is matched to it, so it can be merged into it.
+  useEffect(() => {
+    unmappedFolders.forEach((unmappedFolder) => {
+      const series = unmappedFolder.matchedSeriesId
+        ? librarySeries.find((s) => s.id === unmappedFolder.matchedSeriesId)
+        : undefined;
+
+      if (series) {
+        updateImportSeriesItem({
+          id: unmappedFolder.id,
+          selectedSeries: series,
+          hasSearched: true,
+        });
+      }
+    });
+  }, [unmappedFolders, librarySeries]);
 
   const qualityProfiles = useQualityProfilesData();
 

@@ -470,7 +470,9 @@ namespace NzbDrone.Core.MediaFiles.EpisodeImport.Manual
             item.Name = Path.GetFileNameWithoutExtension(episodeFile.Path);
             item.Series = series;
             item.SeasonNumber = episodeFile.SeasonNumber;
-            item.Episodes = episodes.Where(e => e.EpisodeFileId == episodeFile.Id).ToList();
+            item.Episodes = episodeFile.VersionSlotId == 0
+                ? episodes.Where(e => e.EpisodeFileId == episodeFile.Id).ToList()
+                : episodeFile.Episodes.Value.ToList();
             item.ReleaseGroup = episodeFile.ReleaseGroup;
             item.Quality = episodeFile.Quality;
             item.Languages = episodeFile.Languages;
