@@ -9,6 +9,10 @@
     <AssemblyName>Sonarr</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
+    <!-- The indexer definitions shipped with the app: used on a first start that can't download the current ones. -->
+    <Content Include="..\..\distribution\indexer-definitions\*.yml" Link="Definitions\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\NzbDrone.Host\Sonarr.Host.csproj" />
     <ProjectReference Include="..\Sonarr.RuntimePatches\Sonarr.RuntimePatches.csproj" />
   </ItemGroup>
