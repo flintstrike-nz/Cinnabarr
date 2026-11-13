@@ -5,9 +5,15 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import LazyLoad from 'react-lazyload';
+import LazyLoadModule from 'react-lazyload';
 import translate from 'Utilities/String/translate';
 import { CoverType, Image } from './Series';
+
+// react-lazyload is a CommonJS module; depending on how the bundler wraps it, the default import is the component or
+// the module object that holds it as `default`.
+const LazyLoad: typeof LazyLoadModule =
+  (LazyLoadModule as unknown as { default?: typeof LazyLoadModule }).default ??
+  LazyLoadModule;
 
 function findImage(images: Image[], coverType: CoverType) {
   return images.find((image) => image.coverType === coverType);
