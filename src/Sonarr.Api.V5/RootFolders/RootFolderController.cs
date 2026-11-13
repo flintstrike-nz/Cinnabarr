@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using NzbDrone.Core.Parser;
 using NzbDrone.Core.RootFolders;
 using NzbDrone.Core.Validation.Paths;
 using NzbDrone.SignalR;
@@ -16,8 +17,10 @@ namespace Sonarr.Api.V5.RootFolders;
 public class RootFolderController : RestControllerWithSignalR<RootFolderResource, RootFolder>
 {
     private readonly IRootFolderService _rootFolderService;
+    private readonly IParsingService _parsingService;
 
     public RootFolderController(IRootFolderService rootFolderService,
+                            IParsingService parsingService,
                             IBroadcastSignalRMessage signalRBroadcaster,
                             RootFolderValidator rootFolderValidator,
                             PathExistsValidator pathExistsValidator,
@@ -29,6 +32,7 @@ public class RootFolderController : RestControllerWithSignalR<RootFolderResource
     : base(signalRBroadcaster)
     {
         _rootFolderService = rootFolderService;
+        _parsingService = parsingService;
 
         SharedValidator.RuleFor(c => c.Path)
             .Cascade(CascadeMode.Stop)
@@ -46,7 +50,7 @@ public class RootFolderController : RestControllerWithSignalR<RootFolderResource
     {
         var timeout = Request?.GetBooleanQueryParameter("timeout", true) ?? true;
 
-        return _rootFolderService.Get(id, timeout).ToResource();
+        return AddMatches(_rootFolderService.Get(id, timeout).ToResource());
     }
 
     [RestPostById]
@@ -62,7 +66,25 @@ public class RootFolderController : RestControllerWithSignalR<RootFolderResource
     [Produces("application/json")]
     public Ok<List<RootFolderResource>> GetRootFolders()
     {
-        return TypedResults.Ok(_rootFolderService.AllWithUnmappedFolders().ToResource());
+        return TypedResults.Ok(_rootFolderService.AllWithUnmappedFolders().ToResource().Select(AddMatches).ToList());
+    }
+
+    // Folders named like releases (the usual state of a downloads dump) are matched to the library by their parsed title, so
+    // those that belong to a series already there can be merged into it, and the others looked up by the real title.
+    private RootFolderResource AddMatches(RootFolderResource resource)
+    {
+        foreach (var folder in resource.UnmappedFolders)
+        {
+            if (string.IsNullOrWhiteSpace(folder.Name))
+            {
+                continue;
+            }
+
+            folder.ParsedTitle = Parser.ParseTitle(folder.Name)?.SeriesTitle ?? Parser.ParseSeasonTitle(folder.Name)?.SeriesTitle;
+            folder.MatchedSeriesId = _parsingService.GetSeries(folder.Name)?.Id;
+        }
+
+        return resource;
     }
 
     [RestDeleteById]

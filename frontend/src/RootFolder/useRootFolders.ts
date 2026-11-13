@@ -9,6 +9,12 @@ export interface UnmappedFolder {
   name: string;
   path: string;
   relativePath: string;
+
+  // The series title in a release-like folder name, for looking it up.
+  parsedTitle?: string;
+
+  // The series in the library that the folder's name belongs to.
+  matchedSeriesId?: number;
 }
 
 export interface RootFolder extends ModelBase {

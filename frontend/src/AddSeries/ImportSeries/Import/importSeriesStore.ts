@@ -77,6 +77,9 @@ export const useEnsureImportSeriesItems = (
 
       const newItem: ImportSeriesItem = {
         ...unmappedFolder,
+
+        // A folder named like a release is looked up by the title in it.
+        name: unmappedFolder.parsedTitle || unmappedFolder.name,
         language,
         monitor,
         qualityProfileId,

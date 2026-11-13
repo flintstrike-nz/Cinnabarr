@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using NLog;
 using NzbDrone.Common;
 using NzbDrone.Common.Extensions;
@@ -49,7 +50,13 @@ namespace NzbDrone.Core.MediaFiles
                         continue;
                     }
 
-                    if (episodes.None(e => e.EpisodeFileId == episodeFile.Id))
+                    // A file of an extra version of the series isn't any episode's own file: it covers the episodes
+                    // recorded for it.
+                    var hasEpisodes = episodeFile.VersionSlotId == 0
+                        ? episodes.Any(e => e.EpisodeFileId == episodeFile.Id)
+                        : episodeFile.Episodes.Value.Any();
+
+                    if (!hasEpisodes)
                     {
                         _logger.Debug("File [{0}] is not assigned to any episodes, removing from db", episodeFilePath);
                         _mediaFileService.Delete(episodeFile, DeleteMediaFileReason.NoLinkedEpisodes);

@@ -12,7 +12,20 @@ public class RootFolderResource : RestResource
     public long? FreeSpace { get; set; }
     public long? TotalSpace { get; set; }
 
-    public List<UnmappedFolder> UnmappedFolders { get; set; } = [];
+    public List<UnmappedFolderResource> UnmappedFolders { get; set; } = [];
+}
+
+public class UnmappedFolderResource
+{
+    public string? Name { get; set; }
+    public string? Path { get; set; }
+    public string? RelativePath { get; set; }
+
+    // The series title in the folder's name when it is named like a release, for looking it up.
+    public string? ParsedTitle { get; set; }
+
+    // The series in the library that the folder's name belongs to, if there is one.
+    public int? MatchedSeriesId { get; set; }
 }
 
 public static class RootFolderResourceMapper
@@ -27,7 +40,7 @@ public static class RootFolderResourceMapper
             IsEmpty = model.IsEmpty,
             FreeSpace = model.FreeSpace,
             TotalSpace = model.TotalSpace,
-            UnmappedFolders = model.UnmappedFolders
+            UnmappedFolders = model.UnmappedFolders.Select(f => new UnmappedFolderResource { Name = f.Name, Path = f.Path, RelativePath = f.RelativePath }).ToList()
         };
     }
 

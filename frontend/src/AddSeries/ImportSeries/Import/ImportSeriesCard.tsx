@@ -11,6 +11,7 @@ import QualityProfileSelectInput from 'Components/Form/Select/QualityProfileSele
 import SeasonTypeSelectInput from 'Components/Form/Select/SeasonTypeSelectInput';
 import SeriesTypeSelectInput from 'Components/Form/Select/SeriesTypeSelectInput';
 import Label from 'Components/Label';
+import Button from 'Components/Link/Button';
 import { kinds } from 'Helpers/Props';
 import SeriesPoster from 'Series/SeriesPoster';
 import { CheckInputChanged, InputChanged } from 'typings/inputs';
@@ -23,6 +24,7 @@ import {
   useImportSeriesItem,
 } from './importSeriesStore';
 import ImportSeriesSelectSeries from './SelectSeries/ImportSeriesSelectSeries';
+import { useMergeIntoSeries } from './useMergeIntoSeries';
 import styles from './ImportSeriesCard.module.css';
 
 const HIDE_HINT = { includeHint: false };
@@ -111,6 +113,15 @@ function ImportSeriesCard({
   );
 
   const [isSearching, setIsSearching] = useState(false);
+  const { mergeFolders, isMerging } = useMergeIntoSeries();
+
+  const handleMergePress = useCallback(() => {
+    if (selectedSeries) {
+      mergeFolders([
+        { tvdbId: selectedSeries.tvdbId, path: unmappedFolder.path },
+      ]);
+    }
+  }, [selectedSeries, unmappedFolder.path, mergeFolders]);
 
   const seasonTypes = useMemo(
     () =>
@@ -223,6 +234,14 @@ function ImportSeriesCard({
             >
               {matchStatusLabel}
             </Label>
+
+            {eligibility === 'existing' && selectedSeries ? (
+              <div className={styles.matchAction}>
+                <Button isDisabled={isMerging} onPress={handleMergePress}>
+                  {translate('MergeIntoSeries')}
+                </Button>
+              </div>
+            ) : null}
 
             {selectedSeries ? null : (
               <div className={styles.matchAction}>

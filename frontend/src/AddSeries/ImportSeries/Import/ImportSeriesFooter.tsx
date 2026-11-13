@@ -33,6 +33,7 @@ import {
   useLookupQueueHasItems,
 } from './importSeriesStore';
 import { useImportSeries } from './useImportSeries';
+import { useMergeIntoSeries } from './useMergeIntoSeries';
 import styles from './ImportSeriesFooter.module.css';
 
 function ImportSeriesFooter() {
@@ -52,6 +53,7 @@ function ImportSeriesFooter() {
   const selectedIds = useSelectedIds();
 
   const { importSeries, isImporting, importError } = useImportSeries();
+  const { mergeFolders, isMerging } = useMergeIntoSeries();
 
   const eligibility = useMemo(
     () => getImportSeriesEligibility(items, existingTvdbIds),
@@ -173,6 +175,17 @@ function ImportSeriesFooter() {
     stopProcessing();
   }, []);
 
+  const handleMergePress = useCallback(() => {
+    mergeFolders(
+      items.flatMap((item) =>
+        item.selectedSeries &&
+        eligibility.eligibilityById.get(item.id) === 'existing'
+          ? [{ tvdbId: item.selectedSeries.tvdbId, path: item.path }]
+          : []
+      )
+    );
+  }, [mergeFolders, items, eligibility]);
+
   const handleImportPress = useCallback(() => {
     importSeries(importableIds);
   }, [importSeries, importableIds]);
@@ -286,6 +299,17 @@ function ImportSeriesFooter() {
                 {translate('MetadataSettings')}
               </Button>
             )}
+
+            {existingCount ? (
+              <SpinnerButton
+                kind={kinds.DEFAULT}
+                isSpinning={isMerging}
+                isDisabled={isMerging}
+                onPress={handleMergePress}
+              >
+                {translate('MergeCountIntoSeries', { count: existingCount })}
+              </SpinnerButton>
+            ) : null}
 
             <div className={styles.importButtonContainer}>
               <SpinnerButton
