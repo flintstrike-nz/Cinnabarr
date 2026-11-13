@@ -6,6 +6,7 @@ import Icon from 'Components/Icon';
 import Button from 'Components/Link/Button';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import InlineMarkdown from 'Components/Markdown/InlineMarkdown';
+import ImportMediaTabs from 'Components/Page/ImportMediaTabs';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import PageHeading from 'Components/Page/PageHeading';
@@ -66,6 +67,8 @@ function ImportSeriesSelectFolder() {
           scope={translate('Media')}
           title={translate('ImportSeries')}
         />
+
+        <ImportMediaTabs />
 
         {isFetching && !isFetched ? <LoadingIndicator /> : null}
 
