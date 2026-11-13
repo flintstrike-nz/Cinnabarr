@@ -32,7 +32,7 @@ namespace NzbDrone.Core.IndexerEngine.IndexerVersions
 
         private const int DEFINITION_VERSION = 12;
 
-        // Used when moving yml to C#
+        // Used when moving yml to C# (these sites are native indexers in the engine now)
         private readonly List<string> _definitionBlocklist = new()
         {
             "aither",
@@ -42,13 +42,18 @@ namespace NzbDrone.Core.IndexerEngine.IndexerVersions
             "beyond-hd",
             "blutopia",
             "brsociety",
+            "cgpeers",
             "danishbytes",
             "datascene",
             "desitorrents",
+            "funfile",
             "hdbits",
+            "hdspace",
+            "hdtorrents",
             "lat-team",
             "mteamtp",
             "mteamtp2fa",
+            "pornolab",
             "reelflix",
             "shareisland",
             "skipthecommercials",

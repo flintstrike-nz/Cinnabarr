@@ -30,14 +30,14 @@ namespace NzbDrone.Core.Test.Configuration
         }
 
         [Test]
-        public void indexer_definitions_should_come_from_cinnabarrs_own_source_by_default()
+        public void indexer_definitions_should_come_from_the_public_definitions_repository_by_default()
         {
+            // A repository a Docker install can download without credentials (the list on Prowlarr's wiki is built from it).
             var url = new Uri(Subject.IndexerDefinitionsUrl);
 
             url.Scheme.Should().Be("https");
             url.Host.Should().Be("github.com");
-            url.AbsolutePath.Should().StartWith("/flintstrike-nz/");
-            Subject.IndexerDefinitionsUrl.Should().NotContainEquivalentOf("prowlarr");
+            url.AbsolutePath.Should().StartWith("/Prowlarr/Indexers/");
         }
 
         [Test]

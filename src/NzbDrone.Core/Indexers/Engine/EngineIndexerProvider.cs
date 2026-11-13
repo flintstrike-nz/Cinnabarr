@@ -26,11 +26,13 @@ namespace NzbDrone.Core.Indexers.Engine
     public class EngineIndexerProvider : IEngineIndexerProvider
     {
         private readonly IServiceProvider _services;
+        private readonly IEngineNativeIndexers _native;
         private readonly ICached<Dictionary<string, EngineDefinition>> _templates;
 
-        public EngineIndexerProvider(IServiceProvider services, ICacheManager cacheManager)
+        public EngineIndexerProvider(IServiceProvider services, IEngineNativeIndexers native, ICacheManager cacheManager)
         {
             _services = services;
+            _native = native;
             _templates = cacheManager.GetCache<Dictionary<string, EngineDefinition>>(GetType(), "templates");
         }
 
@@ -44,6 +46,11 @@ namespace NzbDrone.Core.Indexers.Engine
             var template = FindTemplate(settings.DefinitionFile)
                            ?? throw new NotSupportedException($"Indexer definition '{settings.DefinitionFile}' is not available; update the indexer definitions");
 
+            if (_native.IsNative(settings.DefinitionFile))
+            {
+                return _native.Create(definition, settings, template);
+            }
+
             var indexer = _services.GetRequiredService<EngineCardigann>();
 
             indexer.Definition = Build(definition, settings, template);
@@ -53,11 +60,16 @@ namespace NzbDrone.Core.Indexers.Engine
 
         public IReadOnlyList<EngineDefinition> Templates()
         {
-            return LoadedTemplates().Values.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase).ToList();
+            return LoadedTemplates().Values.Concat(_native.Templates()).OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase).ToList();
         }
 
         public EngineDefinition FindTemplate(string definitionFile)
         {
+            if (_native.IsNative(definitionFile))
+            {
+                return _native.FindTemplate(definitionFile);
+            }
+
             return definitionFile != null && LoadedTemplates().TryGetValue(definitionFile, out var template) ? template : null;
         }
 
@@ -113,7 +125,8 @@ namespace NzbDrone.Core.Indexers.Engine
         // Saved settings come back from the database with JsonElement values; the engine expects plain strings, bools and numbers.
         public static Dictionary<string, object> NormalizeExtraFields(Dictionary<string, object> data)
         {
-            var result = new Dictionary<string, object>();
+            // The database stores keys in camel case (PassThePopcorn's APIKey comes back as apiKey), so keys match without case.
+            var result = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var (key, value) in data ?? new Dictionary<string, object>())
             {
