@@ -64,6 +64,10 @@ Mount the other install's config folder read-only into this container, for examp
 
 Mount the old qBittorrent's profile folder (the one with `BT_backup` in it) read-only, and the folder its torrents live in at the same path it used (or fill in the path boxes), then use **Library → Import from Another Install → qBittorrent**. Each torrent is added where its files are, checked, and goes on seeding.
 
+## Indexers
+
+On its first start Cinnabarr downloads the indexer definitions (about 580 sites) from `https://github.com/Prowlarr/Indexers` and then refreshes them daily; if that download fails, the copy shipped in the image (`/app/bin/Definitions`) is used. Add indexers in **Settings → Indexers → Add**. The source can be changed with `IndexerDefinitionsUrl` in `config.xml`. Indexers that Prowlarr implements in code rather than as definition files are not part of this set yet (see the roadmap).
+
 ## Checking that it works
 
 - `docker logs cinnabarr` shows the app's start-up and the engine starting.

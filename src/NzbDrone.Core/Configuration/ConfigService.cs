@@ -207,7 +207,7 @@ namespace NzbDrone.Core.Configuration
 
         public string IndexerDefinitionsUrl
         {
-            get { return GetValue("IndexerDefinitionsUrl", "https://github.com/flintstrike-nz/Indexers/archive/refs/heads/master.zip"); }
+            get { return GetValue("IndexerDefinitionsUrl", "https://github.com/Prowlarr/Indexers/archive/refs/heads/master.zip"); }
 
             set { SetValue("IndexerDefinitionsUrl", value); }
         }
