@@ -3,7 +3,7 @@ import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import LoadingMessage from 'Components/Loading/LoadingMessage';
 import styles from './LoadingPage.module.css';
 
-const logo = `${window.Sonarr.urlBase}/Content/Images/logo.svg`;
+const logo = `${window.Sonarr.urlBase}/Content/Images/cinnabarr-mark.svg`;
 
 function LoadingPage() {
   return (

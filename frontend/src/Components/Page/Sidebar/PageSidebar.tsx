@@ -347,7 +347,7 @@ function PageSidebar() {
             <Link className={styles.logoLink} to="/">
               <img
                 className={styles.logo}
-                src={`${window.Sonarr.urlBase}/Content/Images/logo.svg`}
+                src={`${window.Sonarr.urlBase}/Content/Images/cinnabarr-mark.svg`}
                 alt=""
               />
               <span className={styles.brandName}>
