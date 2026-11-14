@@ -35,6 +35,7 @@ import Settings from 'Settings/Settings';
 import TagSettings from 'Settings/Tags/TagSettings';
 import UISettings from 'Settings/UI/UISettings';
 import Statistics from 'Statistics/Statistics';
+import Storage from 'Storage/Storage';
 import Backups from 'System/Backup/Backups';
 import LogsTable from 'System/Events/LogsTable';
 import AppLogFiles from 'System/Logs/App/AppLogFiles';
@@ -150,6 +151,7 @@ export function appRouteElements() {
       <Route path="/settings" element={<Settings />} />
 
       <Route path="/settings/mediamanagement" element={<MediaManagement />} />
+      <Route path="/settings/storage" element={<Storage />} />
 
       <Route path="/settings/profiles" element={<Profiles />} />
 

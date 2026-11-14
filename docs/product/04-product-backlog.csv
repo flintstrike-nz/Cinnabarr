@@ -97,3 +97,4 @@ BL-131,Library,Doctor review screen with screenshots; badge; schedule settings,S
 BL-132,Library,Movies page parity with Series (poster grid; status bars; toolbar; view/sort/filter; jump bar),Story,,Done,M,H,,Done,Done
 BL-133,Mobile,Mobile view: bottom tab bar (Library/Add/Downloads/Menu), download cards, Series/Movies add tabs,Story,,Done,M,H,,Done,Done
 BL-134,Storage,Drive management backend: balance planner (counts downloads in flight and upcoming episodes); nightly task (off by default); Jellyfin refresh after moves; API,Story,,Done,L,H,BL-128,Done,Done
+BL-135,Storage,Storage page (drive usage; plan preview; settings; balance now); add screens default to the roomiest drive,Story,,Done,M,H,BL-134,Done,Done

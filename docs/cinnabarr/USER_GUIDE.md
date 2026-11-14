@@ -64,3 +64,15 @@ Doctor is the stethoscope button in the library (it replaces Reorganise).
 - **Review.** A red badge on the Doctor button counts flagged copies. The Doctor page shows each flagged copy next to the one it kept, with three screenshots of each. You can delete the flagged copy now, keep it instead (the other copy is flagged instead), or keep both.
 - **Nightly check.** Doctor runs every 24 hours by default and deletes flagged copies after 7 days, using the recycle bin if you have one. Change the schedule, the retention, or switch it off on the Doctor page. Pressing *Check now* only looks and never deletes.
 - **Reorganise.** Renaming files to the naming format, with undo, is still on the Doctor page.
+
+## Storage (drive management)
+
+Settings → Storage keeps the drives of a library evenly full.
+
+1. In Settings → Media Management, set each root folder to **Series** or **Movies** (one root per drive).
+2. Open Settings → Storage. It shows how full each drive is, what is downloading or due soon (striped), and what would be moved.
+3. Tick *Balance the drives automatically* to run it every night (24 hours by default), or press *Move N item(s) now*.
+
+How it decides: it compares free space as a percentage of each drive. If the emptiest and fullest drive differ by more than 10 points, it moves a whole series or movie from the fullest to the emptiest, picking the item that narrows the gap most, and repeats. Downloads in progress and the episodes and movies the calendar says are due in the next 14 days count as space already used. Items being downloaded are never moved, no drive is filled below the reserve (5% free), and one run moves at most 200 GB. It is off until you switch it on, because it moves your files.
+
+A move updates the library path and tells Jellyfin / Emby (if connected in Settings → Connect with *Update Library* on) that the old folder is gone and the new one is there. New series and movies default to the drive with the most free space.

@@ -164,6 +164,7 @@ const GROUPS: SidebarGroup[] = [
             title: () => translate('MediaManagement'),
             to: '/settings/mediamanagement',
           },
+          { title: () => translate('Storage'), to: '/settings/storage' },
           { title: () => translate('Profiles'), to: '/settings/profiles' },
           { title: () => translate('Quality'), to: '/settings/quality' },
           {

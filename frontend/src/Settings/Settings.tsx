@@ -24,6 +24,12 @@ function buildSections(): SectionEntry[] {
       summary: translate('MediaManagementSettingsSummary'),
     },
     {
+      to: '/settings/storage',
+      iconName: icons.DRIVE,
+      title: translate('Storage'),
+      summary: translate('StorageSettingsSummary'),
+    },
+    {
       to: '/settings/profiles',
       iconName: icons.PROFILE,
       title: translate('Profiles'),

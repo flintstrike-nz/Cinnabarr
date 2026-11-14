@@ -1,0 +1,72 @@
+.library {
+  margin-bottom: 32px;
+}
+
+.drive {
+  margin-bottom: 14px;
+}
+
+.driveHeader {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.path {
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.bar {
+  display: flex;
+  overflow: hidden;
+  height: 14px;
+  border-radius: 7px;
+  background-color: rgb(128 128 128 / 25%);
+}
+
+.used {
+  background-color: var(--primaryBackgroundColor, #e34234);
+}
+
+.incoming {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--primaryBackgroundColor, #e34234) 0 4px,
+    transparent 4px 8px
+  );
+  opacity: 0.6;
+}
+
+.facts {
+  margin-top: 4px;
+  color: var(--inkSoft, gray);
+  font-size: 12px;
+}
+
+.moves {
+  margin-top: 12px;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.moves th,
+.moves td {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgb(128 128 128 / 25%);
+  text-align: left;
+  font-size: 13px;
+}
+
+.form label {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.form input[type='number'] {
+  margin-left: 8px;
+  width: 90px;
+}

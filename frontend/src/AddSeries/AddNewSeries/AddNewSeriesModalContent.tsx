@@ -26,6 +26,7 @@ import Popover from 'Components/Tooltip/Popover';
 import { icons, inputTypes, kinds, tooltipPositions } from 'Helpers/Props';
 import Language, { DEFAULT_LANGUAGE } from 'Language/Language';
 import { useLanguageById } from 'Language/useLanguages';
+import useRootFolders from 'RootFolder/useRootFolders';
 import { SeriesType } from 'Series/Series';
 import SeriesPoster from 'Series/SeriesPoster';
 import { useMetadataSourceSettingsValues } from 'Settings/MetadataSource/useMetadataSourceSettings';
@@ -109,6 +110,22 @@ function AddNewSeriesModalContent({
     seriesType: seriesTypeSetting,
     tags,
   } = settings;
+
+  // New series go to the drive with the most free space unless you pick another.
+  const { data: allRootFolders } = useRootFolders();
+  const roomiestRootFolder = useMemo(
+    () =>
+      allRootFolders
+        .filter((r) => r.library !== 'movies')
+        .sort((a, b) => (b.freeSpace ?? 0) - (a.freeSpace ?? 0))[0],
+    [allRootFolders]
+  );
+
+  useEffect(() => {
+    if (roomiestRootFolder) {
+      setAddSeriesOption('rootFolderPath', roomiestRootFolder.path);
+    }
+  }, [roomiestRootFolder]);
 
   const translation = translations.find((t) => t.language.id === language.id);
   const title = translation?.title ?? originalTitle ?? lookupTitle;
