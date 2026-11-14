@@ -10,6 +10,7 @@ import ImportSeriesSelectFolder from 'AddSeries/ImportSeries/SelectFolder/Import
 import CalendarPage from 'Calendar/CalendarPage';
 import NotFound from 'Components/NotFound';
 import GamesIndex from 'Game/GamesIndex';
+import PlayGame from 'Game/PlayGame';
 import LibraryIndex from 'Library/LibraryIndex';
 import AddNewMovie from 'Movie/AddNewMovie';
 import Doctor from 'Movie/Doctor';
@@ -72,6 +73,7 @@ export function appRouteElements() {
       <Route path="/add/import/external" element={<ImportExternal />} />
       <Route path="/doctor" element={<Doctor />} />
       <Route path="/games" element={<GamesIndex />} />
+      <Route path="/games/:id/play" element={<PlayGame />} />
       <Route
         path="/reorganise"
         element={<Navigate to="/doctor" replace={true} />}

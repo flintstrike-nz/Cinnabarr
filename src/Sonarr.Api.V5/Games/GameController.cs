@@ -58,9 +58,11 @@ public class GameController : Controller
     private readonly IGameCoverService _coverService;
     private readonly IIgdbClient _igdb;
     private readonly IConfigService _configService;
+    private readonly IGamePlayService _playService;
 
-    public GameController(IGameService gameService, IGameCoverService coverService, IIgdbClient igdb, IConfigService configService)
+    public GameController(IGameService gameService, IGameCoverService coverService, IIgdbClient igdb, IConfigService configService, IGamePlayService playService)
     {
+        _playService = playService;
         _gameService = gameService;
         _coverService = coverService;
         _igdb = igdb;
@@ -95,6 +97,51 @@ public class GameController : Controller
         var path = _coverService.GetCoverPath(_gameService.Get(id));
 
         return path == null ? NotFound() : PhysicalFile(path, "image/jpeg");
+    }
+
+    [HttpGet("{id:int}/play")]
+    [Produces("application/json")]
+    public Ok<GamePlayInfo> GetPlayInfo([FromRoute] int id)
+    {
+        return TypedResults.Ok(_playService.GetInfo(_gameService.Get(id)));
+    }
+
+    // The game file for the browser emulator. A disc sheet (.cue) is sent zipped with its tracks.
+    [HttpGet("{id:int}/rom")]
+    [HttpHead("{id:int}/rom")]
+    public IActionResult GetRom([FromRoute] int id)
+    {
+        var game = _gameService.Get(id);
+        var path = _playService.GetPlayablePath(game);
+
+        return PhysicalFile(path, "application/octet-stream", enableRangeProcessing: true);
+    }
+
+    [HttpGet("{id:int}/state")]
+    public IActionResult GetState([FromRoute] int id)
+    {
+        var path = _playService.FindState(_gameService.Get(id));
+
+        return path == null ? NotFound() : PhysicalFile(path, "application/octet-stream");
+    }
+
+    // The player's save state, kept on the server so it follows them from one device to another.
+    [HttpPut("{id:int}/state")]
+    [RequestSizeLimit(64 * 1024 * 1024)]
+    public async Task<IActionResult> PutState([FromRoute] int id)
+    {
+        var saved = await _playService.SaveStateAsync(_gameService.Get(id), Request.Body);
+
+        return saved ? Ok() : BadRequest("The save state was empty.");
+    }
+
+    // A BIOS the owner put in <config>/bios/<platform>.bin. Cinnabarr does not ship any.
+    [HttpGet("bios/{platformKey}")]
+    public IActionResult GetBios([FromRoute] string platformKey)
+    {
+        var path = _playService.FindBios(platformKey.ToLowerInvariant());
+
+        return path == null ? NotFound() : PhysicalFile(path, "application/octet-stream");
     }
 
     [HttpGet("settings")]

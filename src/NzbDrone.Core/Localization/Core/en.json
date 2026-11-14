@@ -2708,6 +2708,8 @@
   "IgdbClientId": "Twitch client ID",
   "IgdbClientSecret": "Twitch client secret",
   "TestConnection": "Test connection",
+  "GamesNeedsBios": "PlayStation games need a PlayStation BIOS, which Cinnabarr does not include. Put your own BIOS file at config/bios/psx.bin (in your Cinnabarr config folder) and reload.",
+  "GamesPlayHelp": "Click the play button in the box. Keyboard or a connected gamepad works. Use the menu bar at the bottom of the player to save and load a state; it is kept on your Cinnabarr server.",
   "Storage": "Storage",
   "StorageBalanceConfirm": "Start {count} move(s) now? Files are moved between drives, the library paths are updated and Jellyfin / Emby is told.",
   "StorageBalanceNow": "Move {count} item(s) now",

@@ -76,3 +76,14 @@ Settings → Storage keeps the drives of a library evenly full.
 How it decides: it compares free space as a percentage of each drive. If the emptiest and fullest drive differ by more than 10 points, it moves a whole series or movie from the fullest to the emptiest, picking the item that narrows the gap most, and repeats. Downloads in progress and the episodes and movies the calendar says are due in the next 14 days count as space already used. Items being downloaded are never moved, no drive is filled below the reserve (5% free), and one run moves at most 200 GB. It is off until you switch it on, because it moves your files.
 
 A move updates the library path and tells Jellyfin / Emby (if connected in Settings → Connect with *Update Library* on) that the old folder is gone and the new one is there. New series and movies default to the drive with the most free space.
+
+## Games
+
+1. In Settings → Media Management set a root folder to **Games**, and put your ROMs in folders named for the platform (`SNES`, `Master System`, `PS1`, `PS2`).
+2. Open Library → Games and press *Scan for Games* (it also scans every 12 hours).
+3. **Cover art and details:** paste a free IGDB key (a Twitch application: dev.twitch.tv/console) in the panel on the Games page, press *Test connection*, then *Look up now*.
+4. **Play:** click a game. Master System and Super Nintendo games play in the browser with the keyboard or a gamepad. The emulator (EmulatorJS) is loaded by your browser from its own site, so Cinnabarr does not ship or redistribute it and the browser needs internet access to start a game. The ROM and your save state stay on your Cinnabarr server: *Save State* in the player's menu is kept there and loads on any device.
+5. **PlayStation** games need a PlayStation BIOS, which Cinnabarr does not include. Put your own at `config/bios/psx.bin` (a disc `.cue` is sent to the player together with its `.bin` tracks).
+6. **PlayStation 2** games are listed and get cover art, but cannot be played in a browser: the browser emulator has no PS2 core.
+
+Cinnabarr does not find, download or link to ROMs. It only manages files you already have.

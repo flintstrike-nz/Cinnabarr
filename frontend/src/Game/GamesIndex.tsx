@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import CommandNames from 'Commands/CommandNames';
 import { useCommandExecuting, useExecuteCommand } from 'Commands/useCommands';
 import Button from 'Components/Link/Button';
+import Link from 'Components/Link/Link';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
@@ -112,7 +113,11 @@ function GamesIndex() {
         <div className={styles.grid}>
           {visible.map((game) => (
             <div key={game.id} className={styles.tile}>
-              <div className={styles.cover} title={game.overview}>
+              <Link
+                className={styles.cover}
+                to={`/games/${game.id}/play`}
+                title={game.overview}
+              >
                 {game.hasCover ? (
                   <img
                     className={styles.coverImage}
@@ -124,7 +129,7 @@ function GamesIndex() {
                   game.title
                 )}
                 <span className={styles.platform}>{game.platformKey}</span>
-              </div>
+              </Link>
               <div className={styles.title} title={game.title}>
                 {game.title}
               </div>
