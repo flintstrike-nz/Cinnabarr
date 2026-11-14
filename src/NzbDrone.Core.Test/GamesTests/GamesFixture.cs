@@ -3,6 +3,7 @@ using FluentAssertions;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.Disk;
+using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Core.Games;
 using NzbDrone.Core.Test.Framework;
 
@@ -162,6 +163,54 @@ namespace NzbDrone.Core.Test.GamesTests
             game.Genres.Should().Be("Platform, Adventure");
             game.Developer.Should().Be("Nintendo EAD");
             game.Rating.Should().Be(92);
+        }
+    }
+
+    [TestFixture]
+    public class GamePlayFixture : CoreTest<GamePlayService>
+    {
+        [SetUp]
+        public void Setup()
+        {
+            Mocker.GetMock<IAppFolderInfo>().SetupGet(a => a.AppDataFolder).Returns("/config");
+        }
+
+        [Test]
+        public void should_list_the_tracks_of_a_cue_sheet()
+        {
+            var cue = "FILE \"Crash (Track 1).bin\" BINARY\n  TRACK 01 MODE2/2352\n    INDEX 01 00:00:00\nFILE \"Crash (Track 2).bin\" BINARY\n  TRACK 02 AUDIO\n";
+
+            GamePlayService.CueTracks(cue).Should().Equal("Crash (Track 1).bin", "Crash (Track 2).bin");
+        }
+
+        [TestCase("sms")]
+        [TestCase("snes")]
+        [TestCase("psx")]
+        public void should_play_what_the_browser_emulator_has_a_core_for(string platform)
+        {
+            Mocker.GetMock<IDiskProvider>().Setup(d => d.FileExists(It.IsAny<string>())).Returns(true);
+
+            var info = Subject.GetInfo(new Game { Id = 1, PlatformKey = platform, Path = "/games/x.rom" });
+
+            info.Playable.Should().BeTrue();
+            info.NeedsBios.Should().Be(platform == "psx");
+        }
+
+        [Test]
+        public void should_not_play_a_ps2_game_in_the_browser()
+        {
+            var info = Subject.GetInfo(new Game { Id = 1, PlatformKey = "ps2", Path = "/games/x.iso" });
+
+            info.Playable.Should().BeFalse();
+            info.Reason.Should().Contain("PlayStation 2");
+        }
+
+        [Test]
+        public void should_not_play_a_game_whose_file_is_missing()
+        {
+            Mocker.GetMock<IDiskProvider>().Setup(d => d.FileExists(It.IsAny<string>())).Returns(false);
+
+            Subject.GetInfo(new Game { Id = 1, PlatformKey = "snes", Path = "/games/gone.sfc" }).Playable.Should().BeFalse();
         }
     }
 }

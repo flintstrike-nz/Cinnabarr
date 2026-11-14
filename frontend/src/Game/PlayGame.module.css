@@ -1,0 +1,13 @@
+.player {
+  width: 100%;
+  max-width: 960px;
+  aspect-ratio: 4 / 3;
+  background-color: #000;
+}
+
+.notice {
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border: 1px solid rgb(128 128 128 / 40%);
+  border-radius: 8px;
+}

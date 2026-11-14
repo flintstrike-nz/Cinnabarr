@@ -2,7 +2,7 @@
 
 Roadmap items 5 and 6: manage emulator game libraries (ROMs) the way Cinnabarr manages shows and movies, then play them in the browser, with the goal of playing classic games from the Jellyfin app on an LG webOS TV with a controller.
 
-Status: **design only. Three decisions and two keys are needed from the owner before any code (section 6).**
+Status: **G1 (library), G2a (IGDB metadata and covers) and G3 (play in the browser) are built. Still open: ScreenScraper and hash matching, G4 (LG webOS), and the TV details in section 6.** Findings from building: the EmulatorJS stable release (4.2.3) has cores for Master System, SNES and PlayStation but **none for PlayStation 2**, so PS2 is library-only; PlayStation needs a BIOS the owner supplies (`config/bios/psx.bin`); the emulator is loaded by the browser from the EmulatorJS CDN rather than shipped, so there is no redistribution of emulator code.
 
 ## 1. What it is
 
