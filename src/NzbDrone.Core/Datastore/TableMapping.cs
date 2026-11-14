@@ -20,6 +20,7 @@ using NzbDrone.Core.Extras.Metadata.Files;
 using NzbDrone.Core.Extras.MovieExtras;
 using NzbDrone.Core.Extras.Others;
 using NzbDrone.Core.Extras.Subtitles;
+using NzbDrone.Core.Games;
 using NzbDrone.Core.History;
 using NzbDrone.Core.ImportLists;
 using NzbDrone.Core.ImportLists.Exclusions;
@@ -75,6 +76,8 @@ namespace NzbDrone.Core.Datastore
                   .Ignore(r => r.TotalSpace);
 
             Mapper.Entity<DoctorFlag>("DoctorFlags").RegisterModel();
+
+            Mapper.Entity<Game>("Games").RegisterModel();
 
             Mapper.Entity<ScheduledTask>("ScheduledTasks").RegisterModel()
                   .Ignore(i => i.Priority);

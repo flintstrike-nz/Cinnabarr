@@ -99,7 +99,7 @@ BL-133,Mobile,Mobile view: bottom tab bar (Library/Add/Downloads/Menu), download
 BL-134,Storage,Drive management backend: balance planner (counts downloads in flight and upcoming episodes); nightly task (off by default); Jellyfin refresh after moves; API,Story,,Done,L,H,BL-128,Done,Done
 BL-135,Storage,Storage page (drive usage; plan preview; settings; balance now); add screens default to the roomiest drive,Story,,Done,M,H,BL-134,Done,Done
 BL-136,Games,Games design: library type; metadata; browser play; Jellyfin webOS (docs/cinnabarr/GAMES.md),Task,,Done,S,H,,Done,Done
-BL-137,Games,G1 Games library type; platforms; ROM scan,Story,,Blocked on owner decisions,L,M,BL-136,Future,Future
+BL-137,Games,G1 Games library type; platforms; ROM scan (backend done),Story,,In progress,L,M,BL-136,Future,Future
 BL-138,Games,G2 Identify by hash; metadata and artwork,Story,,Blocked on provider key,L,M,BL-137,Future,Future
 BL-139,Games,G3 Play in browser with controller and saves,Story,,Blocked on licence decision,L,M,BL-137,Future,Future
 BL-140,Games,G4 Jellyfin on LG webOS (prototype first),Story,,Blocked on TV details,L,L,BL-139,Future,Future

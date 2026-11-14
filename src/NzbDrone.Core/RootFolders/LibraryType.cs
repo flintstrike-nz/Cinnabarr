@@ -5,6 +5,7 @@ namespace NzbDrone.Core.RootFolders
     {
         Any = 0,
         Series = 1,
-        Movies = 2
+        Movies = 2,
+        Games = 3
     }
 }
