@@ -96,6 +96,24 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("AutoUnmonitorPreviouslyDownloadedMovies", value); }
         }
 
+        public bool UpdateCheckEnabled
+        {
+            get { return GetValueBoolean("UpdateCheckEnabled", true); }
+            set { SetValue("UpdateCheckEnabled", value); }
+        }
+
+        public string UpdateCheckRepository
+        {
+            get { return GetValue("UpdateCheckRepository", "flintstrike-nz/Cinnabarr"); }
+            set { SetValue("UpdateCheckRepository", value); }
+        }
+
+        public string UpdateCheckBranch
+        {
+            get { return GetValue("UpdateCheckBranch", "develop"); }
+            set { SetValue("UpdateCheckBranch", value); }
+        }
+
         public bool StorageBalancerEnabled
         {
             get { return GetValueBoolean("StorageBalancerEnabled", false); }

@@ -4,7 +4,11 @@
 # the same container, so there is no download folder and no path mapping to set up.
 services:
   cinnabarr:
-    build: .
+    build:
+      context: .
+      args:
+        # scripts/update.sh sets this; it is how the app knows which build it is.
+        CINNABARR_COMMIT: ${CINNABARR_COMMIT:-unknown}
     # image: ghcr.io/flintstrike-nz/cinnabarr:latest   # once images are published
     container_name: cinnabarr
     restart: unless-stopped

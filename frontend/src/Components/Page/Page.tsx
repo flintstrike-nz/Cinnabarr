@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { saveDimensions, useAppValue } from 'App/appStore';
 import AppUpdatedModal from 'App/AppUpdatedModal';
 import ConnectionLostModal from 'App/ConnectionLostModal';
+import UpdateBanner from 'App/UpdateBanner';
 import SignalRListener from 'Components/SignalRListener';
 import AuthenticationRequiredModal from 'FirstRun/AuthenticationRequiredModal';
 import EngineLegalNoticeModal from 'FirstRun/EngineLegalNoticeModal';
@@ -92,6 +93,8 @@ function Page({ children }: PageProps) {
       <SignalRListener />
 
       <PageHeader />
+
+      <UpdateBanner />
 
       <div className={styles.main}>
         <PageSidebar />

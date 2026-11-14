@@ -70,7 +70,11 @@ COPY distribution/docker/entrypoint.sh /entrypoint.sh
 RUN ln -sf /usr/bin/ffprobe /app/bin/ffprobe \
  && chmod +x /entrypoint.sh /app/engine/cinnabarr-engine
 
-ENV CINNABARR_ENGINE_PATH=/app/engine/cinnabarr-engine \
+# The commit this image was built from, so the app can tell you when a newer one exists.
+ARG CINNABARR_COMMIT=unknown
+
+ENV CINNABARR_COMMIT=$CINNABARR_COMMIT \
+    CINNABARR_ENGINE_PATH=/app/engine/cinnabarr-engine \
     DOTNET_RUNNING_IN_CONTAINER=true \
     DOTNET_gcServer=0 \
     PUID=1000 \
