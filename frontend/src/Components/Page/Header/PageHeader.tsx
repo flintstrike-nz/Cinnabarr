@@ -50,7 +50,7 @@ function PageHeader() {
         >
           <img
             className={styles.logo}
-            src={`${window.Sonarr.urlBase}/Content/Images/logo.svg`}
+            src={`${window.Sonarr.urlBase}/Content/Images/cinnabarr-mark.svg`}
             alt=""
           />
           <span className={styles.brandName}>{window.Sonarr.instanceName}</span>
