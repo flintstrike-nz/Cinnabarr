@@ -55,3 +55,12 @@ A movie or a series can have several versions, such as HD and 4K, each with its 
 - Logs: **System → Logs**. Health problems: **System → Status**.
 - Backups: **System → Backup**.
 - API: `/api/v5` (the old `/api/v3` is still there for other apps); the key is in **Settings → General**.
+
+## Doctor
+
+Doctor is the stethoscope button in the library (it replaces Reorganise).
+
+- **Duplicates.** When an episode or movie has more than one file at the **same resolution**, Doctor flags the worse copy (lower source, then older revision, then lower video bitrate, then smaller file; differences under 10% don't count). Copies at different resolutions, like 4K next to 1080p, are treated as deliberate versions and left alone.
+- **Review.** A red badge on the Doctor button counts flagged copies. The Doctor page shows each flagged copy next to the one it kept, with three screenshots of each. You can delete the flagged copy now, keep it instead (the other copy is flagged instead), or keep both.
+- **Nightly check.** Doctor runs every 24 hours by default and deletes flagged copies after 7 days, using the recycle bin if you have one. Change the schedule, the retention, or switch it off on the Doctor page. Pressing *Check now* only looks and never deletes.
+- **Reorganise.** Renaming files to the naming format, with undo, is still on the Doctor page.

@@ -7,6 +7,7 @@ import ConfirmModal from 'Components/Modal/ConfirmModal';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import PageHeading from 'Components/Page/PageHeading';
+import DoctorBadge from 'Doctor/DoctorBadge';
 import { icons, kinds } from 'Helpers/Props';
 import { useQualityProfilesData } from 'Settings/Profiles/Quality/useQualityProfiles';
 import { useSortedTagList } from 'Tags/useTags';
@@ -129,9 +130,11 @@ function MoviesIndex() {
           title={translate('Movies')}
           actions={
             <>
-              <Button to="/doctor">
-                <Icon name={icons.DOCTOR} /> {translate('Doctor')}
-              </Button>
+              <DoctorBadge>
+                <Button to="/doctor">
+                  <Icon name={icons.DOCTOR} /> {translate('Doctor')}
+                </Button>
+              </DoctorBadge>
               <Button to="/add/movie" kind={kinds.PRIMARY}>
                 {translate('AddMovie')}
               </Button>

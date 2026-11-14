@@ -1,0 +1,82 @@
+.item {
+  margin-bottom: 24px;
+  padding: 12px 16px;
+  border: 1px solid rgb(128 128 128 / 30%);
+  border-radius: 6px;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.title {
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.reason {
+  color: var(--dangerColor, #f05050);
+}
+
+.copies {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.copy {
+  padding: 8px;
+  border: 2px solid transparent;
+  border-radius: 6px;
+}
+
+.flagged {
+  border-color: var(--dangerColor, #f05050);
+  background-color: rgb(240 80 80 / 8%);
+}
+
+.kept {
+  border-color: var(--successColor, #27c24c);
+}
+
+.copyTitle {
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.path {
+  margin-bottom: 6px;
+  color: var(--inkSoft, gray);
+  word-break: break-all;
+  font-size: 12px;
+}
+
+.facts {
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.shots {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.shot {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 3px;
+  background-color: rgb(128 128 128 / 20%);
+  object-fit: cover;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}

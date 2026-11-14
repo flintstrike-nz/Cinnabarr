@@ -12,11 +12,14 @@ import PageContentBody from 'Components/Page/PageContentBody';
 import PageJumpBar, { PageJumpBarItems } from 'Components/Page/PageJumpBar';
 import { OverflowDivider } from 'Components/Page/Toolbar/Overflow';
 import PageToolbar from 'Components/Page/Toolbar/PageToolbar';
-import { PageToolbarButtonProps } from 'Components/Page/Toolbar/PageToolbarButton';
+import PageToolbarButton, {
+  PageToolbarButtonProps,
+} from 'Components/Page/Toolbar/PageToolbarButton';
 import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
 import PageToolbarSpacer from 'Components/Page/Toolbar/PageToolbarSpacer';
 import ToolbarItem from 'Components/Page/Toolbar/ToolbarItem';
 import TableOptionsModal from 'Components/Table/TableOptions/TableOptionsModal';
+import DoctorBadge from 'Doctor/DoctorBadge';
 import { useCustomFiltersList } from 'Filters/useCustomFilters';
 import { icons, kinds } from 'Helpers/Props';
 import { DESCENDING } from 'Helpers/Props/sortDirections';
@@ -211,6 +214,15 @@ function SeriesIndexBody({ seriesIndex }: SeriesIndexBodyProps) {
   const isLoaded = !!(!error && isFetched && data.length);
   const hasNoSeries = !totalItems;
 
+  const renderDoctorButton = useCallback(
+    ({ label, iconName, ...props }: PageToolbarButtonProps) => (
+      <DoctorBadge>
+        <PageToolbarButton label={label} iconName={iconName} {...props} />
+      </DoctorBadge>
+    ),
+    []
+  );
+
   const renderSelectButton = useCallback(
     ({ label, iconName }: PageToolbarButtonProps) => (
       <SeriesIndexSelectModeButton
@@ -320,6 +332,7 @@ function SeriesIndexBody({ seriesIndex }: SeriesIndexBodyProps) {
           label={translate('Doctor')}
           iconName={icons.DOCTOR}
           isDisabled={hasNoSeries}
+          renderButton={renderDoctorButton}
           to="/doctor"
         />
 
