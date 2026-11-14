@@ -96,6 +96,42 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("AutoUnmonitorPreviouslyDownloadedMovies", value); }
         }
 
+        public bool StorageBalancerEnabled
+        {
+            get { return GetValueBoolean("StorageBalancerEnabled", false); }
+            set { SetValue("StorageBalancerEnabled", value); }
+        }
+
+        public int StorageBalanceIntervalHours
+        {
+            get { return GetValueInt("StorageBalanceIntervalHours", 24); }
+            set { SetValue("StorageBalanceIntervalHours", value); }
+        }
+
+        public int StorageTolerancePercent
+        {
+            get { return GetValueInt("StorageTolerancePercent", 10); }
+            set { SetValue("StorageTolerancePercent", value); }
+        }
+
+        public int StorageReservePercent
+        {
+            get { return GetValueInt("StorageReservePercent", 5); }
+            set { SetValue("StorageReservePercent", value); }
+        }
+
+        public int StorageMaxMoveGb
+        {
+            get { return GetValueInt("StorageMaxMoveGb", 200); }
+            set { SetValue("StorageMaxMoveGb", value); }
+        }
+
+        public int StorageForecastDays
+        {
+            get { return GetValueInt("StorageForecastDays", 14); }
+            set { SetValue("StorageForecastDays", value); }
+        }
+
         public bool DoctorEnabled
         {
             get { return GetValueBoolean("DoctorEnabled", true); }

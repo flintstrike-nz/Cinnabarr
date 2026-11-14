@@ -15,6 +15,7 @@ namespace NzbDrone.Core.Notifications.Emby
     {
         void Notify(MediaBrowserSettings settings, string title, string message);
         void Update(MediaBrowserSettings settings, Series series, string updateType);
+        void UpdatePath(MediaBrowserSettings settings, string path, string updateType);
         ValidationFailure Test(MediaBrowserSettings settings);
     }
 
@@ -55,6 +56,18 @@ namespace NzbDrone.Core.Notifications.Emby
             {
                 _proxy.Update(settings, path, updateType);
             }
+        }
+
+        public void UpdatePath(MediaBrowserSettings settings, string path, string updateType)
+        {
+            var mappedPath = new OsPath(path);
+
+            if (settings.MapTo.IsNotNullOrWhiteSpace())
+            {
+                mappedPath = new OsPath(settings.MapTo) + (mappedPath - new OsPath(settings.MapFrom));
+            }
+
+            _proxy.Update(settings, mappedPath.ToString(), updateType);
         }
 
         public ValidationFailure Test(MediaBrowserSettings settings)
