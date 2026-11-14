@@ -54,6 +54,10 @@ namespace NzbDrone.Core.Configuration
         string UpdateCheckRepository { get; set; }
         string UpdateCheckBranch { get; set; }
 
+        // Games metadata: IGDB credentials (a free Twitch application).
+        string IgdbClientId { get; set; }
+        string IgdbClientSecret { get; set; }
+
         // Storage: automatic balancing of free space between the drives of a library. Off until switched on.
         bool StorageBalancerEnabled { get; set; }
         int StorageBalanceIntervalHours { get; set; }
