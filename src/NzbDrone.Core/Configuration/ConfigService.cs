@@ -96,6 +96,24 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("AutoUnmonitorPreviouslyDownloadedMovies", value); }
         }
 
+        public bool DoctorEnabled
+        {
+            get { return GetValueBoolean("DoctorEnabled", true); }
+            set { SetValue("DoctorEnabled", value); }
+        }
+
+        public int DoctorIntervalHours
+        {
+            get { return GetValueInt("DoctorIntervalHours", 24); }
+            set { SetValue("DoctorIntervalHours", value); }
+        }
+
+        public int DoctorRetentionDays
+        {
+            get { return GetValueInt("DoctorRetentionDays", 7); }
+            set { SetValue("DoctorRetentionDays", value); }
+        }
+
         public bool AutoUnmonitorPreviouslyDownloadedEpisodes
         {
             get { return GetValueBoolean("AutoUnmonitorPreviouslyDownloadedEpisodes"); }

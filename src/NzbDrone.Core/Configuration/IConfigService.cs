@@ -47,6 +47,11 @@ namespace NzbDrone.Core.Configuration
 
         // Media Management
         bool AutoUnmonitorPreviouslyDownloadedEpisodes { get; set; }
+
+        // Doctor: the scheduled check, how often it runs, and how long a flagged file waits before it is deleted.
+        bool DoctorEnabled { get; set; }
+        int DoctorIntervalHours { get; set; }
+        int DoctorRetentionDays { get; set; }
         bool AutoUnmonitorPreviouslyDownloadedMovies { get; set; }
         string RecycleBin { get; set; }
         int RecycleBinCleanupDays { get; set; }
