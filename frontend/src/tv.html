@@ -29,7 +29,7 @@
       #player { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #000; z-index: 20; display: none; }
       #game { width: 100%; height: 100%; }
       #hint { position: fixed; top: 12px; right: 18px; z-index: 30; font-size: 18px; color: #fff; background: rgba(0,0,0,.55); padding: 6px 14px; border-radius: 10px; display: none; }
-      #debug { position: fixed; top: 70px; right: 20px; z-index: 40; width: 560px; padding: 12px 16px; background: rgba(0,0,0,.85); border-radius: 10px; font: 16px monospace; white-space: pre-wrap; display: none; }
+      #debug { position: fixed; top: 70px; right: 20px; z-index: 40; width: 760px; max-width: 60%; padding: 12px 16px; background: rgba(0,0,0,.85); border-radius: 10px; font: 16px monospace; white-space: pre-wrap; display: none; }
     </style>
   </head>
   <body>
@@ -219,6 +219,25 @@
         var comboSince = 0;
         var padLabel = document.getElementById('pad');
         var debug = document.getElementById('debug');
+        var events = { connected: 0, disconnected: 0, lastKeys: [] };
+
+        // What the browser tells us, even when there is no controller: this is for finding out why none shows.
+        window.addEventListener('gamepadconnected', function () { events.connected++; });
+        window.addEventListener('gamepaddisconnected', function () { events.disconnected++; });
+        document.addEventListener('keydown', function (e) {
+          events.lastKeys.unshift('keyCode ' + e.keyCode + (e.key ? ' key "' + e.key + '"' : '') + (e.code ? ' code ' + e.code : ''));
+          events.lastKeys = events.lastKeys.slice(0, 5);
+        }, true);
+
+        function environment() {
+          var slots = navigator.getGamepads ? navigator.getGamepads() : null;
+          var nonNull = 0;
+          if (slots) { for (var i = 0; i < slots.length; i++) { if (slots[i]) { nonNull++; } } }
+          return 'browser: ' + navigator.userAgent + '\n' +
+            'Gamepad API: ' + (navigator.getGamepads ? 'present' : 'MISSING') + (slots ? ', ' + slots.length + ' slots, ' + nonNull + ' with a controller' : '') + '\n' +
+            'gamepadconnected events: ' + events.connected + ', disconnected: ' + events.disconnected + '\n' +
+            'last keys seen:\n  ' + (events.lastKeys.join('\n  ') || '(none: press a button on the controller or the remote)');
+        }
 
         function edge(id, down, repeat, action) {
           var now = Date.now();
@@ -262,7 +281,10 @@
             }
           }
           if (!any) { padLabel.textContent = 'No controller yet: press a button on it'; }
-          if (debugOn) { debug.style.display = 'block'; debug.textContent = lines.join('\n\n') || 'no controller detected'; }
+          if (debugOn) {
+            debug.style.display = 'block';
+            debug.textContent = environment() + '\n\n' + (lines.join('\n\n') || 'no controller detected (press a button on it first: browsers only list a controller after a button press)');
+          }
           requestAnimationFrame(poll);
         }
 
@@ -279,6 +301,7 @@
           requestAnimationFrame(poll);
         }).catch(function () {
           grid.textContent = 'Could not reach Cinnabarr. If it asks you to sign in, open the normal page once on this TV first.';
+          requestAnimationFrame(poll);
         });
       })();
     </script>

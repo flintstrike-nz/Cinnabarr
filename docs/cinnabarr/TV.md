@@ -21,6 +21,17 @@ Tested on paper for: LG OLED55A1PVA (2021, webOS 6, firmware 03.53.45 / 6.5.3-47
 
 The Jellyfin app for LG is a thin shell around Jellyfin's own web page; Cinnabarr cannot add a Games page inside it. A Jellyfin *plugin* could add a menu link to `/tv`, but that does not make games run inside Jellyfin's player, and I could not confirm that Jellyfin's page reads gamepads. So the plan is the separate launcher above (and, optionally, a Jellyfin plugin that just links to it, later).
 
+## The debug panel shows no controller
+
+Open `/tv?debug=1` again after updating, **press a button on the controller** (a browser only lists a controller after a button press), and read the panel:
+
+| Panel says | It means | Next step |
+| --- | --- | --- |
+| `Gamepad API: MISSING` | This TV browser has no gamepad support at all | Games cannot be played with a controller in it; try the sideloaded app, or a keyboard/remote |
+| `Gamepad API: present, 4 slots, 0 with a controller` and `last keys seen` stay empty when you press controller buttons | The TV keeps the controller for itself and does not pass it to web pages | Try a USB cable instead of Bluetooth, or a different browser/app on the TV |
+| `last keys seen` shows arrow keys / Enter / Back when you press the controller | The TV turns the controller into a remote | Menus will work, but games cannot read the controller; a USB-wired controller may be handled differently |
+| A controller appears with `mapping: ""` | It works but with a non-standard button layout | Tell me the pressed button numbers and I will add a mapping |
+
 ## Things that may not work, and what to do
 
 | Problem | Likely cause | What to try |
