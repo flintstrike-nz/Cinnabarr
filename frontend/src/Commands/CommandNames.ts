@@ -13,6 +13,7 @@ enum CommandNames {
   MissingEpisodeSearch = 'MissingEpisodeSearch',
   MoveSeries = 'MoveSeries',
   Doctor = 'Doctor',
+  RefreshGameMetadata = 'RefreshGameMetadata',
   RefreshMonitoredDownloads = 'RefreshMonitoredDownloads',
   RefreshSeries = 'RefreshSeries',
   RenameFiles = 'RenameFiles',
