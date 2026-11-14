@@ -42,7 +42,11 @@ function SearchResult({ movie }: SearchResultProps) {
   const [added, setAdded] = useState(false);
 
   const isInLibrary = movie.id > 0;
-  const folder = rootFolderPath || rootFolders[0]?.path || '';
+  // Left alone, the drive with the most free space is used.
+  const roomiest = [...rootFolders].sort(
+    (a, b) => (b.freeSpace ?? 0) - (a.freeSpace ?? 0)
+  )[0];
+  const folder = rootFolderPath || roomiest?.path || '';
   const profile = qualityProfileId || profiles[0]?.id || 0;
 
   const handleRootFolderChange = useCallback(
