@@ -1,26 +1,84 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useExecuteCommand } from 'Commands/useCommands';
 import Icon from 'Components/Icon';
 import Button from 'Components/Link/Button';
 import Link from 'Components/Link/Link';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
+import FilterMenu from 'Components/Menu/FilterMenu';
+import MenuContent from 'Components/Menu/MenuContent';
+import SortMenu from 'Components/Menu/SortMenu';
+import SortMenuItem from 'Components/Menu/SortMenuItem';
+import ViewMenu from 'Components/Menu/ViewMenu';
+import ViewMenuItem from 'Components/Menu/ViewMenuItem';
 import ConfirmModal from 'Components/Modal/ConfirmModal';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
-import PageHeading from 'Components/Page/PageHeading';
+import PageJumpBar, { PageJumpBarItems } from 'Components/Page/PageJumpBar';
+import PageToolbar from 'Components/Page/Toolbar/PageToolbar';
+import PageToolbarButton from 'Components/Page/Toolbar/PageToolbarButton';
+import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
+import PageToolbarSpacer from 'Components/Page/Toolbar/PageToolbarSpacer';
 import DoctorBadge from 'Doctor/DoctorBadge';
-import { icons, kinds } from 'Helpers/Props';
+import { align, icons, kinds } from 'Helpers/Props';
 import { useQualityProfilesData } from 'Settings/Profiles/Quality/useQualityProfiles';
 import { useSortedTagList } from 'Tags/useTags';
 import formatBytes from 'Utilities/Number/formatBytes';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
+import {
+  filterMovies,
+  MovieFilterKey,
+  sortMovies,
+  useMovieIndexOptions,
+} from './Index/movieIndexOptions';
+import MovieIndexPoster from './Index/MovieIndexPoster';
 import MoviePoster from './MoviePoster';
 import useBulkMovies from './useBulkMovies';
 import { useMovies } from './useMovies';
+import posterStyles from './Index/MovieIndexPoster.module.css';
 import styles from './Movie.module.css';
 
 function MoviesIndex() {
-  const { data: movies, isLoading, error } = useMovies();
+  const { data: allMovies, isLoading, error } = useMovies();
+  const executeCommand = useExecuteCommand();
+  const {
+    view,
+    sortKey,
+    sortDirection,
+    filterKey,
+    setView,
+    setFilter,
+    setSort,
+  } = useMovieIndexOptions();
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const movies = useMemo(
+    () =>
+      sortMovies(
+        filterMovies(allMovies, filterKey as MovieFilterKey),
+        sortKey,
+        sortDirection
+      ),
+    [allMovies, filterKey, sortKey, sortDirection]
+  );
+  const jumpBarItems = useMemo<PageJumpBarItems>(() => {
+    const characters: Record<string, number> = {};
+    const order: string[] = [];
+
+    if (sortKey === 'sortTitle') {
+      movies.forEach((movie, index) => {
+        const first = (movie.sortTitle ?? movie.title).charAt(0).toUpperCase();
+        const key = /[A-Z]/.test(first) ? first : '#';
+
+        if (!(key in characters)) {
+          characters[key] = index;
+          order.push(key);
+        }
+      });
+    }
+
+    return { characters, order };
+  }, [movies, sortKey]);
+
   const profiles = useQualityProfilesData();
   const tags = useSortedTagList();
   const { applyToMovies, isApplying, applyError } = useBulkMovies();
@@ -46,6 +104,31 @@ function MoviesIndex() {
       setSelectedIds(event.target.checked ? movies.map((m) => m.id) : []);
     },
     [movies]
+  );
+
+  const handleSelectModePress = useCallback(() => {
+    setIsSelectMode((value) => !value);
+    setSelectedIds([]);
+  }, []);
+
+  const handleUpdateAllPress = useCallback(() => {
+    executeCommand({ name: 'RefreshMovie' });
+  }, [executeCommand]);
+
+  const handleSearchMissingPress = useCallback(() => {
+    executeCommand({ name: 'MissingMoviesSearch' });
+  }, [executeCommand]);
+
+  const handleJumpPress = useCallback(
+    (character: string) => {
+      const index = jumpBarItems.characters[character];
+      const id = movies[index]?.id;
+
+      document
+        .querySelector(`[data-movie-id="${id}"]`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
+    [jumpBarItems, movies]
   );
 
   const handleSearchPress = useCallback(() => {
@@ -124,24 +207,107 @@ function MoviesIndex() {
 
   return (
     <PageContent title={translate('Movies')}>
-      <PageContentBody>
-        <PageHeading
-          scope={translate('Media')}
-          title={translate('Movies')}
-          actions={
-            <>
-              <DoctorBadge>
-                <Button to="/doctor">
-                  <Icon name={icons.DOCTOR} /> {translate('Doctor')}
-                </Button>
-              </DoctorBadge>
-              <Button to="/add/movie" kind={kinds.PRIMARY}>
-                {translate('AddMovie')}
-              </Button>
-            </>
+      <PageToolbar>
+        <PageToolbarButton
+          label={translate('UpdateAll')}
+          iconName={icons.REFRESH}
+          isDisabled={!allMovies.length}
+          onPress={handleUpdateAllPress}
+        />
+        <PageToolbarButton
+          label={translate('SearchMissing')}
+          iconName={icons.SEARCH}
+          isDisabled={!allMovies.length}
+          onPress={handleSearchMissingPress}
+        />
+        <DoctorBadge>
+          <PageToolbarButton
+            label={translate('Doctor')}
+            iconName={icons.DOCTOR}
+            to="/doctor"
+          />
+        </DoctorBadge>
+
+        <PageToolbarSeparator />
+
+        <PageToolbarButton
+          label={
+            isSelectMode ? translate('StopSelecting') : translate('Select')
           }
+          iconName={isSelectMode ? icons.SERIES_ENDED : icons.CHECK}
+          onPress={handleSelectModePress}
         />
 
+        <PageToolbarSpacer />
+
+        <PageToolbarButton
+          label={translate('AddMovie')}
+          iconName={icons.ADD}
+          to="/add/movie"
+        />
+
+        <ViewMenu alignMenu={align.RIGHT}>
+          <MenuContent>
+            <ViewMenuItem name="table" selectedView={view} onPress={setView}>
+              {translate('Table')}
+            </ViewMenuItem>
+            <ViewMenuItem name="posters" selectedView={view} onPress={setView}>
+              {translate('Posters')}
+            </ViewMenuItem>
+          </MenuContent>
+        </ViewMenu>
+
+        <SortMenu alignMenu={align.RIGHT}>
+          <MenuContent>
+            {(
+              [
+                ['sortTitle', 'Title'],
+                ['year', 'Year'],
+                ['added', 'Added'],
+                ['sizeOnDisk', 'SizeOnDisk'],
+              ] as const
+            ).map(([name, label]) => (
+              <SortMenuItem
+                key={name}
+                name={name}
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onPress={setSort}
+              >
+                {translate(label)}
+              </SortMenuItem>
+            ))}
+          </MenuContent>
+        </SortMenu>
+
+        <FilterMenu
+          alignMenu="right"
+          selectedFilterKey={filterKey}
+          customFilters={[]}
+          filters={[
+            { key: 'all', label: () => translate('All'), filters: [] },
+            {
+              key: 'monitored',
+              label: () => translate('Monitored'),
+              filters: [],
+            },
+            {
+              key: 'unmonitored',
+              label: () => translate('Unmonitored'),
+              filters: [],
+            },
+            { key: 'missing', label: () => translate('Missing'), filters: [] },
+            {
+              key: 'downloaded',
+              label: () => translate('Downloaded'),
+              filters: [],
+            },
+          ]}
+          onFilterSelect={setFilter}
+        />
+      </PageToolbar>
+
+      <PageContentBody>
         {isLoading ? <LoadingIndicator /> : null}
 
         {error ? <div>{getErrorMessage(error)}</div> : null}
@@ -242,7 +408,25 @@ function MoviesIndex() {
           onCancel={handleDeleteCancel}
         />
 
-        {movies.length ? (
+        {movies.length && view === 'posters' ? (
+          <div className={posterStyles.grid}>
+            {movies.map((movie) => (
+              <div key={movie.id} data-movie-id={movie.id}>
+                <MovieIndexPoster
+                  movie={movie}
+                  profileName={
+                    profiles.find((p) => p.id === movie.qualityProfileId)?.name
+                  }
+                  isSelectMode={isSelectMode}
+                  isSelected={selectedIds.includes(movie.id)}
+                  onToggle={handleToggle}
+                />
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        {movies.length && view === 'table' ? (
           <table className={styles.table}>
             <thead>
               <tr>
@@ -311,6 +495,9 @@ function MoviesIndex() {
           </table>
         ) : null}
       </PageContentBody>
+      {view === 'posters' && jumpBarItems.order.length ? (
+        <PageJumpBar items={jumpBarItems} onItemPress={handleJumpPress} />
+      ) : null}
     </PageContent>
   );
 }
