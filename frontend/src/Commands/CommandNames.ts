@@ -21,6 +21,7 @@ enum CommandNames {
   ResetApiKey = 'ResetApiKey',
   ResetQualityDefinitions = 'ResetQualityDefinitions',
   RssSync = 'RssSync',
+  ScanGames = 'ScanGames',
   SeasonSearch = 'SeasonSearch',
   SeriesSearch = 'SeriesSearch',
   StorageBalance = 'StorageBalance',

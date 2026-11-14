@@ -116,7 +116,7 @@ function AddNewSeriesModalContent({
   const roomiestRootFolder = useMemo(
     () =>
       allRootFolders
-        .filter((r) => r.library !== 'movies')
+        .filter((r) => r.library === 'any' || r.library === 'series')
         .sort((a, b) => (b.freeSpace ?? 0) - (a.freeSpace ?? 0))[0],
     [allRootFolders]
   );

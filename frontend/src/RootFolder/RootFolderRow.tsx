@@ -153,6 +153,7 @@ function RootFolderRow(props: RootFolderRowProps) {
             <option value="any">{translate('RootFolderLibraryAny')}</option>
             <option value="series">{translate('Series')}</option>
             <option value="movies">{translate('Movies')}</option>
+            <option value="games">{translate('Games')}</option>
           </select>
         )}
 

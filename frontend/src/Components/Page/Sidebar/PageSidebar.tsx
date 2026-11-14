@@ -77,6 +77,10 @@ const GROUPS: SidebarGroup[] = [
             to: '/movies',
           },
           {
+            title: () => translate('Games'),
+            to: '/games',
+          },
+          {
             title: () => translate('AddMovie'),
             to: '/add/movie',
           },
