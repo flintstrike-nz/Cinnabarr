@@ -29,7 +29,7 @@ export interface RootFolder extends ModelBase {
   library: RootFolderLibrary;
 }
 
-export type RootFolderLibrary = 'any' | 'series' | 'movies';
+export type RootFolderLibrary = 'any' | 'series' | 'movies' | 'games';
 
 interface AddRootFolder {
   path: string;
@@ -49,7 +49,9 @@ const useRootFolders = () => {
 };
 
 // The root folders a kind of library can use: the ones that hold it and the ones that hold anything.
-export const useLibraryRootFolders = (library: 'series' | 'movies') => {
+export const useLibraryRootFolders = (
+  library: 'series' | 'movies' | 'games'
+) => {
   const result = useRootFolders();
 
   return {

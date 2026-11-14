@@ -40,7 +40,7 @@ const useRootFolderOptions = (
 ) => {
   // This select is used for series (add, edit, import); movies have their own.
   const { data: all } = useRootFolders();
-  const data = all.filter((r) => r.library !== 'movies');
+  const data = all.filter((r) => r.library === 'any' || r.library === 'series');
 
   return useMemo(() => {
     const sorted = [...data].sort(sortByProp('path'));
