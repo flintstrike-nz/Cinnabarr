@@ -1,0 +1,14 @@
+{
+  "id": "org.cinnabarr.games",
+  "version": "1.0.0",
+  "vendor": "Cinnabarr",
+  "type": "web",
+  "main": "index.html",
+  "title": "Cinnabarr Games",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgColor": "#101014",
+  "splashBackground": "splash.png",
+  "resolution": "1920x1080",
+  "requiredACG": []
+}

@@ -49,6 +49,7 @@ namespace Sonarr.Http.Frontend.Mappers
                    !resourceUrl.StartsWith("/mediacover") &&
                    !resourceUrl.Contains('.') &&
                    !resourceUrl.StartsWith("/login") &&
+                   !resourceUrl.StartsWith("/tv") &&
                    !resourceUrl.StartsWith("/logout");
         }
 

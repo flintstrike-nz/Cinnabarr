@@ -102,7 +102,7 @@ BL-136,Games,Games design: library type; metadata; browser play; Jellyfin webOS 
 BL-137,Games,G1 Games library type; platforms; ROM scan (backend done),Story,,In progress,L,M,BL-136,Future,Future
 BL-138,Games,G2 Identify by hash; metadata and artwork,Story,,Blocked on provider key,L,M,BL-137,Future,Future
 BL-139,Games,G3 Play in browser with controller and saves (SMS/SNES/PSX; no PS2 core),Story,,Done,L,M,BL-137,Future,Future
-BL-140,Games,G4 Jellyfin on LG webOS (prototype first),Story,,Blocked on TV details,L,L,BL-139,Future,Future
+BL-140,Games,G4 TV launcher (/tv) and LG webOS app; first run on the real TV still needed,Story,,Built; untested on the TV,L,L,BL-139,Future,Future
 BL-141,Update,Update banner (GitHub commit check) and cron update script,Story,,Done,S,H,,Done,Done
 BL-142,Games,G1 Games page and root folder Games option (frontend),Story,,Done,S,H,BL-137,Done,Done
 BL-143,Games,G2a IGDB metadata and covers (backend): settings; token; search; apply; cover cache; API,Story,,Done (needs live IGDB key to verify),M,H,BL-138,Done,Done
