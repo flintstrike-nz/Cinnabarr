@@ -96,6 +96,7 @@ import {
   Square,
   SquareCheckBig,
   SquareMinus,
+  Stethoscope,
   Table,
   Tags,
   Trash,
@@ -217,6 +218,7 @@ export const SEASON_TYPE = ListOrdered;
 export const SCENE_MAPPING = Network;
 export const SCHEDULED = Clock;
 export const SCORE = UserPlus;
+export const DOCTOR = Stethoscope;
 export const SEARCH = Search;
 export const SEEDING = CircleArrowUp;
 export const SERIES_CONTINUING = Play;

@@ -92,10 +92,6 @@ const GROUPS: SidebarGroup[] = [
             title: () => translate('ImportExternal'),
             to: '/add/import/external',
           },
-          {
-            title: () => translate('Reorganise'),
-            to: '/reorganise',
-          },
         ],
       },
       {
