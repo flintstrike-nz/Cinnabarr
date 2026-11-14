@@ -21,6 +21,7 @@ using NzbDrone.Core.MediaFiles.Commands;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Movies.Commands;
+using NzbDrone.Core.Storage;
 using NzbDrone.Core.Tv.Commands;
 
 namespace NzbDrone.Core.Jobs
@@ -151,6 +152,12 @@ namespace NzbDrone.Core.Jobs
 
                     new ScheduledTask
                     {
+                        Interval = Math.Max(1, _configService.StorageBalanceIntervalHours) * 60,
+                        TypeName = typeof(StorageBalanceCommand).FullName
+                    },
+
+                    new ScheduledTask
+                    {
                         Interval = GetDoctorInterval(),
                         TypeName = typeof(DoctorCommand).FullName
                     },
@@ -263,11 +270,15 @@ namespace NzbDrone.Core.Jobs
             var doctor = _scheduledTaskRepository.GetDefinition(typeof(DoctorCommand));
             doctor.Interval = GetDoctorInterval();
 
-            _scheduledTaskRepository.UpdateMany(new List<ScheduledTask> { rss, backup, doctor });
+            var storage = _scheduledTaskRepository.GetDefinition(typeof(StorageBalanceCommand));
+            storage.Interval = Math.Max(1, _configService.StorageBalanceIntervalHours) * 60;
+
+            _scheduledTaskRepository.UpdateMany(new List<ScheduledTask> { rss, backup, doctor, storage });
 
             _cache.Find(rss.TypeName).Interval = rss.Interval;
             _cache.Find(backup.TypeName).Interval = backup.Interval;
             _cache.Find(doctor.TypeName).Interval = doctor.Interval;
+            _cache.Find(storage.TypeName).Interval = storage.Interval;
         }
     }
 }
