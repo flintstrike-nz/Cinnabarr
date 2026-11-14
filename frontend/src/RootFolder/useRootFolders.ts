@@ -24,7 +24,12 @@ export interface RootFolder extends ModelBase {
   isEmpty: boolean;
   freeSpace?: number;
   unmappedFolders: UnmappedFolder[];
+
+  // What the root folder holds: a series can't go under a movies root folder or the other way round.
+  library: RootFolderLibrary;
 }
+
+export type RootFolderLibrary = 'any' | 'series' | 'movies';
 
 interface AddRootFolder {
   path: string;
@@ -40,6 +45,39 @@ const useRootFolders = () => {
   return {
     ...result,
     data: result.data ?? DEFAULT_ROOT_FOLDERS,
+  };
+};
+
+// The root folders a kind of library can use: the ones that hold it and the ones that hold anything.
+export const useLibraryRootFolders = (library: 'series' | 'movies') => {
+  const result = useRootFolders();
+
+  return {
+    ...result,
+    data: result.data.filter(
+      (r) => r.library === 'any' || r.library === library
+    ),
+  };
+};
+
+export const useSetRootFolderLibrary = (rootFolder: RootFolder) => {
+  const queryClient = useQueryClient();
+
+  const { mutate, isPending, error } = useApiMutation<unknown, RootFolder>({
+    path: `/rootFolder/${rootFolder.id}`,
+    method: 'PUT',
+    mutationOptions: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['/rootFolder'] });
+      },
+    },
+  });
+
+  return {
+    setLibrary: (library: RootFolderLibrary) =>
+      mutate({ ...rootFolder, library }),
+    isSaving: isPending,
+    saveError: error,
   };
 };
 

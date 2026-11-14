@@ -14,6 +14,7 @@ In Docker, see [DOCKER.md](DOCKER.md): one image holds the app and the engine. W
 ## First set-up
 
 - **Settings → Media Management → Root Folders:** add the folders your series and movies live in. The app and the engine must see the same folders at the same paths.
+  Each root folder has a **Library** setting (Any, Series or Movies). A series cannot be added or moved into a Movies root, and a movie cannot go into a Series root. Existing roots are assigned automatically on upgrade when they only hold one kind.
 - **Settings → Media Management → Naming:** pick a preset: Jellyfin (the default), Emby or Plex. The presets differ only in how the provider ids are written in folder and file names (for example `[tvdbid-81189]`, `[tvdbid=81189]` or `{tvdb-81189}`).
 - **Settings → Indexers:** add your Torznab indexers (or the trackers offered in the list). Use *Test* before saving. *Allow racing* is off by default; see below.
 - **Settings → Profiles / Quality:** quality profiles decide what is wanted and what counts as an upgrade.

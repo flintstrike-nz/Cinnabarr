@@ -11,7 +11,7 @@ import PageHeading from 'Components/Page/PageHeading';
 import useDebounce from 'Helpers/Hooks/useDebounce';
 import useQueryParams from 'Helpers/Hooks/useQueryParams';
 import { icons, kinds } from 'Helpers/Props';
-import useRootFolders from 'RootFolder/useRootFolders';
+import { useLibraryRootFolders } from 'RootFolder/useRootFolders';
 import { useQualityProfilesData } from 'Settings/Profiles/Quality/useQualityProfiles';
 import { InputChanged } from 'typings/inputs';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
@@ -31,7 +31,7 @@ interface SearchResultProps {
 }
 
 function SearchResult({ movie }: SearchResultProps) {
-  const { data: rootFolders } = useRootFolders();
+  const { data: rootFolders } = useLibraryRootFolders('movies');
   const profiles = useQualityProfilesData();
   const { isAdding, addError, addMovie } = useAddMovie();
   const [rootFolderPath, setRootFolderPath] = useState('');

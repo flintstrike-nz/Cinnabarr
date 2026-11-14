@@ -8,7 +8,7 @@ import PageContentBody from 'Components/Page/PageContentBody';
 import PageHeading from 'Components/Page/PageHeading';
 import useApiQuery from 'Helpers/Hooks/useApiQuery';
 import { kinds } from 'Helpers/Props';
-import useRootFolders from 'RootFolder/useRootFolders';
+import { useLibraryRootFolders } from 'RootFolder/useRootFolders';
 import { useQualityProfilesData } from 'Settings/Profiles/Quality/useQualityProfiles';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
@@ -155,7 +155,7 @@ function ImportRow({
 }
 
 function ImportMovies() {
-  const { data: rootFolders } = useRootFolders();
+  const { data: rootFolders } = useLibraryRootFolders('movies');
   const profiles = useQualityProfilesData();
   const [rootFolderPath, setRootFolderPath] = useState('');
   const [qualityProfileId, setQualityProfileId] = useState(0);

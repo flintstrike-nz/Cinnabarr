@@ -87,6 +87,15 @@ public class RootFolderController : RestControllerWithSignalR<RootFolderResource
         return resource;
     }
 
+    [RestPutById]
+    [Consumes("application/json")]
+    public Results<Accepted<RootFolderResource>, NotFound> UpdateRootFolder([FromBody] RootFolderResource resource)
+    {
+        _rootFolderService.SetLibrary(resource.Id, resource.Library);
+
+        return TypedResults.Accepted($"/api/v5/rootfolder/{resource.Id}", GetResourceById(resource.Id));
+    }
+
     [RestDeleteById]
     public NoContent DeleteFolder(int id)
     {

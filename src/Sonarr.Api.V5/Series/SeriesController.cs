@@ -63,7 +63,8 @@ public class SeriesController : RestControllerWithSignalR<SeriesResource, NzbDro
                         QualityProfileExistsValidator qualityProfileExistsValidator,
                         RootFolderExistsValidator rootFolderExistsValidator,
                         SeriesFolderAsRootFolderValidator seriesFolderAsRootFolderValidator,
-                        SeriesSeasonTypeValidator seriesSeasonTypeValidator)
+                        SeriesSeasonTypeValidator seriesSeasonTypeValidator,
+                        SeriesLibraryRootFolderValidator libraryValidator)
         : base(signalRBroadcaster)
     {
         _seriesService = seriesService;
@@ -82,6 +83,7 @@ public class SeriesController : RestControllerWithSignalR<SeriesResource, NzbDro
             .SetValidator(seriesPathValidator)
             .SetValidator(seriesAncestorValidator)
             .SetValidator(systemFolderValidator)
+            .SetValidator(libraryValidator)
             .When(s => s.Path.IsNotNullOrWhiteSpace());
 
         PostValidator.RuleFor(s => s.Path).Cascade(CascadeMode.Stop)
@@ -93,6 +95,7 @@ public class SeriesController : RestControllerWithSignalR<SeriesResource, NzbDro
             .IsValidPath()
             .SetValidator(rootFolderExistsValidator)
             .SetValidator(seriesFolderAsRootFolderValidator)
+            .SetValidator(libraryValidator)
             .When(s => s.Path.IsNullOrWhiteSpace());
 
         PutValidator.RuleFor(s => s.Path).Cascade(CascadeMode.Stop)

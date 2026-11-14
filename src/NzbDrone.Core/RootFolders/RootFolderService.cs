@@ -19,6 +19,10 @@ namespace NzbDrone.Core.RootFolders
         List<RootFolder> All();
         List<RootFolder> AllWithUnmappedFolders();
         RootFolder Add(RootFolder rootDir);
+        RootFolder SetLibrary(int id, LibraryType library);
+
+        // The root folder a path is inside, or null.
+        RootFolder GetBestRootFolder(string path);
         void Remove(int id);
         RootFolder Get(int id, bool timeout);
         string GetBestRootFolderPath(string path);
@@ -131,6 +135,29 @@ namespace NzbDrone.Core.RootFolders
             _cache.Clear();
 
             return rootFolder;
+        }
+
+        public RootFolder SetLibrary(int id, LibraryType library)
+        {
+            var rootFolder = _rootFolderRepository.Get(id);
+
+            rootFolder.Library = library;
+            _rootFolderRepository.Update(rootFolder);
+            _cache.Clear();
+
+            return rootFolder;
+        }
+
+        public RootFolder GetBestRootFolder(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return null;
+            }
+
+            return All().Where(r => r.Path.IsPathValid(PathValidationType.CurrentOs) && (r.Path.PathEquals(path) || r.Path.IsParentPath(path)))
+                        .OrderByDescending(r => r.Path.Length)
+                        .FirstOrDefault();
         }
 
         public void Remove(int id)
