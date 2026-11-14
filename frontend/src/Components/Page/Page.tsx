@@ -12,6 +12,7 @@ import { useSystemStatusData } from 'System/Status/useSystemStatus';
 import ErrorPage from './ErrorPage';
 import PageHeader from './Header/PageHeader';
 import LoadingPage from './LoadingPage';
+import MobileTabBar from './MobileTabBar';
 import PageSidebar from './Sidebar/PageSidebar';
 import styles from './Page.module.css';
 
@@ -97,6 +98,8 @@ function Page({ children }: PageProps) {
 
         {children}
       </div>
+
+      <MobileTabBar />
 
       <AppUpdatedModal isOpen={isUpdatedModalOpen} />
 

@@ -1,0 +1,47 @@
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.card {
+  padding: 12px;
+  border: 1px solid rgb(128 128 128 / 30%);
+  border-radius: 10px;
+}
+
+.title {
+  overflow: hidden;
+  margin-bottom: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.track {
+  overflow: hidden;
+  height: 8px;
+  border-radius: 4px;
+  background-color: rgb(128 128 128 / 25%);
+}
+
+.fill {
+  height: 100%;
+  background-color: var(--primaryBackgroundColor, #e34234);
+  transition: width 300ms ease;
+}
+
+.done {
+  background-color: var(--successColor, #27c24c);
+}
+
+.meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  color: var(--inkSoft, gray);
+  font-size: 12px;
+}

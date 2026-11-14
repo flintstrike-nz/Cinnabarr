@@ -5,6 +5,7 @@ import Button from 'Components/Link/Button';
 import IconButton from 'Components/Link/IconButton';
 import Link from 'Components/Link/Link';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
+import AddMediaTabs from 'Components/Page/AddMediaTabs';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import PageHeading from 'Components/Page/PageHeading';
@@ -71,6 +72,8 @@ function AddNewSeries() {
   return (
     <PageContent title={translate('AddNewSeries')}>
       <PageContentBody>
+        <AddMediaTabs />
+
         <PageHeading
           scope={translate('Media')}
           title={translate('AddNewSeries')}
