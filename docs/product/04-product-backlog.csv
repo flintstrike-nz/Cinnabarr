@@ -91,3 +91,4 @@ BL-125,Addendum C,NHK World definition,Story,C-01,Future,S,M,"BL-120, BL-124",Fu
 BL-126,Addendum C,Date-based matching and daily series naming,Story,C-08,Future,S,S,BL-122,Future,Future
 BL-127,Addendum C,Per-source legal opt-in and cookie handling,Task,C-09,Future,M,S,BL-123,Future,Future
 BL-128,Library,Per-library root folders (series vs movies),Story,,Done,S,H,,Done,Done
+BL-129,Library,Doctor button and page (renamed Reorganise); duplicate flagging to follow,Story,,Done,S,H,,Done,Done

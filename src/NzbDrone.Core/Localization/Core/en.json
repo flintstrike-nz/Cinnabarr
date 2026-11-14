@@ -2368,6 +2368,8 @@
   "RenameMoviesHelpText": "If renaming is off, Cinnabarr keeps the existing file name",
   "Renamed": "Renamed",
   "Reorder": "Reorder",
+  "Doctor": "Doctor",
+  "DoctorCaption": "Doctor checks your library for files that need attention. It currently fixes names that do not follow the naming format; duplicate-version checks are coming.",
   "Reorganise": "Reorganise",
   "ReorganiseCaption": "Files whose names don't follow the naming format (Settings → Media Management) are listed here. Reorganise renames them all, with the same code as the Organize buttons, and keeps a record of each run so it can be undone.",
   "ReorganiseConfirm": "Rename {count} file(s) in your library? Each run is kept and can be undone.",

@@ -66,7 +66,7 @@ function RunRow({ run, isBusy, onUndo }: RunRowProps) {
 
 // The library reorganise tool (roadmap §4.12): the files whose names don't follow the naming format, renamed in one go,
 // with each run kept so it can be undone.
-function Reorganise() {
+function Doctor() {
   const queryClient = useQueryClient();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const {
@@ -121,10 +121,11 @@ function Reorganise() {
   );
 
   return (
-    <PageContent title={translate('Reorganise')}>
+    <PageContent title={translate('Doctor')}>
       <PageContentBody>
-        <PageHeading title={translate('Reorganise')} />
+        <PageHeading title={translate('Doctor')} />
 
+        <p>{translate('DoctorCaption')}</p>
         <p>{translate('ReorganiseCaption')}</p>
 
         {isLoading ? <LoadingIndicator /> : null}
@@ -207,4 +208,4 @@ function Reorganise() {
   );
 }
 
-export default Reorganise;
+export default Doctor;

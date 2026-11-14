@@ -313,6 +313,16 @@ function SeriesIndexBody({ seriesIndex }: SeriesIndexBodyProps) {
           onPress={onRssSyncPress}
         />
 
+        <ToolbarItem
+          id="doctor"
+          priority={1}
+          groupId="left-a"
+          label={translate('Doctor')}
+          iconName={icons.DOCTOR}
+          isDisabled={hasNoSeries}
+          to="/doctor"
+        />
+
         <OverflowDivider groupId="left-a">
           <PageToolbarSeparator />
         </OverflowDivider>

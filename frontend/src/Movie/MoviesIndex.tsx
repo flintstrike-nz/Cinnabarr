@@ -128,9 +128,14 @@ function MoviesIndex() {
           scope={translate('Media')}
           title={translate('Movies')}
           actions={
-            <Button to="/add/movie" kind={kinds.PRIMARY}>
-              {translate('AddMovie')}
-            </Button>
+            <>
+              <Button to="/doctor">
+                <Icon name={icons.DOCTOR} /> {translate('Doctor')}
+              </Button>
+              <Button to="/add/movie" kind={kinds.PRIMARY}>
+                {translate('AddMovie')}
+              </Button>
+            </>
           }
         />
 
