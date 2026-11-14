@@ -11,6 +11,7 @@ using NzbDrone.Core.DataAugmentation.Scene;
 using NzbDrone.Core.Doctor;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.Engine;
+using NzbDrone.Core.Games;
 using NzbDrone.Core.HealthCheck;
 using NzbDrone.Core.Housekeeping;
 using NzbDrone.Core.ImportLists;
@@ -154,6 +155,12 @@ namespace NzbDrone.Core.Jobs
                     {
                         Interval = Math.Max(1, _configService.StorageBalanceIntervalHours) * 60,
                         TypeName = typeof(StorageBalanceCommand).FullName
+                    },
+
+                    new ScheduledTask
+                    {
+                        Interval = 12 * 60,
+                        TypeName = typeof(ScanGamesCommand).FullName
                     },
 
                     new ScheduledTask
