@@ -11,6 +11,7 @@ using NzbDrone.Core.CustomFilters;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.DataAugmentation.Scene;
 using NzbDrone.Core.Datastore.Converters;
+using NzbDrone.Core.Doctor;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.History;
 using NzbDrone.Core.Download.Pending;
@@ -72,6 +73,8 @@ namespace NzbDrone.Core.Datastore
                   .Ignore(r => r.IsEmpty)
                   .Ignore(r => r.FreeSpace)
                   .Ignore(r => r.TotalSpace);
+
+            Mapper.Entity<DoctorFlag>("DoctorFlags").RegisterModel();
 
             Mapper.Entity<ScheduledTask>("ScheduledTasks").RegisterModel()
                   .Ignore(i => i.Priority);

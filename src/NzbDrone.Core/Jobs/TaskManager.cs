@@ -8,6 +8,7 @@ using NzbDrone.Core.Caching;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Configuration.Events;
 using NzbDrone.Core.DataAugmentation.Scene;
+using NzbDrone.Core.Doctor;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.Engine;
 using NzbDrone.Core.HealthCheck;
@@ -150,6 +151,12 @@ namespace NzbDrone.Core.Jobs
 
                     new ScheduledTask
                     {
+                        Interval = GetDoctorInterval(),
+                        TypeName = typeof(DoctorCommand).FullName
+                    },
+
+                    new ScheduledTask
+                    {
                         Interval = GetRssSyncInterval(),
                         TypeName = typeof(RssSyncCommand).FullName
                     }
@@ -203,6 +210,11 @@ namespace NzbDrone.Core.Jobs
             return intervalMinutes * 60 * 24;
         }
 
+        private int GetDoctorInterval()
+        {
+            return Math.Max(1, _configService.DoctorIntervalHours) * 60;
+        }
+
         private int GetRssSyncInterval()
         {
             var interval = _configService.RssSyncInterval;
@@ -248,10 +260,14 @@ namespace NzbDrone.Core.Jobs
             var backup = _scheduledTaskRepository.GetDefinition(typeof(BackupCommand));
             backup.Interval = GetBackupInterval();
 
-            _scheduledTaskRepository.UpdateMany(new List<ScheduledTask> { rss, backup });
+            var doctor = _scheduledTaskRepository.GetDefinition(typeof(DoctorCommand));
+            doctor.Interval = GetDoctorInterval();
+
+            _scheduledTaskRepository.UpdateMany(new List<ScheduledTask> { rss, backup, doctor });
 
             _cache.Find(rss.TypeName).Interval = rss.Interval;
             _cache.Find(backup.TypeName).Interval = backup.Interval;
+            _cache.Find(doctor.TypeName).Interval = doctor.Interval;
         }
     }
 }
