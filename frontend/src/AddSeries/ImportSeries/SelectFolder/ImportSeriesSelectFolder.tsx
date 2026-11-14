@@ -113,7 +113,9 @@ function ImportSeriesSelectFolder() {
               </ul>
             </details>
 
-            {hasRootFolders ? <RootFolders isSelectable={true} /> : null}
+            {hasRootFolders ? (
+              <RootFolders isSelectable={true} library="series" />
+            ) : null}
 
             {!isAdding && addError ? (
               <Alert className={styles.addErrorAlert} kind={kinds.DANGER}>

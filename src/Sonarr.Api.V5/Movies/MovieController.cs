@@ -47,7 +47,8 @@ public class MovieController : RestControllerWithSignalR<MovieResource, Movie>,
                            MovieAncestorValidator movieAncestorValidator,
                            SystemFolderValidator systemFolderValidator,
                            QualityProfileExistsValidator qualityProfileExistsValidator,
-                           RootFolderExistsValidator rootFolderExistsValidator)
+                           RootFolderExistsValidator rootFolderExistsValidator,
+                           MovieLibraryRootFolderValidator libraryValidator)
         : base(signalRBroadcaster)
     {
         _movieService = movieService;
@@ -62,6 +63,7 @@ public class MovieController : RestControllerWithSignalR<MovieResource, Movie>,
             .SetValidator(moviePathValidator)
             .SetValidator(movieAncestorValidator)
             .SetValidator(systemFolderValidator)
+            .SetValidator(libraryValidator)
             .When(m => m.Path.IsNotNullOrWhiteSpace());
 
         PostValidator.RuleFor(m => m.Path).Cascade(CascadeMode.Stop)
@@ -72,6 +74,7 @@ public class MovieController : RestControllerWithSignalR<MovieResource, Movie>,
             .NotEmpty()
             .IsValidPath()
             .SetValidator(rootFolderExistsValidator)
+            .SetValidator(libraryValidator)
             .When(m => m.Path.IsNullOrWhiteSpace());
 
         PutValidator.RuleFor(m => m.Path).Cascade(CascadeMode.Stop)

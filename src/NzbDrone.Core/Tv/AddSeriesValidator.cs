@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 using FluentValidation.Results;
 using NzbDrone.Core.Validation.Paths;
 
@@ -13,13 +13,15 @@ namespace NzbDrone.Core.Tv
     {
         public AddSeriesValidator(RootFolderValidator rootFolderValidator,
                                   SeriesPathValidator seriesPathValidator,
-                                  SeriesAncestorValidator seriesAncestorValidator)
+                                  SeriesAncestorValidator seriesAncestorValidator,
+                                  SeriesLibraryRootFolderValidator libraryValidator)
         {
             RuleFor(c => c.Path).Cascade(CascadeMode.Stop)
                 .IsValidPath()
                                 .SetValidator(rootFolderValidator)
                                 .SetValidator(seriesPathValidator)
-                                .SetValidator(seriesAncestorValidator);
+                                .SetValidator(seriesAncestorValidator)
+                                .SetValidator(libraryValidator);
         }
     }
 }

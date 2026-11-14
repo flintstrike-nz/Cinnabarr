@@ -2418,6 +2418,8 @@
   "RetentionHelpText": "Usenet only: Set to zero to set for unlimited retention",
   "RetryingDownloadOn": "Retrying download on {date} at {time}",
   "RootFolder": "Root Folder",
+  "RootFolderLibrary": "Library",
+  "RootFolderLibraryAny": "Any library",
   "RootFolderEmptyHealthCheckMessage": "Empty root folder: {rootFolderPath}",
   "RootFolderFoldersToImport": "{count} folders to import",
   "RootFolderMissingHealthCheckMessage": "Missing root folder: {rootFolderPath}",

@@ -1,4 +1,4 @@
-﻿using NzbDrone.Common.Extensions;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Core.RootFolders;
 using Sonarr.Http.REST;
 
@@ -11,6 +11,9 @@ public class RootFolderResource : RestResource
     public bool IsEmpty { get; set; }
     public long? FreeSpace { get; set; }
     public long? TotalSpace { get; set; }
+
+    // What the root folder holds: any, series or movies.
+    public LibraryType Library { get; set; }
 
     public List<UnmappedFolderResource> UnmappedFolders { get; set; } = [];
 }
@@ -40,6 +43,7 @@ public static class RootFolderResourceMapper
             IsEmpty = model.IsEmpty,
             FreeSpace = model.FreeSpace,
             TotalSpace = model.TotalSpace,
+            Library = model.Library,
             UnmappedFolders = model.UnmappedFolders.Select(f => new UnmappedFolderResource { Name = f.Name, Path = f.Path, RelativePath = f.RelativePath }).ToList()
         };
     }
@@ -50,7 +54,8 @@ public static class RootFolderResourceMapper
         {
             Id = resource.Id,
 
-            Path = resource.Path
+            Path = resource.Path,
+            Library = resource.Library
 
             // Accessible
             // IsEmpty

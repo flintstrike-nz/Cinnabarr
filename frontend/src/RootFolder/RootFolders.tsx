@@ -9,10 +9,16 @@ import styles from './RootFolders.module.css';
 
 interface RootFoldersProps {
   isSelectable?: boolean;
+
+  // Only the root folders that can hold this kind of library are listed.
+  library?: 'series' | 'movies';
 }
 
-function RootFolders({ isSelectable = false }: RootFoldersProps) {
-  const { isFetching, isFetched, error, data } = useRootFolders();
+function RootFolders({ isSelectable = false, library }: RootFoldersProps) {
+  const { isFetching, isFetched, error, data: all } = useRootFolders();
+  const data = library
+    ? all.filter((r) => r.library === 'any' || r.library === library)
+    : all;
 
   if (isFetching && !isFetched) {
     return <LoadingIndicator />;

@@ -9,7 +9,12 @@ import ConfirmModal from 'Components/Modal/ConfirmModal';
 import { icons, kinds, sizes } from 'Helpers/Props';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
-import { RootFolder, useDeleteRootFolder } from './useRootFolders';
+import {
+  RootFolder,
+  RootFolderLibrary,
+  useDeleteRootFolder,
+  useSetRootFolderLibrary,
+} from './useRootFolders';
 import styles from './RootFolderRow.module.css';
 
 interface RootFolderRowProps extends RootFolder {
@@ -57,6 +62,14 @@ function RootFolderRow(props: RootFolderRowProps) {
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const { deleteRootFolder } = useDeleteRootFolder(id);
+  const { setLibrary, isSaving } = useSetRootFolderLibrary(props);
+
+  const handleLibraryChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      setLibrary(event.target.value as RootFolderLibrary);
+    },
+    [setLibrary]
+  );
 
   const handleDeletePress = useCallback(() => {
     setIsDeleteModalOpen(true);
@@ -129,6 +142,19 @@ function RootFolderRow(props: RootFolderRowProps) {
         </div>
 
         {renderBadge(isUnavailable, isEmpty)}
+
+        {isSelectable ? null : (
+          <select
+            aria-label={translate('RootFolderLibrary')}
+            value={props.library}
+            disabled={isSaving}
+            onChange={handleLibraryChange}
+          >
+            <option value="any">{translate('RootFolderLibraryAny')}</option>
+            <option value="series">{translate('Series')}</option>
+            <option value="movies">{translate('Movies')}</option>
+          </select>
+        )}
 
         {isSelectable || isUnavailable ? null : (
           <Button
