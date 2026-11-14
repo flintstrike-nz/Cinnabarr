@@ -10,6 +10,12 @@
   flex: 1 1 auto;
 }
 
+@media (max-width: 767px) {
+  .main {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom));
+  }
+}
+
 @media (--breakpointSmall) {
   .page {
     flex-grow: 1;

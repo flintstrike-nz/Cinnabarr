@@ -5,6 +5,7 @@ import Icon from 'Components/Icon';
 import Button from 'Components/Link/Button';
 import Link from 'Components/Link/Link';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
+import AddMediaTabs from 'Components/Page/AddMediaTabs';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import PageHeading from 'Components/Page/PageHeading';
@@ -207,6 +208,8 @@ function AddNewMovie() {
   return (
     <PageContent title={translate('AddNewMovie')}>
       <PageContentBody>
+        <AddMediaTabs />
+
         <PageHeading
           scope={translate('Media')}
           title={translate('AddNewMovie')}

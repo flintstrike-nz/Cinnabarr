@@ -6,6 +6,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useAppDimension } from 'App/appStore';
 import { SelectProvider, useSelect } from 'App/Select/SelectContext';
 import CommandNames from 'Commands/CommandNames';
 import { useCommandExecuting, useExecuteCommand } from 'Commands/useCommands';
@@ -40,6 +41,7 @@ import {
 } from 'Utilities/pagePopulator';
 import translate from 'Utilities/String/translate';
 import EngineToolbarItems from './Engine/EngineToolbarItems';
+import QueueCards from './QueueCards';
 import QueueFilterModal from './QueueFilterModal';
 import QueueFilterTabs from './QueueFilterTabs';
 import {
@@ -118,6 +120,8 @@ function QueueContent() {
     isFetched: isEpisodesFetched,
     error: episodesError,
   } = useEpisodes({ episodeIds });
+
+  const isSmallScreen = useAppDimension('isSmallScreen');
 
   const customFilters = useCustomFiltersList('queue');
 
@@ -300,34 +304,37 @@ function QueueContent() {
 
         {isAllPopulated && !hasError && !!records.length ? (
           <div>
-            <Table
-              selectAll={true}
-              allSelected={allSelected}
-              allUnselected={allUnselected}
-              columns={columns}
-              pageSize={pageSize}
-              sortKey={sortKey}
-              sortDirection={sortDirection}
-              onTableOptionChange={handleTableOptionChange}
-              onSelectAllChange={handleSelectAllChange}
-              onSortPress={handleSortPress}
-            >
-              <TableBody>
-                {records.map((item) => {
-                  return (
-                    <QueueRow
-                      key={item.id}
-                      columns={columns}
-                      racingSources={racing.get(getRaceKey(item)) ?? 0}
-                      {...item}
-                      onQueueRowModalOpenOrClose={
-                        handleQueueRowModalOpenOrClose
-                      }
-                    />
-                  );
-                })}
-              </TableBody>
-            </Table>
+            {isSmallScreen ? <QueueCards records={records} /> : null}
+            {isSmallScreen ? null : (
+              <Table
+                selectAll={true}
+                allSelected={allSelected}
+                allUnselected={allUnselected}
+                columns={columns}
+                pageSize={pageSize}
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onTableOptionChange={handleTableOptionChange}
+                onSelectAllChange={handleSelectAllChange}
+                onSortPress={handleSortPress}
+              >
+                <TableBody>
+                  {records.map((item) => {
+                    return (
+                      <QueueRow
+                        key={item.id}
+                        columns={columns}
+                        racingSources={racing.get(getRaceKey(item)) ?? 0}
+                        {...item}
+                        onQueueRowModalOpenOrClose={
+                          handleQueueRowModalOpenOrClose
+                        }
+                      />
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
 
             <TablePager
               page={page}

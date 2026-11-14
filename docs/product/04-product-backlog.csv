@@ -95,3 +95,4 @@ BL-129,Library,Doctor button and page (renamed Reorganise); duplicate flagging t
 BL-130,Library,Doctor duplicate flagging backend (scoring; 7-day retention; nightly task; API),Story,,Done,M,H,BL-129,Done,Done
 BL-131,Library,Doctor review screen with screenshots; badge; schedule settings,Story,,Done,M,H,BL-130,Done,Done
 BL-132,Library,Movies page parity with Series (poster grid; status bars; toolbar; view/sort/filter; jump bar),Story,,Done,M,H,,Done,Done
+BL-133,Mobile,Mobile view: bottom tab bar (Library/Add/Downloads/Menu), download cards, Series/Movies add tabs,Story,,Done,M,H,,Done,Done
