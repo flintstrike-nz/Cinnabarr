@@ -87,3 +87,5 @@ A move updates the library path and tells Jellyfin / Emby (if connected in Setti
 6. **PlayStation 2** games are listed and get cover art, but cannot be played in a browser: the browser emulator has no PS2 core.
 
 Cinnabarr does not find, download or link to ROMs. It only manages files you already have.
+
+**On the TV:** open `http://<your-pc>:8989/tv` in the TV's web browser for a controller-driven launcher. See [TV.md](TV.md).

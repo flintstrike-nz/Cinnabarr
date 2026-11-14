@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Cinnabarr Games</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #101014; color: #f2f2f4; font-family: Arial, sans-serif; }
+      body { display: flex; align-items: center; justify-content: center; text-align: center; font-size: 30px; }
+      small { display: block; margin-top: 18px; font-size: 20px; color: #a8a8b3; }
+    </style>
+    <script src="config.js"></script>
+  </head>
+  <body>
+    <div id="m">Opening Cinnabarr Games…<small id="u"></small></div>
+    <script>
+      // This app only opens the Cinnabarr games page on your server. The address is set when the app is built (build.sh).
+      var url = window.CINNABARR_URL;
+      document.getElementById('u').textContent = url || '';
+      if (url) {
+        setTimeout(function () { location.replace(url); }, 400);
+      } else {
+        document.getElementById('m').textContent = 'No server address set. Rebuild the app with build.sh <address>.';
+      }
+    </script>
+  </body>
+</html>

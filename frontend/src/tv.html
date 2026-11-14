@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Cinnabarr games on the TV" />
+    <title>Cinnabarr Games</title>
+    <style>
+      /* Plain CSS and plain JavaScript (no modern syntax): this page has to run on a TV browser as old as Chromium 79. */
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; background: #101014; color: #f2f2f4; font-family: Arial, Helvetica, sans-serif; overflow: hidden; }
+      #app { height: 100%; display: flex; flex-direction: column; }
+      header { display: flex; align-items: center; padding: 20px 48px 8px; }
+      header h1 { margin: 0 32px 0 0; font-size: 34px; color: #e34234; letter-spacing: .5px; }
+      #tabs { display: flex; flex-wrap: wrap; }
+      .tab { margin-right: 12px; padding: 8px 20px; border-radius: 24px; background: #26262e; font-size: 22px; }
+      .tab.on { background: #e34234; color: #fff; }
+      #grid { flex: 1 1 auto; overflow-y: auto; padding: 16px 48px 24px; display: grid; grid-template-columns: repeat(auto-fill, 230px); grid-gap: 28px 24px; align-content: start; }
+      .tile { width: 230px; }
+      .cover { position: relative; width: 230px; height: 306px; border-radius: 14px; overflow: hidden; background: #26262e; display: flex; align-items: center; justify-content: center; text-align: center; padding: 14px; font-size: 22px; font-weight: bold; border: 6px solid transparent; }
+      .cover img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+      .badge { position: absolute; top: 8px; left: 8px; z-index: 1; padding: 3px 10px; border-radius: 12px; background: #e34234; font-size: 15px; text-transform: uppercase; }
+      .tile.sel .cover { border-color: #fff; box-shadow: 0 0 0 4px #e34234, 0 14px 32px rgba(0,0,0,.6); }
+      .name { margin-top: 10px; font-size: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .sub { margin-top: 2px; font-size: 16px; color: #a8a8b3; }
+      footer { padding: 10px 48px 18px; font-size: 20px; color: #a8a8b3; display: flex; justify-content: space-between; }
+      #toast { position: fixed; left: 50%; bottom: 70px; transform: translateX(-50%); padding: 14px 28px; border-radius: 12px; background: #e34234; font-size: 24px; opacity: 0; transition: opacity .25s; z-index: 50; max-width: 80%; text-align: center; }
+      #toast.show { opacity: 1; }
+      #player { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #000; z-index: 20; display: none; }
+      #game { width: 100%; height: 100%; }
+      #hint { position: fixed; top: 12px; right: 18px; z-index: 30; font-size: 18px; color: #fff; background: rgba(0,0,0,.55); padding: 6px 14px; border-radius: 10px; display: none; }
+      #debug { position: fixed; top: 70px; right: 20px; z-index: 40; width: 560px; padding: 12px 16px; background: rgba(0,0,0,.85); border-radius: 10px; font: 16px monospace; white-space: pre-wrap; display: none; }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <header><h1>Cinnabarr Games</h1><div id="tabs"></div></header>
+      <div id="grid"></div>
+      <footer><span id="hints">Bottom button: play &nbsp; Right button: back &nbsp; LB / RB: platform</span><span id="pad">No controller yet: press a button on it</span></footer>
+    </div>
+    <div id="player"><div id="game"></div></div>
+    <div id="hint">Back (remote) or hold Select + Start to leave</div>
+    <div id="toast"></div>
+    <div id="debug"></div>
+
+    <script>
+      (function () {
+        'use strict';
+
+        var base = '';
+        var key = '';
+        var games = [];
+        var platforms = [];
+        var filter = 'all';
+        var index = 0;
+        var mode = 'library';
+        var EMULATOR = 'https://cdn.emulatorjs.org/stable/data/';
+        var grid = document.getElementById('grid');
+        var tabs = document.getElementById('tabs');
+        var toastEl = document.getElementById('toast');
+        var debugOn = /[?&]debug=1/.test(location.search);
+
+        function api(path, options) {
+          options = options || {};
+          options.headers = { 'X-Api-Key': key };
+          return fetch(base + '/api/v5' + path, options).then(function (r) { return r.ok ? r.json() : Promise.reject(new Error(r.status)); });
+        }
+
+        function toast(text) {
+          toastEl.textContent = text;
+          toastEl.className = 'show';
+          clearTimeout(toast.t);
+          toast.t = setTimeout(function () { toastEl.className = ''; }, 3500);
+        }
+
+        function visible() {
+          return games.filter(function (g) { return filter === 'all' || g.platformKey === filter; });
+        }
+
+        function renderTabs() {
+          var present = platforms.filter(function (p) { return games.some(function (g) { return g.platformKey === p.key; }); });
+          var list = [{ key: 'all', name: 'All' }].concat(present);
+          tabs.innerHTML = '';
+          list.forEach(function (p) {
+            var el = document.createElement('div');
+            el.className = 'tab' + (p.key === filter ? ' on' : '');
+            el.textContent = p.name;
+            tabs.appendChild(el);
+          });
+          renderTabs.list = list;
+        }
+
+        function renderGrid() {
+          var list = visible();
+          grid.innerHTML = '';
+          list.forEach(function (g, i) {
+            var tile = document.createElement('div');
+            tile.className = 'tile' + (i === index ? ' sel' : '');
+            var cover = document.createElement('div');
+            cover.className = 'cover';
+            if (g.hasCover) {
+              var img = document.createElement('img');
+              img.src = base + '/api/v5/game/' + g.id + '/cover?apikey=' + encodeURIComponent(key);
+              cover.appendChild(img);
+            } else {
+              cover.appendChild(document.createTextNode(g.title));
+            }
+            var badge = document.createElement('span');
+            badge.className = 'badge';
+            badge.textContent = g.platformKey;
+            cover.appendChild(badge);
+            var name = document.createElement('div');
+            name.className = 'name';
+            name.textContent = g.title;
+            var sub = document.createElement('div');
+            sub.className = 'sub';
+            sub.textContent = [g.platformName, g.year].filter(Boolean).join(' · ');
+            tile.appendChild(cover);
+            tile.appendChild(name);
+            tile.appendChild(sub);
+            grid.appendChild(tile);
+          });
+          if (!list.length) {
+            grid.textContent = 'No games yet. Add a Games root folder in Cinnabarr and scan.';
+          }
+        }
+
+        function select(newIndex) {
+          var list = visible();
+          if (!list.length) { return; }
+          index = Math.max(0, Math.min(list.length - 1, newIndex));
+          var tiles = grid.children;
+          for (var i = 0; i < tiles.length; i++) {
+            tiles[i].className = 'tile' + (i === index ? ' sel' : '');
+          }
+          if (tiles[index] && tiles[index].scrollIntoView) { tiles[index].scrollIntoView({ block: 'center' }); }
+        }
+
+        function columns() {
+          var tiles = grid.children;
+          if (tiles.length < 2) { return 1; }
+          var top = tiles[0].offsetTop;
+          var n = 0;
+          while (n < tiles.length && tiles[n].offsetTop === top) { n++; }
+          return Math.max(1, n);
+        }
+
+        function setFilter(step) {
+          var list = renderTabs.list;
+          var at = 0;
+          for (var i = 0; i < list.length; i++) { if (list[i].key === filter) { at = i; } }
+          filter = list[(at + step + list.length) % list.length].key;
+          index = 0;
+          renderTabs();
+          renderGrid();
+        }
+
+        function play(game) {
+          api('/game/' + game.id + '/play').then(function (info) {
+            if (!info.playable) { toast(info.reason || 'This game cannot be played here.'); return; }
+            if (info.needsBios && !info.hasBios) { toast('This needs a PlayStation BIOS at config/bios/psx.bin on the server.'); return; }
+
+            mode = 'play';
+            document.getElementById('player').style.display = 'block';
+            document.getElementById('hint').style.display = 'block';
+            setTimeout(function () { document.getElementById('hint').style.display = 'none'; }, 6000);
+
+            window.EJS_player = '#game';
+            window.EJS_core = info.core;
+            window.EJS_gameName = game.title;
+            window.EJS_gameUrl = base + '/api/v5/game/' + game.id + '/rom?apikey=' + encodeURIComponent(key);
+            window.EJS_pathtodata = EMULATOR;
+            window.EJS_startOnLoaded = true;
+            if (info.hasState) { window.EJS_loadStateURL = base + '/api/v5/game/' + game.id + '/state?apikey=' + encodeURIComponent(key); }
+            if (info.hasBios) { window.EJS_biosUrl = base + '/api/v5/game/bios/' + game.platformKey + '?apikey=' + encodeURIComponent(key); }
+            window.EJS_onSaveState = function (e) {
+              fetch(base + '/api/v5/game/' + game.id + '/state', { method: 'PUT', headers: { 'X-Api-Key': key, 'Content-Type': 'application/octet-stream' }, body: new Blob([e.state]) });
+            };
+
+            var script = document.createElement('script');
+            script.src = EMULATOR + 'loader.js';
+            document.body.appendChild(script);
+          }).catch(function () { toast('Could not start the game.'); });
+        }
+
+        function leave() {
+          // The emulator cannot be unloaded cleanly; starting over is the safe way out.
+          location.href = location.pathname;
+        }
+
+        function press(action) {
+          if (mode === 'play') {
+            if (action === 'back') { leave(); }
+            return;
+          }
+          var cols = columns();
+          if (action === 'left') { select(index - 1); }
+          else if (action === 'right') { select(index + 1); }
+          else if (action === 'up') { select(index - cols); }
+          else if (action === 'down') { select(index + cols); }
+          else if (action === 'prev') { setFilter(-1); }
+          else if (action === 'next') { setFilter(1); }
+          else if (action === 'ok') { var g = visible()[index]; if (g) { play(g); } }
+        }
+
+        document.addEventListener('keydown', function (e) {
+          var map = { 37: 'left', 39: 'right', 38: 'up', 40: 'down', 13: 'ok', 461: 'back', 27: 'back', 8: 'back', 33: 'prev', 34: 'next' };
+          var action = map[e.keyCode];
+          if (!action) { return; }
+          if (mode === 'play' && action !== 'back') { return; }
+          if (mode === 'play' && e.keyCode === 8) { return; }
+          e.preventDefault();
+          press(action);
+        });
+
+        // Gamepads: the bottom face button plays, the right one goes back, the d-pad or left stick moves,
+        // LB / RB change platform. Holding Select + Start leaves a game.
+        var held = {};
+        var comboSince = 0;
+        var padLabel = document.getElementById('pad');
+        var debug = document.getElementById('debug');
+
+        function edge(id, down, repeat, action) {
+          var now = Date.now();
+          var s = held[id];
+          if (down) {
+            if (!s) { held[id] = { at: now, next: now + 420 }; press(action); }
+            else if (repeat && now >= s.next) { s.next = now + 130; press(action); }
+          } else { held[id] = null; }
+        }
+
+        function poll() {
+          var pads = navigator.getGamepads ? navigator.getGamepads() : [];
+          var any = false;
+          var lines = [];
+          for (var p = 0; p < pads.length; p++) {
+            var pad = pads[p];
+            if (!pad || !pad.connected) { continue; }
+            any = true;
+            var b = pad.buttons;
+            function on(i) { return !!(b[i] && b[i].pressed); }
+            var x = pad.axes[0] || 0;
+            var y = pad.axes[1] || 0;
+            var k = 'p' + p;
+            edge(k + 'l', on(14) || x < -0.6, true, 'left');
+            edge(k + 'r', on(15) || x > 0.6, true, 'right');
+            edge(k + 'u', on(12) || y < -0.6, true, 'up');
+            edge(k + 'd', on(13) || y > 0.6, true, 'down');
+            edge(k + 'a', on(0) || on(9), false, 'ok');
+            edge(k + 'b', on(1) && mode === 'library', false, 'back');
+            edge(k + 'lb', on(4), false, 'prev');
+            edge(k + 'rb', on(5), false, 'next');
+            if (mode === 'play' && on(8) && on(9)) {
+              comboSince = comboSince || Date.now();
+              if (Date.now() - comboSince > 1500) { leave(); }
+            } else { comboSince = 0; }
+            padLabel.textContent = pad.id.slice(0, 48);
+            if (debugOn) {
+              var pressed = [];
+              for (var i = 0; i < b.length; i++) { if (b[i].pressed) { pressed.push(i); } }
+              lines.push('pad ' + p + ': ' + pad.id + '\nmapping: "' + pad.mapping + '"  buttons: ' + b.length + '  axes: ' + pad.axes.length + '\npressed: [' + pressed.join(', ') + ']\naxes: ' + pad.axes.map(function (a) { return a.toFixed(2); }).join(' '));
+            }
+          }
+          if (!any) { padLabel.textContent = 'No controller yet: press a button on it'; }
+          if (debugOn) { debug.style.display = 'block'; debug.textContent = lines.join('\n\n') || 'no controller detected'; }
+          requestAnimationFrame(poll);
+        }
+
+        fetch('/initialize.json').then(function (r) { return r.json(); }).then(function (init) {
+          key = init.apiKey;
+          base = init.urlBase || '';
+          return Promise.all([api('/game'), api('/game/platform')]);
+        }).then(function (results) {
+          games = results[0].sort(function (a, b) { return (a.platformKey + a.sortTitle).localeCompare(b.platformKey + b.sortTitle); });
+          platforms = results[1];
+          renderTabs();
+          renderGrid();
+          select(0);
+          requestAnimationFrame(poll);
+        }).catch(function () {
+          grid.textContent = 'Could not reach Cinnabarr. If it asks you to sign in, open the normal page once on this TV first.';
+        });
+      })();
+    </script>
+  </body>
+</html>
