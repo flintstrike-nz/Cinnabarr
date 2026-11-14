@@ -15,7 +15,7 @@ namespace NzbDrone.Core.Doctor
     {
         List<DoctorFlag> GetFlags();
         int Scan();
-        void Recover(int flagId);
+        void Recover(int flagId, bool keepBoth);
         void Delete(int flagId);
         int DeleteExpired();
     }
@@ -166,12 +166,27 @@ namespace NzbDrone.Core.Doctor
 
         // Keeps the file. The other copies of the same thing are flagged on the next scan, so this also works for
         // choosing the flagged copy over the one Doctor kept.
-        public void Recover(int flagId)
+        public void Recover(int flagId, bool keepBoth)
         {
             var flag = _flags.Get(flagId);
 
             flag.State = DoctorFlagState.Recovered;
             _flags.Update(flag);
+
+            // Keeping both: the other copy is protected too, so neither is flagged again.
+            if (keepBoth && !_flags.GetByItem(flag.MediaType, flag.ItemId).Any(f => f.FileId == flag.KeptFileId))
+            {
+                _flags.Insert(new DoctorFlag
+                {
+                    MediaType = flag.MediaType,
+                    ItemId = flag.ItemId,
+                    FileId = flag.KeptFileId,
+                    KeptFileId = flag.FileId,
+                    Reason = "Kept by you",
+                    State = DoctorFlagState.Recovered,
+                    FlaggedAt = DateTime.UtcNow
+                });
+            }
 
             Scan();
         }

@@ -53,8 +53,10 @@ public class DoctorController : Controller
     private readonly IMovieService _movieService;
     private readonly IMediaFileService _episodeFileService;
     private readonly IMovieFileService _movieFileService;
+    private readonly IDoctorScreenshotService _screenshotService;
 
     public DoctorController(IDoctorService doctorService,
+                            IDoctorScreenshotService screenshotService,
                             IConfigService configService,
                             ISeriesService seriesService,
                             IMovieService movieService,
@@ -62,6 +64,7 @@ public class DoctorController : Controller
                             IMovieFileService movieFileService)
     {
         _doctorService = doctorService;
+        _screenshotService = screenshotService;
         _configService = configService;
         _seriesService = seriesService;
         _movieService = movieService;
@@ -108,9 +111,9 @@ public class DoctorController : Controller
     }
 
     [HttpPost("{id:int}/recover")]
-    public Ok Recover([FromRoute] int id)
+    public Ok Recover([FromRoute] int id, [FromQuery] bool keepBoth = false)
     {
-        _doctorService.Recover(id);
+        _doctorService.Recover(id, keepBoth);
 
         return TypedResults.Ok();
     }
@@ -121,6 +124,15 @@ public class DoctorController : Controller
         _doctorService.Delete(id);
 
         return TypedResults.Ok();
+    }
+
+    [HttpGet("screenshot/{mediaType}/{fileId:int}/{index:int}")]
+    public IActionResult GetScreenshot([FromRoute] string mediaType, [FromRoute] int fileId, [FromRoute] int index)
+    {
+        var type = mediaType.Equals("movie", StringComparison.OrdinalIgnoreCase) ? DoctorMediaType.Movie : DoctorMediaType.Series;
+        var path = _screenshotService.GetScreenshot(type, fileId, index);
+
+        return path == null ? NotFound() : PhysicalFile(path, "image/jpeg");
     }
 
     [HttpGet("settings")]

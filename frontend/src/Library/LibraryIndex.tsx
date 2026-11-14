@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
+import Icon from 'Components/Icon';
 import Button from 'Components/Link/Button';
 import Link from 'Components/Link/Link';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
@@ -6,7 +7,8 @@ import ConfirmModal from 'Components/Modal/ConfirmModal';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import PageHeading from 'Components/Page/PageHeading';
-import { kinds } from 'Helpers/Props';
+import DoctorBadge from 'Doctor/DoctorBadge';
+import { icons, kinds } from 'Helpers/Props';
 import { useMovies } from 'Movie/useMovies';
 import SeriesPoster from 'Series/SeriesPoster';
 import useSeries from 'Series/useSeries';
@@ -263,6 +265,11 @@ function LibraryIndex() {
               <Button onPress={handleSelectToggle}>
                 {isSelecting ? translate('Cancel') : translate('Select')}
               </Button>
+              <DoctorBadge>
+                <Button to="/doctor">
+                  <Icon name={icons.DOCTOR} /> {translate('Doctor')}
+                </Button>
+              </DoctorBadge>
               <Button to="/add/new">{translate('AddNew')}</Button>
               <Button to="/add/movie" kind={kinds.PRIMARY}>
                 {translate('AddMovie')}

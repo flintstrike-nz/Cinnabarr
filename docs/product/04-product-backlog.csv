@@ -93,3 +93,4 @@ BL-127,Addendum C,Per-source legal opt-in and cookie handling,Task,C-09,Future,M
 BL-128,Library,Per-library root folders (series vs movies),Story,,Done,S,H,,Done,Done
 BL-129,Library,Doctor button and page (renamed Reorganise); duplicate flagging to follow,Story,,Done,S,H,,Done,Done
 BL-130,Library,Doctor duplicate flagging backend (scoring; 7-day retention; nightly task; API),Story,,Done,M,H,BL-129,Done,Done
+BL-131,Library,Doctor review screen with screenshots; badge; schedule settings,Story,,Done,M,H,BL-130,Done,Done

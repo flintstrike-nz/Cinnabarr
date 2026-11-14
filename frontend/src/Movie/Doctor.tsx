@@ -6,6 +6,8 @@ import ConfirmModal from 'Components/Modal/ConfirmModal';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import PageHeading from 'Components/Page/PageHeading';
+import DoctorReview from 'Doctor/DoctorReview';
+import DoctorSettingsPanel from 'Doctor/DoctorSettingsPanel';
 import useApiMutation from 'Helpers/Hooks/useApiMutation';
 import useApiQuery from 'Helpers/Hooks/useApiQuery';
 import { kinds } from 'Helpers/Props';
@@ -113,6 +115,13 @@ function Doctor() {
     sendCommand({ name: 'ReorganiseLibrary' });
   }, [sendCommand]);
 
+  const handleRunPress = useCallback(() => {
+    sendCommand({ name: 'Doctor' });
+    setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: ['/doctor'] });
+    }, 6000);
+  }, [sendCommand, queryClient]);
+
   const handleUndo = useCallback(
     (runId: string) => {
       sendCommand({ name: 'ReorganiseUndo', runId });
@@ -126,6 +135,16 @@ function Doctor() {
         <PageHeading title={translate('Doctor')} />
 
         <p>{translate('DoctorCaption')}</p>
+
+        <Button isDisabled={isPending} onPress={handleRunPress}>
+          {translate('DoctorRunNow')}
+        </Button>
+
+        <DoctorReview />
+
+        <DoctorSettingsPanel />
+
+        <h3>{translate('Reorganise')}</h3>
         <p>{translate('ReorganiseCaption')}</p>
 
         {isLoading ? <LoadingIndicator /> : null}
