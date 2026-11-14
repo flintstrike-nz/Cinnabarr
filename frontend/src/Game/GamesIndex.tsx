@@ -11,7 +11,8 @@ import { icons, kinds } from 'Helpers/Props';
 import formatBytes from 'Utilities/Number/formatBytes';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
-import { useGamePlatforms, useGames } from './useGames';
+import GameMetadataSettings from './GameMetadataSettings';
+import { getCoverUrl, useGamePlatforms, useGames } from './useGames';
 import styles from './GamesIndex.module.css';
 
 interface PlatformButtonProps {
@@ -111,21 +112,37 @@ function GamesIndex() {
         <div className={styles.grid}>
           {visible.map((game) => (
             <div key={game.id} className={styles.tile}>
-              <div className={styles.cover}>
+              <div className={styles.cover} title={game.overview}>
+                {game.hasCover ? (
+                  <img
+                    className={styles.coverImage}
+                    src={getCoverUrl(game.id)}
+                    alt={game.title}
+                    loading="lazy"
+                  />
+                ) : (
+                  game.title
+                )}
                 <span className={styles.platform}>{game.platformKey}</span>
-                {game.title}
               </div>
               <div className={styles.title} title={game.title}>
                 {game.title}
               </div>
               <div className={styles.info}>
-                {[game.platformName, game.region, formatBytes(game.size)]
+                {[
+                  game.platformName,
+                  game.year,
+                  game.genres?.split(',')[0],
+                  formatBytes(game.size),
+                ]
                   .filter(Boolean)
                   .join(' · ')}
               </div>
             </div>
           ))}
         </div>
+
+        <GameMetadataSettings />
       </PageContentBody>
     </PageContent>
   );

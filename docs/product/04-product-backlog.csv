@@ -106,3 +106,4 @@ BL-140,Games,G4 Jellyfin on LG webOS (prototype first),Story,,Blocked on TV deta
 BL-141,Update,Update banner (GitHub commit check) and cron update script,Story,,Done,S,H,,Done,Done
 BL-142,Games,G1 Games page and root folder Games option (frontend),Story,,Done,S,H,BL-137,Done,Done
 BL-143,Games,G2a IGDB metadata and covers (backend): settings; token; search; apply; cover cache; API,Story,,Done (needs live IGDB key to verify),M,H,BL-138,Done,Done
+BL-144,Games,G2a frontend: covers on tiles; IGDB settings panel with test,Story,,Done,S,H,BL-143,Done,Done
