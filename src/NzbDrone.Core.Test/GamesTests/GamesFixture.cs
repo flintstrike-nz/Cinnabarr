@@ -101,4 +101,67 @@ namespace NzbDrone.Core.Test.GamesTests
             games.Single(g => g.Title == "Alex Kidd in Miracle World").PlatformKey.Should().Be("sms");
         }
     }
+
+    [TestFixture]
+    public class IgdbMatcherFixture
+    {
+        [Test]
+        public void should_prefer_the_result_with_the_same_name()
+        {
+            var results = new[]
+            {
+                new IgdbGame { Id = 1, Name = "Super Mario World 2: Yoshi's Island" },
+                new IgdbGame { Id = 2, Name = "Super Mario World" }
+            };
+
+            IgdbMatcher.PickBest("Super Mario World", results).Id.Should().Be(2);
+        }
+
+        [Test]
+        public void should_take_the_first_result_without_an_exact_name()
+        {
+            var results = new[] { new IgdbGame { Id = 5, Name = "Alex Kidd in Miracle World" } };
+
+            IgdbMatcher.PickBest("Alex Kidd", results).Id.Should().Be(5);
+        }
+
+        [Test]
+        public void should_find_nothing_in_no_results()
+        {
+            IgdbMatcher.PickBest("Anything", new IgdbGame[0]).Should().BeNull();
+        }
+
+        [Test]
+        public void should_build_a_cover_url_from_the_image_id()
+        {
+            IgdbMatcher.CoverUrl(new IgdbGame { Cover = new IgdbCover { ImageId = "co1abc" } }).Should().Be("https://images.igdb.com/igdb/image/upload/t_cover_big/co1abc.jpg");
+            IgdbMatcher.CoverUrl(new IgdbGame()).Should().BeNull();
+        }
+
+        [Test]
+        public void should_copy_the_details_onto_the_game()
+        {
+            var game = new Game { Title = "Super Mario World" };
+
+            GameMetadataService.Apply(game, new IgdbGame
+            {
+                Id = 7,
+                Summary = "Jump.",
+                FirstReleaseDate = 658195200, // 1990-11-12
+                Rating = 91.6,
+                Genres = new System.Collections.Generic.List<IgdbName> { new IgdbName { Name = "Platform" }, new IgdbName { Name = "Adventure" } },
+                InvolvedCompanies = new System.Collections.Generic.List<IgdbInvolvedCompany>
+                {
+                    new IgdbInvolvedCompany { Developer = false, Company = new IgdbName { Name = "Publisher Co" } },
+                    new IgdbInvolvedCompany { Developer = true, Company = new IgdbName { Name = "Nintendo EAD" } }
+                }
+            });
+
+            game.IgdbId.Should().Be(7);
+            game.Year.Should().Be(1990);
+            game.Genres.Should().Be("Platform, Adventure");
+            game.Developer.Should().Be("Nintendo EAD");
+            game.Rating.Should().Be(92);
+        }
+    }
 }

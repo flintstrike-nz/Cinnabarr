@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Games;
 using Sonarr.Http;
 
@@ -18,6 +19,27 @@ public class GameResource
     public string? Path { get; set; }
     public long Size { get; set; }
     public DateTime Added { get; set; }
+    public string? Overview { get; set; }
+    public int? Year { get; set; }
+    public string? Genres { get; set; }
+    public string? Developer { get; set; }
+    public double? Rating { get; set; }
+    public bool HasCover { get; set; }
+}
+
+public class GameSettingsResource
+{
+    public string? IgdbClientId { get; set; }
+
+    // Never sent back; an empty value on save keeps the one already stored.
+    public string? IgdbClientSecret { get; set; }
+    public bool HasIgdbClientSecret { get; set; }
+}
+
+public class GameSettingsTestResource
+{
+    public bool Ok { get; set; }
+    public string? Message { get; set; }
 }
 
 public class GamePlatformResource
@@ -33,10 +55,16 @@ public class GamePlatformResource
 public class GameController : Controller
 {
     private readonly IGameService _gameService;
+    private readonly IGameCoverService _coverService;
+    private readonly IIgdbClient _igdb;
+    private readonly IConfigService _configService;
 
-    public GameController(IGameService gameService)
+    public GameController(IGameService gameService, IGameCoverService coverService, IIgdbClient igdb, IConfigService configService)
     {
         _gameService = gameService;
+        _coverService = coverService;
+        _igdb = igdb;
+        _configService = configService;
     }
 
     [HttpGet]
@@ -59,6 +87,48 @@ public class GameController : Controller
         _gameService.Delete(id, deleteFile);
 
         return TypedResults.Ok();
+    }
+
+    [HttpGet("{id:int}/cover")]
+    public IActionResult GetCover([FromRoute] int id)
+    {
+        var path = _coverService.GetCoverPath(_gameService.Get(id));
+
+        return path == null ? NotFound() : PhysicalFile(path, "image/jpeg");
+    }
+
+    [HttpGet("settings")]
+    [Produces("application/json")]
+    public Ok<GameSettingsResource> GetSettings()
+    {
+        return TypedResults.Ok(new GameSettingsResource
+        {
+            IgdbClientId = _configService.IgdbClientId,
+            HasIgdbClientSecret = !string.IsNullOrEmpty(_configService.IgdbClientSecret)
+        });
+    }
+
+    [HttpPut("settings")]
+    [Produces("application/json")]
+    public Ok<GameSettingsResource> PutSettings([FromBody] GameSettingsResource resource)
+    {
+        _configService.IgdbClientId = resource.IgdbClientId?.Trim() ?? string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(resource.IgdbClientSecret))
+        {
+            _configService.IgdbClientSecret = resource.IgdbClientSecret.Trim();
+        }
+
+        return GetSettings();
+    }
+
+    [HttpPost("settings/test")]
+    [Produces("application/json")]
+    public Ok<GameSettingsTestResource> TestSettings()
+    {
+        var message = _igdb.TestConnection();
+
+        return TypedResults.Ok(new GameSettingsTestResource { Ok = string.IsNullOrEmpty(message), Message = message });
     }
 
     [HttpGet("platform")]
@@ -87,7 +157,13 @@ public class GameController : Controller
             RootFolderPath = game.RootFolderPath,
             Path = game.Path,
             Size = game.Size,
-            Added = game.Added
+            Added = game.Added,
+            Overview = game.Overview,
+            Year = game.Year,
+            Genres = game.Genres,
+            Developer = game.Developer,
+            Rating = game.Rating,
+            HasCover = !string.IsNullOrEmpty(game.CoverUrl)
         };
     }
 }

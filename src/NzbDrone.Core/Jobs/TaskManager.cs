@@ -165,6 +165,12 @@ namespace NzbDrone.Core.Jobs
 
                     new ScheduledTask
                     {
+                        Interval = 24 * 60,
+                        TypeName = typeof(RefreshGameMetadataCommand).FullName
+                    },
+
+                    new ScheduledTask
+                    {
                         Interval = GetDoctorInterval(),
                         TypeName = typeof(DoctorCommand).FullName
                     },

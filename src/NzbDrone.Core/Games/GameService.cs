@@ -23,18 +23,21 @@ namespace NzbDrone.Core.Games
         private readonly IRootFolderService _rootFolderService;
         private readonly IDiskProvider _diskProvider;
         private readonly IRecycleBinProvider _recycleBinProvider;
+        private readonly IManageCommandQueue _commandQueue;
         private readonly Logger _logger;
 
         public GameService(IGameRepository repository,
                            IRootFolderService rootFolderService,
                            IDiskProvider diskProvider,
                            IRecycleBinProvider recycleBinProvider,
+                           IManageCommandQueue commandQueue,
                            Logger logger)
         {
             _repository = repository;
             _rootFolderService = rootFolderService;
             _diskProvider = diskProvider;
             _recycleBinProvider = recycleBinProvider;
+            _commandQueue = commandQueue;
             _logger = logger;
         }
 
@@ -96,6 +99,11 @@ namespace NzbDrone.Core.Games
             }
 
             _logger.Info("Games: {0} new, {1} gone, {2} total", added, gone.Count, seen.Count);
+
+            if (added > 0)
+            {
+                _commandQueue.Push(new RefreshGameMetadataCommand());
+            }
         }
 
         public void Execute(ScanGamesCommand message)

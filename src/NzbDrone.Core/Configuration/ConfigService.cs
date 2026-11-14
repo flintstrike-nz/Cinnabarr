@@ -96,6 +96,18 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("AutoUnmonitorPreviouslyDownloadedMovies", value); }
         }
 
+        public string IgdbClientId
+        {
+            get { return GetValue("IgdbClientId", string.Empty); }
+            set { SetValue("IgdbClientId", value); }
+        }
+
+        public string IgdbClientSecret
+        {
+            get { return GetValue("IgdbClientSecret", string.Empty); }
+            set { SetValue("IgdbClientSecret", value); }
+        }
+
         public bool UpdateCheckEnabled
         {
             get { return GetValueBoolean("UpdateCheckEnabled", true); }
