@@ -49,6 +49,11 @@ namespace NzbDrone.Core.Configuration
         bool AutoUnmonitorPreviouslyDownloadedEpisodes { get; set; }
 
         // Doctor: the scheduled check, how often it runs, and how long a flagged file waits before it is deleted.
+        // Update banner: whether to ask GitHub if a newer build of the branch exists, and where.
+        bool UpdateCheckEnabled { get; set; }
+        string UpdateCheckRepository { get; set; }
+        string UpdateCheckBranch { get; set; }
+
         // Storage: automatic balancing of free space between the drives of a library. Off until switched on.
         bool StorageBalancerEnabled { get; set; }
         int StorageBalanceIntervalHours { get; set; }

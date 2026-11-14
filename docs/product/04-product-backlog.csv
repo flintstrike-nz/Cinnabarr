@@ -103,3 +103,4 @@ BL-137,Games,G1 Games library type; platforms; ROM scan,Story,,Blocked on owner 
 BL-138,Games,G2 Identify by hash; metadata and artwork,Story,,Blocked on provider key,L,M,BL-137,Future,Future
 BL-139,Games,G3 Play in browser with controller and saves,Story,,Blocked on licence decision,L,M,BL-137,Future,Future
 BL-140,Games,G4 Jellyfin on LG webOS (prototype first),Story,,Blocked on TV details,L,L,BL-139,Future,Future
+BL-141,Update,Update banner (GitHub commit check) and cron update script,Story,,Done,S,H,,Done,Done

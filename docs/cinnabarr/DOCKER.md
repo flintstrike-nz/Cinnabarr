@@ -73,3 +73,23 @@ On its first start Cinnabarr downloads the indexer definitions (about 580 sites)
 - `docker logs cinnabarr` shows the app's start-up and the engine starting.
 - **System → Status** lists problems (for example a root folder that can't be written to).
 - The container's health check calls `/ping` on port 8989.
+
+## Updating
+
+Cinnabarr is built from source, so an update is: pull the newest code, rebuild the image, restart the container. `scripts/update.sh` does all three and leaves `./config` and your media alone:
+
+```bash
+./scripts/update.sh
+```
+
+**Nightly, with cron.** Add this with `crontab -e` (change the path):
+
+```
+0 4 * * * /path/to/Cinnabarr/scripts/update.sh >> /path/to/Cinnabarr/update.log 2>&1
+```
+
+It does nothing when there is no new code, so it is safe to run often.
+
+**The banner.** The image is built with the commit it came from. Every six hours the app asks GitHub for the newest commit of the `develop` branch and, if yours is older, shows a banner at the top with what changed. Close it and it stays closed until an even newer build appears. The check sends nothing about you; it is one public GitHub request. It says nothing if the repository is private or GitHub cannot be reached. Turn it off with `UpdateCheckEnabled` in `config.xml` (set it to `False`), or change `UpdateCheckRepository` and `UpdateCheckBranch` if you follow a fork.
+
+If you build the image by hand with `docker compose up -d --build`, run `export CINNABARR_COMMIT=$(git rev-parse HEAD)` first so the banner knows which build it is. Without it the banner stays hidden.

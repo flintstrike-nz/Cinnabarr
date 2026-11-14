@@ -23,6 +23,13 @@ namespace Sonarr.Api.V5.Update
             _configFileProvider = configFileProvider;
         }
 
+        [HttpGet("available")]
+        [Produces("application/json")]
+        public Ok<NewVersionInfo> GetNewVersion([FromServices] INewVersionService newVersionService)
+        {
+            return TypedResults.Ok(newVersionService.Check());
+        }
+
         [HttpGet]
         [Produces("application/json")]
         public Ok<List<UpdateResource>> GetRecentUpdates()
