@@ -12,6 +12,7 @@ using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Movies;
 using NzbDrone.Core.Movies.Versions;
+using NzbDrone.Core.Operations;
 using NzbDrone.Core.Organizer;
 
 namespace NzbDrone.Core.MediaFiles
@@ -32,6 +33,7 @@ namespace NzbDrone.Core.MediaFiles
         private readonly IEventAggregator _eventAggregator;
         private readonly IBuildMovieFileNames _filenameBuilder;
         private readonly IDiskProvider _diskProvider;
+        private readonly IFileOperationTracker _fileOperations;
         private readonly Logger _logger;
 
         public RenameMovieFileService(IMovieService movieService,
@@ -41,6 +43,7 @@ namespace NzbDrone.Core.MediaFiles
                                       IBuildMovieFileNames filenameBuilder,
                                       IDiskProvider diskProvider,
                                       IVersionSlotService versionSlotService,
+                                      IFileOperationTracker fileOperations,
                                       Logger logger)
         {
             _movieService = movieService;
@@ -50,6 +53,7 @@ namespace NzbDrone.Core.MediaFiles
             _eventAggregator = eventAggregator;
             _filenameBuilder = filenameBuilder;
             _diskProvider = diskProvider;
+            _fileOperations = fileOperations;
             _logger = logger;
         }
 
@@ -101,6 +105,12 @@ namespace NzbDrone.Core.MediaFiles
         {
             var renamed = new List<RenamedMovieFile>();
 
+            // The operations queue shows every rename before the first one runs.
+            foreach (var movieFile in movieFiles)
+            {
+                _fileOperations.Queue(FileOperationKinds.Rename, FileOperationTitles.Movie(movie), Path.Combine(movie.Path, movieFile.RelativePath));
+            }
+
             foreach (var movieFile in movieFiles)
             {
                 var previousRelativePath = movieFile.RelativePath;
@@ -127,14 +137,17 @@ namespace NzbDrone.Core.MediaFiles
                 catch (FileAlreadyExistsException ex)
                 {
                     _logger.Warn("File not renamed, there is already a file at the destination: {0}", ex.Filename);
+                    _fileOperations.SkipQueued(previousPath, "There's already a file with the new name");
                 }
                 catch (SameFilenameException ex)
                 {
                     _logger.Debug("File not renamed, source and destination are the same: {0}", ex.Filename);
+                    _fileOperations.SkipQueued(previousPath, "It already has that name");
                 }
                 catch (Exception ex)
                 {
                     _logger.Error(ex, "Failed to rename file: {0}", previousPath);
+                    _fileOperations.SkipQueued(previousPath, ex.Message);
                 }
             }
 

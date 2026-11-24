@@ -1,0 +1,88 @@
+/* Sits below the page header and the page's heading, down to the bottom of the window. */
+.panel {
+  position: fixed;
+  top: calc(var(--headerHeight) + 66px);
+  right: 16px;
+  bottom: 16px;
+  z-index: 850;
+  display: flex;
+  flex-direction: column;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  border: 1px solid var(--borderColor);
+  border-radius: 8px;
+  background-color: var(--cardBackgroundColor);
+  box-shadow: var(--shadowSidebar);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: 8px 8px 8px 16px;
+  border-bottom: 1px solid var(--borderColor);
+  gap: 12px;
+}
+
+.heading {
+  display: flex;
+  align-items: baseline;
+  flex: 1 1 auto;
+  color: var(--ink);
+  font-weight: 500;
+  font-size: 13px;
+  gap: 8px;
+}
+
+.count {
+  color: var(--inkMuted);
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.clear {
+  composes: link from 'Components/Link/Link.module.css';
+
+  color: var(--inkMuted);
+  font-size: 12px;
+}
+
+.body {
+  flex: 1 1 auto;
+  padding: 0 16px;
+}
+
+/* The minimised panel: a tab on the right edge. */
+.handle {
+  composes: link from 'Components/Link/Link.module.css';
+
+  position: fixed;
+  top: calc(var(--headerHeight) + 66px);
+  right: 0;
+  z-index: 850;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 6px;
+  border: 1px solid var(--borderColor);
+  border-right: none;
+  border-radius: 8px 0 0 8px;
+  background-color: var(--cardBackgroundColor);
+  box-shadow: var(--shadowChip);
+  color: var(--inkSoft);
+  gap: 6px;
+
+  &:hover {
+    color: var(--ink);
+  }
+}
+
+.badge {
+  min-width: 18px;
+  border-radius: 9px;
+  background-color: var(--primaryBackgroundColor);
+  color: var(--white, #fff);
+  text-align: center;
+  font-size: 11px;
+  line-height: 18px;
+}
