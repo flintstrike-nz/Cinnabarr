@@ -1,0 +1,68 @@
+.scope {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 8px 0;
+  gap: 16px;
+}
+
+.select {
+  padding: 6px 8px;
+  max-width: 100%;
+  border: 1px solid rgb(128 128 128 / 50%);
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.folder {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.pathInput {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 8px 0;
+  gap: 16px;
+}
+
+.blockedCount {
+  color: var(--warningColor);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.table th,
+.table td {
+  padding: 8px;
+  border-bottom: 1px solid rgb(128 128 128 / 25%);
+  vertical-align: top;
+  text-align: left;
+}
+
+.path {
+  overflow-wrap: anywhere;
+}
+
+.blocked td:last-child {
+  color: var(--warningColor);
+}
