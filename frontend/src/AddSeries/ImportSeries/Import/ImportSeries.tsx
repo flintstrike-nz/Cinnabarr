@@ -18,6 +18,7 @@ import translate from 'Utilities/String/translate';
 import ImportSeriesFooter from './ImportSeriesFooter';
 import ImportSeriesList from './ImportSeriesList';
 import { clearImportSeries, updateImportSeriesItem } from './importSeriesStore';
+import MergeReportModal from './MergeReportModal';
 import styles from './ImportSeries.module.css';
 
 function ImportSeries() {
@@ -140,6 +141,8 @@ function ImportSeries() {
         {!rootFoldersError && rootFoldersFetched && !!unmappedFolders.length ? (
           <ImportSeriesFooter />
         ) : null}
+
+        <MergeReportModal />
       </PageContent>
     </SelectProvider>
   );
