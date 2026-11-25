@@ -1,5 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
+import { create } from 'zustand';
+import Command from 'Commands/Command';
 import { useExecuteCommand } from 'Commands/useCommands';
 import useSeries from 'Series/useSeries';
 
@@ -8,8 +10,30 @@ export interface MergeFolder {
   path: string;
 }
 
+export interface MergeResult {
+  path: string;
+  merged: boolean;
+  reason?: string;
+}
+
+export interface MergeReport {
+  seriesTitle: string;
+  results: MergeResult[];
+}
+
+// The reports of the merges finished since the page was opened, shown until they are dismissed.
+const mergeReportStore = create<{ reports: MergeReport[] }>(() => ({
+  reports: [],
+}));
+
+export const useMergeReports = () => mergeReportStore((state) => state.reports);
+
+export const clearMergeReports = () => {
+  mergeReportStore.setState({ reports: [] });
+};
+
 // Merges folders that belong to a series already in the library into that series: the files are matched to its episodes
-// and moved into its folder (the MergeIntoSeries command).
+// and moved into its folder (the MergeIntoSeries command). When it finishes, what happened to each file is reported.
 export const useMergeIntoSeries = () => {
   const queryClient = useQueryClient();
   const executeCommand = useExecuteCommand();
@@ -32,17 +56,33 @@ export const useMergeIntoSeries = () => {
       });
 
       pathsBySeriesId.forEach((paths, seriesId) => {
+        const seriesTitle =
+          existingSeries.find((s) => s.id === seriesId)?.title ?? '';
+
         setPendingCount((count) => count + 1);
 
-        executeCommand({ name: 'MergeIntoSeries', seriesId, paths }, () => {
-          setPendingCount((count) => Math.max(count - 1, 0));
+        executeCommand(
+          { name: 'MergeIntoSeries', seriesId, paths },
+          (command: Command) => {
+            setPendingCount((count) => Math.max(count - 1, 0));
 
-          // The folders that were merged are gone from the root folder's list, and the series has new files.
-          queryClient.invalidateQueries({ queryKey: ['/rootFolder'] });
-          queryClient.invalidateQueries({ queryKey: ['/series'] });
-          queryClient.invalidateQueries({ queryKey: ['/episode'] });
-          queryClient.invalidateQueries({ queryKey: ['/episodeFile'] });
-        });
+            const { results } = command.body as unknown as {
+              results?: MergeResult[];
+            };
+
+            if (results?.length) {
+              mergeReportStore.setState((state) => ({
+                reports: [...state.reports, { seriesTitle, results }],
+              }));
+            }
+
+            // The folders that were merged are gone from the root folder's list, and the series has new files.
+            queryClient.invalidateQueries({ queryKey: ['/rootFolder'] });
+            queryClient.invalidateQueries({ queryKey: ['/series'] });
+            queryClient.invalidateQueries({ queryKey: ['/episode'] });
+            queryClient.invalidateQueries({ queryKey: ['/episodeFile'] });
+          }
+        );
       });
     },
     [existingSeries, executeCommand, queryClient]
