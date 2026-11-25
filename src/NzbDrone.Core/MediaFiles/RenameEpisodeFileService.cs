@@ -10,6 +10,7 @@ using NzbDrone.Core.MediaFiles.Commands;
 using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
+using NzbDrone.Core.Operations;
 using NzbDrone.Core.Organizer;
 using NzbDrone.Core.Tv;
 using NzbDrone.Core.Tv.Versions;
@@ -35,6 +36,7 @@ namespace NzbDrone.Core.MediaFiles
         private readonly IBuildFileNames _filenameBuilder;
         private readonly IDiskProvider _diskProvider;
         private readonly ISeriesVersionSlotService _versionSlotService;
+        private readonly IFileOperationTracker _fileOperations;
         private readonly Logger _logger;
 
         public RenameEpisodeFileService(ISeriesService seriesService,
@@ -45,6 +47,7 @@ namespace NzbDrone.Core.MediaFiles
                                         IBuildFileNames filenameBuilder,
                                         IDiskProvider diskProvider,
                                         ISeriesVersionSlotService versionSlotService,
+                                        IFileOperationTracker fileOperations,
                                         Logger logger)
         {
             _seriesService = seriesService;
@@ -55,6 +58,7 @@ namespace NzbDrone.Core.MediaFiles
             _filenameBuilder = filenameBuilder;
             _diskProvider = diskProvider;
             _versionSlotService = versionSlotService;
+            _fileOperations = fileOperations;
             _logger = logger;
         }
 
@@ -160,6 +164,12 @@ namespace NzbDrone.Core.MediaFiles
             var renamed = new List<RenamedEpisodeFile>();
             var views = new Dictionary<int, Series>();
 
+            // The operations queue shows every rename before the first one runs.
+            foreach (var episodeFile in episodeFiles)
+            {
+                _fileOperations.Queue(FileOperationKinds.Rename, series.Title, Path.Combine(series.Path, episodeFile.RelativePath));
+            }
+
             foreach (var episodeFile in episodeFiles)
             {
                 var previousRelativePath = episodeFile.RelativePath;
@@ -186,14 +196,17 @@ namespace NzbDrone.Core.MediaFiles
                 catch (FileAlreadyExistsException ex)
                 {
                     _logger.Warn("File not renamed, there is already a file at the destination: {0}", ex.Filename);
+                    _fileOperations.SkipQueued(previousPath, "There's already a file with the new name");
                 }
                 catch (SameFilenameException ex)
                 {
                     _logger.Debug("File not renamed, source and destination are the same: {0}", ex.Filename);
+                    _fileOperations.SkipQueued(previousPath, "It already has that name");
                 }
                 catch (Exception ex)
                 {
                     _logger.Error(ex, "Failed to rename file {0}", previousPath);
+                    _fileOperations.SkipQueued(previousPath, ex.Message);
                 }
             }
 

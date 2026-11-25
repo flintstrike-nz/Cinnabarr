@@ -136,6 +136,16 @@ const GROUPS: SidebarGroup[] = [
         statusComponent: QueueStatus,
       },
       {
+        iconName: icons.OPERATIONS,
+        title: () => translate('Operations'),
+        to: '/operations',
+        children: [
+          { title: () => translate('Queue'), to: '/operations' },
+          { title: () => translate('Tasks'), to: '/system/tasks' },
+          { title: () => translate('Events'), to: '/system/events' },
+        ],
+      },
+      {
         iconName: icons.HISTORY,
         title: () => translate('Activity'),
         to: '/activity/history',
@@ -205,11 +215,9 @@ const GROUPS: SidebarGroup[] = [
             to: '/system/status',
             statusComponent: HealthStatus,
           },
-          { title: () => translate('Tasks'), to: '/system/tasks' },
           { title: () => translate('Statistics'), to: '/statistics' },
           { title: () => translate('Backups'), to: '/system/backups' },
           { title: () => translate('Updates'), to: '/system/updates' },
-          { title: () => translate('Events'), to: '/system/events' },
           { title: () => translate('LogFiles'), to: '/system/logs/files' },
         ],
       },
