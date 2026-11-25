@@ -5,6 +5,7 @@ using System.Linq;
 using NzbDrone.Common;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Parser;
 
 namespace NzbDrone.Core.Movies
@@ -14,6 +15,9 @@ namespace NzbDrone.Core.Movies
         public string Name { get; set; }
         public string Path { get; set; }
 
+        // A video file lying loose in the root folder rather than a folder.
+        public bool IsFile { get; set; }
+
         // What the folder name looks like: the title and year to look the movie up with.
         public string ParsedTitle { get; set; }
         public int ParsedYear { get; set; }
@@ -21,7 +25,8 @@ namespace NzbDrone.Core.Movies
 
     public interface IUnmappedMovieFolderService
     {
-        // The folders directly inside a folder that no movie in the library points at (library import).
+        // The folders directly inside a folder that no movie in the library points at, and the video files lying
+        // loose in it (library import).
         List<UnmappedMovieFolder> Get(string path);
     }
 
@@ -45,24 +50,38 @@ namespace NzbDrone.Core.Movies
 
             var known = _movieService.AllMoviePaths().Values;
 
-            return _diskProvider.GetDirectories(path)
+            var folders = _diskProvider.GetDirectories(path)
                 .Where(f => !Path.GetFileName(f.TrimEnd(Path.DirectorySeparatorChar)).StartsWith("."))
                 .Except(known, PathEqualityComparer.Instance)
                 .Select(folder =>
                 {
                     var name = new DirectoryInfo(folder).Name;
-                    var parsed = MovieParser.ParseMovieTitle(name, true);
 
-                    return new UnmappedMovieFolder
-                    {
-                        Name = name,
-                        Path = folder,
-                        ParsedTitle = parsed?.PrimaryMovieTitle ?? name,
-                        ParsedYear = parsed?.Year ?? 0
-                    };
-                })
+                    return Describe(name, name, folder, false);
+                });
+
+            // Video files lying loose in the root folder: each is a movie of its own, without a folder yet.
+            var files = (_diskProvider.GetFiles(path, false) ?? Enumerable.Empty<string>())
+                .Where(f => !Path.GetFileName(f).StartsWith(".") && MediaFileExtensions.Extensions.Contains(Path.GetExtension(f)))
+                .Select(file => Describe(Path.GetFileName(file), Path.GetFileNameWithoutExtension(file), file, true));
+
+            return folders.Concat(files)
                 .OrderBy(f => f.Name, StringComparer.InvariantCultureIgnoreCase)
                 .ToList();
+        }
+
+        private static UnmappedMovieFolder Describe(string name, string titleSource, string path, bool isFile)
+        {
+            var parsed = MovieParser.ParseMovieTitle(titleSource, true);
+
+            return new UnmappedMovieFolder
+            {
+                Name = name,
+                Path = path,
+                IsFile = isFile,
+                ParsedTitle = parsed?.PrimaryMovieTitle ?? titleSource,
+                ParsedYear = parsed?.Year ?? 0
+            };
         }
     }
 }

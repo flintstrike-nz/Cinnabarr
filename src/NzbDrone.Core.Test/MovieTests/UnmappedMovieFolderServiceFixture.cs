@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
@@ -60,6 +61,23 @@ namespace NzbDrone.Core.Test.MovieTests
                   .Returns(new Dictionary<int, string> { { 1, System.IO.Path.Combine(_root, "Alien (1979)") } });
 
             Subject.Get(_root).Should().ContainSingle().Which.Name.Should().Be("Heat (1995)");
+        }
+
+        [Test]
+        public void should_list_loose_video_files_as_well_as_folders()
+        {
+            GivenFolders("Heat (1995)");
+            Mocker.GetMock<IDiskProvider>()
+                  .Setup(d => d.GetFiles(_root, false))
+                  .Returns(new[] { "Alien.1979.1080p.BluRay.mkv", "notes.txt", "._Alien.1979.mkv" }.Select(n => System.IO.Path.Combine(_root, n)));
+
+            var result = Subject.Get(_root);
+
+            result.Select(f => f.Name).Should().Equal("Alien.1979.1080p.BluRay.mkv", "Heat (1995)");
+            result[0].IsFile.Should().BeTrue();
+            result[0].ParsedTitle.Should().Be("Alien");
+            result[0].ParsedYear.Should().Be(1979);
+            result[1].IsFile.Should().BeFalse();
         }
 
         [Test]

@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import CheckInput from 'Components/Form/CheckInput';
 import Button from 'Components/Link/Button';
 import Link from 'Components/Link/Link';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
@@ -10,160 +11,34 @@ import useApiQuery from 'Helpers/Hooks/useApiQuery';
 import { kinds } from 'Helpers/Props';
 import { useLibraryRootFolders } from 'RootFolder/useRootFolders';
 import { useQualityProfilesData } from 'Settings/Profiles/Quality/useQualityProfiles';
+import { CheckInputChanged } from 'typings/inputs';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
+import ImportMoviesCard from './ImportMoviesCard';
+import {
+  clearImportMovies,
+  getImportMovieEligibility,
+  setImportMoviesSelected,
+  UnmappedMovieFolder,
+  useImportMoviesState,
+} from './importMoviesStore';
 import Movie from './Movie';
-import { useAddMovie, useLookupMovies } from './useMovies';
-import styles from './Movie.module.css';
-
-interface UnmappedMovieFolder {
-  name: string;
-  path: string;
-  parsedTitle: string;
-  parsedYear: number;
-}
+import MovieMergeReportModal from './MovieMergeReportModal';
+import { useImportMovieActions } from './useImportMovieActions';
+import { useMovies } from './useMovies';
+import styles from './ImportMovies.module.css';
 
 const NO_FOLDERS: UnmappedMovieFolder[] = [];
 
-// The lookup result that fits the folder: the one from the folder's year when there is one.
-function pickMatch(movies: readonly Movie[], year: number) {
-  return movies.find((movie) => year > 0 && movie.year === year) ?? movies[0];
-}
-
-interface ImportRowProps {
-  folder: UnmappedMovieFolder;
-  qualityProfileId: number;
-  // Goes up each time *Import All* is pressed; every row that has a match then imports it.
-  importAllToken: number;
-}
-
-function ImportRow({
-  folder,
-  qualityProfileId,
-  importAllToken,
-}: ImportRowProps) {
-  const term = folder.parsedYear
-    ? `${folder.parsedTitle} ${folder.parsedYear}`
-    : folder.parsedTitle;
-  const { data, isFetching } = useLookupMovies(term);
-  const { isAdding, addError, addMovie } = useAddMovie();
-  const [added, setAdded] = useState(false);
-  const [chosenTmdbId, setChosenTmdbId] = useState(0);
-
-  const match =
-    data.find((movie) => movie.tmdbId === chosenTmdbId) ??
-    pickMatch(data, folder.parsedYear);
-
-  const handleMatchChange = useCallback(
-    (event: React.ChangeEvent<HTMLSelectElement>) => {
-      setChosenTmdbId(Number(event.target.value));
-    },
-    []
-  );
-
-  const handleAddPress = useCallback(() => {
-    if (!match) {
-      return;
-    }
-
-    addMovie(
-      {
-        tmdbId: match.tmdbId,
-        title: match.title,
-        year: match.year,
-        qualityProfileId,
-        path: folder.path,
-        monitored: true,
-        minimumAvailability: 'released',
-        addOptions: { searchForMovie: false },
-      },
-      { onSuccess: () => setAdded(true) }
-    );
-  }, [match, folder.path, qualityProfileId, addMovie]);
-
-  const hasBeenPressed = useRef(0);
-
-  // *Import All*: add this folder's match once per press, unless it is already added, still loading or has none.
-  useEffect(() => {
-    if (
-      importAllToken > hasBeenPressed.current &&
-      match &&
-      !added &&
-      !isAdding &&
-      !isFetching &&
-      qualityProfileId
-    ) {
-      hasBeenPressed.current = importAllToken;
-      handleAddPress();
-    }
-  }, [
-    importAllToken,
-    match,
-    added,
-    isAdding,
-    isFetching,
-    qualityProfileId,
-    handleAddPress,
-  ]);
-
-  let matchCell: React.ReactNode = translate('NoResultsFound');
-
-  if (isFetching) {
-    matchCell = <LoadingIndicator size={20} />;
-  } else if (match) {
-    matchCell =
-      data.length > 1 && !added ? (
-        <select
-          className={styles.select}
-          aria-label={translate('Movie')}
-          value={match.tmdbId}
-          onChange={handleMatchChange}
-        >
-          {data.map((movie) => (
-            <option key={movie.tmdbId} value={movie.tmdbId}>
-              {movie.title} ({movie.year})
-            </option>
-          ))}
-        </select>
-      ) : (
-        <>
-          {match.title} ({match.year})
-        </>
-      );
-  }
-
-  return (
-    <tr>
-      <td>{folder.name}</td>
-      <td>{matchCell}</td>
-      <td>
-        {added ? (
-          translate('MovieAlreadyAdded')
-        ) : (
-          <Button
-            kind={kinds.SUCCESS}
-            isDisabled={isAdding || !match || !qualityProfileId}
-            onPress={handleAddPress}
-          >
-            {translate('Import')}
-          </Button>
-        )}
-        {addError ? <div>{getErrorMessage(addError)}</div> : null}
-      </td>
-    </tr>
-  );
-}
-
+// Library import for movies: the folders and loose video files of a root folder that the library doesn't have yet,
+// each matched to a movie. New ones are added (a loose file is moved into a folder of its own); ones the library
+// already has are merged into that movie.
 function ImportMovies() {
   const { data: rootFolders } = useLibraryRootFolders('movies');
   const profiles = useQualityProfilesData();
+  const { data: libraryMovies } = useMovies();
   const [rootFolderPath, setRootFolderPath] = useState('');
   const [qualityProfileId, setQualityProfileId] = useState(0);
-  const [importAllToken, setImportAllToken] = useState(0);
-
-  const handleImportAllPress = useCallback(() => {
-    setImportAllToken((token) => token + 1);
-  }, []);
 
   const path = rootFolderPath || rootFolders[0]?.path || '';
   const profile = qualityProfileId || profiles[0]?.id || 0;
@@ -171,12 +46,69 @@ function ImportMovies() {
   const {
     data = NO_FOLDERS,
     isFetching,
+    isFetched,
     error,
   } = useApiQuery<UnmappedMovieFolder[]>({
     path: '/movie/import',
     queryParams: { path },
     queryOptions: { enabled: !!path, refetchOnWindowFocus: false },
   });
+
+  const matches = useImportMoviesState((state) => state.matches);
+  const selected = useImportMoviesState((state) => state.selected);
+  const statuses = useImportMoviesState((state) => state.statuses);
+  const { importNew, merge } = useImportMovieActions();
+
+  // Rows imported since the page opened stay listed (marked done) until the root folder changes.
+  const [folders, setFolders] = useState<UnmappedMovieFolder[]>([]);
+
+  useEffect(() => {
+    setFolders((current) => {
+      const done = current.filter(
+        (f) =>
+          statuses[f.path]?.state === 'done' &&
+          !data.some((d) => d.path === f.path)
+      );
+
+      return [...data, ...done].sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+      );
+    });
+    // Only a new listing from the server rebuilds the rows.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
+
+  useEffect(() => {
+    clearImportMovies();
+    setFolders([]);
+  }, [path]);
+
+  useEffect(() => () => clearImportMovies(), []);
+
+  const libraryByTmdbId = useMemo(
+    () => new Map(libraryMovies.map((movie) => [movie.tmdbId, movie])),
+    [libraryMovies]
+  );
+
+  const eligibility = useMemo(
+    () =>
+      getImportMovieEligibility(
+        folders,
+        matches,
+        selected,
+        new Set(libraryByTmdbId.keys())
+      ),
+    [folders, matches, selected, libraryByTmdbId]
+  );
+
+  const pending = folders.filter((f) => statuses[f.path]?.state !== 'done');
+  const ready = pending.filter((f) => eligibility.get(f.path) === 'ready');
+  const existing = pending.filter(
+    (f) => eligibility.get(f.path) === 'existing'
+  );
+  const attention = pending.length - ready.length - existing.length;
+  const toImport = ready.filter((f) => selected[f.path]);
+  const isWorking = folders.some((f) => statuses[f.path]?.state === 'working');
 
   const handleRootFolderChange = useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -192,6 +124,53 @@ function ImportMovies() {
     []
   );
 
+  const handleSelectAllChange = useCallback(
+    ({ value }: CheckInputChanged) => {
+      setImportMoviesSelected(
+        ready.map((f) => f.path),
+        value
+      );
+    },
+    [ready]
+  );
+
+  const handleMerge = useCallback(
+    (folder: UnmappedMovieFolder, movie: Movie) => {
+      merge(movie, [folder.path]);
+    },
+    [merge]
+  );
+
+  const handleImportPress = useCallback(() => {
+    toImport.forEach((folder) => {
+      const match = matches[folder.path];
+
+      if (match) {
+        importNew(folder, match, {
+          rootFolderPath: path,
+          qualityProfileId: profile,
+        });
+      }
+    });
+  }, [toImport, matches, importNew, path, profile]);
+
+  // Everything matched to a movie the library has goes into that movie, one merge per movie.
+  const handleMergeAllPress = useCallback(() => {
+    const byMovie = new Map<number, { movie: Movie; paths: string[] }>();
+
+    existing.forEach((folder) => {
+      const movie = libraryByTmdbId.get(matches[folder.path]?.tmdbId ?? 0);
+
+      if (movie) {
+        const entry = byMovie.get(movie.id) ?? { movie, paths: [] };
+        entry.paths.push(folder.path);
+        byMovie.set(movie.id, entry);
+      }
+    });
+
+    byMovie.forEach(({ movie, paths }) => merge(movie, paths));
+  }, [existing, libraryByTmdbId, matches, merge]);
+
   return (
     <PageContent title={translate('ImportMovies')}>
       <PageContentBody>
@@ -202,74 +181,106 @@ function ImportMovies() {
 
         <ImportMediaTabs />
 
-        <div className={styles.actions}>
-          <select
-            className={styles.select}
-            aria-label={translate('RootFolder')}
-            value={path}
-            onChange={handleRootFolderChange}
-          >
-            {rootFolders.map((rootFolder) => (
-              <option key={rootFolder.id} value={rootFolder.path}>
-                {rootFolder.path}
-              </option>
-            ))}
-          </select>
+        <div className={styles.defaults}>
+          <label className={styles.field}>
+            <span className={styles.label}>{translate('RootFolder')}</span>
+            <select
+              className={styles.select}
+              value={path}
+              onChange={handleRootFolderChange}
+            >
+              {rootFolders.map((rootFolder) => (
+                <option key={rootFolder.id} value={rootFolder.path}>
+                  {rootFolder.path}
+                </option>
+              ))}
+            </select>
+          </label>
 
-          <select
-            className={styles.select}
-            aria-label={translate('QualityProfile')}
-            value={profile}
-            onChange={handleProfileChange}
-          >
-            {profiles.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+          <label className={styles.field}>
+            <span className={styles.label}>{translate('QualityProfile')}</span>
+            <select
+              className={styles.select}
+              value={profile}
+              onChange={handleProfileChange}
+            >
+              {profiles.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
-        {data.length ? (
-          <div className={styles.actions}>
-            <Button kind={kinds.PRIMARY} onPress={handleImportAllPress}>
-              {translate('ImportAll')}
-            </Button>
-          </div>
-        ) : null}
-
-        {isFetching ? <LoadingIndicator /> : null}
+        {isFetching && !folders.length ? <LoadingIndicator /> : null}
 
         {!isFetching && error ? <p>{getErrorMessage(error)}</p> : null}
 
-        {!isFetching && !error && path && !data.length ? (
-          <p>
+        {isFetched && !error && path && !folders.length ? (
+          <p className={styles.empty}>
             {translate('NoUnmappedMovieFolders')}{' '}
             <Link to="/add/movie">{translate('AddMovie')}</Link>
           </p>
         ) : null}
 
-        {!isFetching && data.length ? (
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>{translate('Folder')}</th>
-                <th>{translate('Movie')}</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((folder) => (
-                <ImportRow
+        {folders.length ? (
+          <>
+            <div className={styles.list}>
+              {folders.map((folder) => (
+                <ImportMoviesCard
                   key={folder.path}
                   folder={folder}
-                  qualityProfileId={profile}
-                  importAllToken={importAllToken}
+                  eligibility={eligibility.get(folder.path) ?? 'searching'}
+                  isSelected={!!selected[folder.path]}
+                  status={statuses[folder.path]}
+                  libraryMovie={libraryByTmdbId.get(
+                    matches[folder.path]?.tmdbId ?? 0
+                  )}
+                  onMergePress={handleMerge}
                 />
               ))}
-            </tbody>
-          </table>
+            </div>
+
+            <div className={styles.footer}>
+              <CheckInput
+                name="selectAll"
+                ariaLabel={translate('SelectAll')}
+                value={ready.length > 0 && toImport.length === ready.length}
+                isDisabled={!ready.length}
+                onChange={handleSelectAllChange}
+              />
+
+              <span className={styles.counts}>
+                {translate('ImportMoviesCounts', {
+                  ready: ready.length,
+                  existing: existing.length,
+                  attention,
+                })}
+              </span>
+
+              <div className={styles.buttons}>
+                {existing.length ? (
+                  <Button isDisabled={isWorking} onPress={handleMergeAllPress}>
+                    {translate('MergeIntoLibraryCount', {
+                      count: existing.length,
+                    })}
+                  </Button>
+                ) : null}
+
+                <Button
+                  kind={kinds.PRIMARY}
+                  isDisabled={!toImport.length || !profile}
+                  onPress={handleImportPress}
+                >
+                  {translate('ImportCountMovies', { count: toImport.length })}
+                </Button>
+              </div>
+            </div>
+          </>
         ) : null}
+
+        <MovieMergeReportModal />
       </PageContentBody>
     </PageContent>
   );
