@@ -12,6 +12,7 @@ using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Movies;
 using NzbDrone.Core.Reorganise;
+using NzbDrone.Core.RootFolders;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Core.Tv;
 using NzbDrone.Test.Common;
@@ -40,6 +41,11 @@ namespace NzbDrone.Core.Test.ReorganiseTests
             Mocker.GetMock<IReorganiseJournalRepository>().Setup(j => j.Insert(It.IsAny<ReorganiseJournalEntry>())).Returns(AddEntry);
             Mocker.GetMock<IReorganiseJournalRepository>().Setup(j => j.All()).Returns(() => _entries);
             Mocker.GetMock<IReorganiseJournalRepository>().Setup(j => j.GetByRun(It.IsAny<string>())).Returns((string id) => _entries.Where(e => e.RunId == id).ToList());
+
+            Mocker.GetMock<ILooseMediaService>().Setup(l => l.Find(It.IsAny<string>())).Returns(new List<ReorganisePreviewItem>());
+            Mocker.GetMock<IRenameMovieFileService>().Setup(r => r.GetRenamePreviews(It.IsAny<List<int>>())).Returns(new List<RenameMovieFilePreview>());
+            Mocker.GetMock<IDiskProvider>().Setup(d => d.FolderExists(_movie.Path)).Returns(true);
+            Mocker.GetMock<IDiskProvider>().Setup(d => d.FileExists(Path.Combine(_movie.Path, "Heat old.mkv"))).Returns(true);
         }
 
         private ReorganiseJournalEntry AddEntry(ReorganiseJournalEntry entry)
@@ -104,6 +110,112 @@ namespace NzbDrone.Core.Test.ReorganiseTests
             Subject.Execute(new ReorganiseLibraryCommand());
 
             ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_say_why_a_file_on_a_drive_that_cannot_be_reached_is_not_renamed()
+        {
+            GivenPreview();
+            Mocker.GetMock<IDiskProvider>().Setup(d => d.FolderExists(_movie.Path)).Returns(false);
+
+            var item = Subject.Preview().Single();
+
+            item.Problem.Should().Contain("can't be reached");
+        }
+
+        [Test]
+        public void should_say_why_a_file_whose_new_name_is_taken_is_not_renamed()
+        {
+            GivenPreview();
+            Mocker.GetMock<IDiskProvider>().Setup(d => d.FileExists(Path.Combine(_movie.Path, "Heat new.mkv"))).Returns(true);
+
+            var item = Subject.Preview().Single();
+
+            item.Problem.Should().Contain("already has the name");
+        }
+
+        [Test]
+        public void should_say_why_a_file_that_is_gone_is_not_renamed()
+        {
+            GivenPreview();
+            Mocker.GetMock<IDiskProvider>().Setup(d => d.FileExists(Path.Combine(_movie.Path, "Heat old.mkv"))).Returns(false);
+
+            Subject.Preview().Single().Problem.Should().Contain("isn't there any more");
+        }
+
+        [Test]
+        public void should_not_rename_two_files_to_the_same_name()
+        {
+            Mocker.GetMock<IDiskProvider>().Setup(d => d.FileExists(It.IsAny<string>())).Returns(true);
+            Mocker.GetMock<IDiskProvider>().Setup(d => d.FileExists(Path.Combine(_movie.Path, "Heat new.mkv"))).Returns(false);
+            Mocker.GetMock<IRenameMovieFileService>()
+                  .Setup(r => r.GetRenamePreviews(It.IsAny<List<int>>()))
+                  .Returns(new List<RenameMovieFilePreview>
+                  {
+                      new RenameMovieFilePreview { MovieId = 4, MovieFileId = 9, ExistingPath = "Heat old.mkv", NewPath = "Heat new.mkv" },
+                      new RenameMovieFilePreview { MovieId = 4, MovieFileId = 10, ExistingPath = "Heat copy.mkv", NewPath = "Heat new.mkv" }
+                  });
+
+            var items = Subject.Preview();
+
+            items.Should().HaveCount(2);
+            items.Should().OnlyContain(i => i.Problem != null);
+
+            Subject.Execute(new ReorganiseLibraryCommand());
+
+            Mocker.GetMock<IExecute<RenameMovieFilesCommand>>().Verify(e => e.Execute(It.IsAny<RenameMovieFilesCommand>()), Times.Never());
+        }
+
+        [Test]
+        public void should_only_look_in_the_folder_asked_for()
+        {
+            GivenPreview();
+
+            Subject.Preview(@"C:\Movies\Alien".AsOsAgnostic()).Should().BeEmpty();
+            Subject.Preview(@"C:\Movies".AsOsAgnostic()).Should().HaveCount(1);
+
+            Mocker.GetMock<ILooseMediaService>().Verify(l => l.Find(@"C:\Movies".AsOsAgnostic()), Times.Once());
+        }
+
+        [Test]
+        public void should_list_loose_files_and_move_the_ones_that_can_go_in()
+        {
+            var loose = new List<ReorganisePreviewItem>
+            {
+                new ReorganisePreviewItem { Kind = ReorganiseKinds.Import, MediaType = ReorganiseMediaTypes.Movie, MediaId = 4, Title = "Heat", From = @"C:\Movies\Heat.1995.mkv".AsOsAgnostic(), To = Path.Combine(_movie.Path, "Heat (1995).mkv") },
+                new ReorganisePreviewItem { Kind = ReorganiseKinds.Import, MediaType = ReorganiseMediaTypes.Movie, From = @"C:\Movies\Home Video.mkv".AsOsAgnostic(), Problem = "Its name doesn't match a movie in the library" }
+            };
+
+            Mocker.GetMock<ILooseMediaService>().Setup(l => l.Find(It.IsAny<string>())).Returns(loose);
+
+            Subject.Preview().Should().HaveCount(2);
+
+            Subject.Execute(new ReorganiseLibraryCommand());
+
+            Mocker.GetMock<ILooseMediaService>().Verify(l => l.Import(It.Is<List<ReorganisePreviewItem>>(i => i.Count == 1 && i[0].MediaId == 4)), Times.Once());
+        }
+
+        [Test]
+        public void should_rename_a_movie_folder_only_when_asked_and_journal_it()
+        {
+            var target = @"C:\Movies\Heat (1995)".AsOsAgnostic();
+
+            Mocker.GetMock<IRootFolderService>().Setup(r => r.GetBestRootFolderPath(_movie.Path)).Returns(@"C:\Movies".AsOsAgnostic());
+            Mocker.GetMock<NzbDrone.Core.Organizer.IBuildMovieFolderName>().Setup(b => b.GetMovieFolder(_movie)).Returns("Heat (1995)");
+            Mocker.GetMock<IExecute<NzbDrone.Core.Movies.Commands.MoveMovieCommand>>()
+                  .Setup(e => e.Execute(It.IsAny<NzbDrone.Core.Movies.Commands.MoveMovieCommand>()))
+                  .Callback(() => Mocker.GetMock<IDiskProvider>().Setup(d => d.FolderExists(target)).Returns(true));
+
+            Subject.Preview().Should().BeEmpty();
+
+            var item = Subject.Preview(null, true).Single();
+            item.Kind.Should().Be(ReorganiseKinds.Folder);
+            item.To.Should().Be(target);
+
+            Subject.Execute(new ReorganiseLibraryCommand { IncludeFolders = true });
+
+            _movie.Path.Should().Be(target);
+            _entries.Single().MediaType.Should().Be(ReorganiseMediaTypes.MovieFolder);
         }
 
         private ReorganiseJournalEntry GivenRun()

@@ -10,9 +10,22 @@ namespace NzbDrone.Core.Reorganise
     {
         public const string Movie = "movie";
         public const string Episode = "episode";
+
+        // A series' or movie's folder that was renamed (FileId is 0).
+        public const string SeriesFolder = "seriesFolder";
+        public const string MovieFolder = "movieFolder";
     }
 
-    // One file the reorganise tool renamed.
+    // What a preview item does: rename a library file, rename a series' or movie's folder, or move a file that isn't in
+    // the library yet into its series or movie.
+    public static class ReorganiseKinds
+    {
+        public const string Rename = "rename";
+        public const string Folder = "folder";
+        public const string Import = "import";
+    }
+
+    // One file (or folder) the reorganise tool renamed.
     public class ReorganiseJournalEntry : ModelBase
     {
         public string RunId { get; set; }

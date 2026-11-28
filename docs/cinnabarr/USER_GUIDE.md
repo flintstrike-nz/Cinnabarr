@@ -63,7 +63,12 @@ Doctor is the stethoscope button in the library (it replaces Reorganise).
 - **Duplicates.** When an episode or movie has more than one file at the **same resolution**, Doctor flags the worse copy (lower source, then older revision, then lower video bitrate, then smaller file; differences under 10% don't count). Copies at different resolutions, like 4K next to 1080p, are treated as deliberate versions and left alone.
 - **Review.** A red badge on the Doctor button counts flagged copies. The Doctor page shows each flagged copy next to the one it kept, with three screenshots of each. You can delete the flagged copy now, keep it instead (the other copy is flagged instead), or keep both.
 - **Nightly check.** Doctor runs every 24 hours by default and deletes flagged copies after 7 days, using the recycle bin if you have one. Change the schedule, the retention, or switch it off on the Doctor page. Pressing *Check now* only looks and never deletes.
-- **Reorganise.** Renaming files to the naming format, with undo, is still on the Doctor page.
+- **Reorganise.** On the Doctor page. Pick all root folders, one root folder, or any folder. It lists:
+  - library files whose names don't follow the naming format (renamed);
+  - loose files that aren't in the library yet, such as episodes left in the TV root or a release folder beside the series folders (moved into their series or movie, if its name matches one in the library);
+  - with **Also rename series and movie folders** ticked, series and movie folders whose names don't follow the folder format.
+
+  Anything that can't be done is listed under **Won't be done** with the reason: the drive can't be reached, the file is gone, another file already has the name, two files would get the same name, or a loose file doesn't match anything in the library. Renames (files and folders) can be undone per run; loose files moved in stay where they went.
 
 ## Storage (drive management)
 
