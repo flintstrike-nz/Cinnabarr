@@ -24,6 +24,7 @@ namespace NzbDrone.Core.Test.MediaFiles.EpisodeFileMovingServiceTests
     [TestFixture]
     public class MoveEpisodeFileFixture : CoreTest<EpisodeFileMovingService>
     {
+        private readonly string _destination = @"C:\Test\TV\Series\Season 01\File Name.avi".AsOsAgnostic();
         private Series _series;
         private EpisodeFile _episodeFile;
         private LocalEpisode _localEpisode;
@@ -66,6 +67,27 @@ namespace NzbDrone.Core.Test.MediaFiles.EpisodeFileMovingServiceTests
             Mocker.GetMock<IDiskProvider>()
                   .Setup(s => s.FileExists(It.IsAny<string>()))
                   .Returns(true);
+
+            Mocker.GetMock<IDiskProvider>()
+                  .Setup(s => s.FileExists(_destination))
+                  .Returns(false);
+        }
+
+        [Test]
+        public void should_give_the_file_a_numbered_name_when_another_file_has_its_name()
+        {
+            Mocker.GetMock<IDiskProvider>()
+                  .Setup(s => s.FileExists(_destination))
+                  .Returns(true);
+
+            Mocker.GetMock<IDiskProvider>()
+                  .Setup(s => s.FileExists(@"C:\Test\TV\Series\Season 01\File Name (3).avi".AsOsAgnostic()))
+                  .Returns(false);
+
+            var result = Subject.MoveEpisodeFile(_episodeFile, _localEpisode);
+
+            result.RelativePath.Should().Be(Path.Combine("Season 01", "File Name (3).avi"));
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]

@@ -82,7 +82,7 @@ namespace NzbDrone.Core.MediaFiles
                 var newName = _filenameBuilder.BuildFileName(named, file);
                 var newPath = _filenameBuilder.BuildFilePath(named, newName, Path.GetExtension(movieFilePath));
 
-                if (!movieFilePath.PathEquals(newPath, StringComparison.Ordinal))
+                if (!movieFilePath.PathEquals(newPath, StringComparison.Ordinal) && !FreeFilePath.IsNumberedCopy(_diskProvider, movieFilePath, newPath))
                 {
                     yield return new RenameMovieFilePreview
                     {

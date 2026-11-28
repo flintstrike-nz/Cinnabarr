@@ -43,6 +43,9 @@ namespace NzbDrone.Core.Download.Engine
         EngineFileMap MapMovie(string downloadId, Movie movie, QualityModel quality, string releaseTitle, List<QBittorrentTorrentFile> files);
 
         bool UpdateFinalPaths(EngineLink link, EngineLinkFile video, Movie movie, LocalMovie localMovie);
+
+        // Gives a video (and its subtitles) the numbered name, when another file already has its final name.
+        bool NumberFinalPaths(EngineLink link, EngineLinkFile video, string numberedPath);
     }
 
     public class EngineFileMapper : IEngineFileMapper
@@ -369,6 +372,13 @@ namespace NzbDrone.Core.Download.Engine
             };
 
             return RebuildFinalPaths(link, video, extension => BuildFinalPath(localEpisode.Episodes, series, episodeFile, extension, localEpisode.CustomFormats));
+        }
+
+        public bool NumberFinalPaths(EngineLink link, EngineLinkFile video, string numberedPath)
+        {
+            var stem = Path.Combine(Path.GetDirectoryName(numberedPath), Path.GetFileNameWithoutExtension(numberedPath));
+
+            return RebuildFinalPaths(link, video, extension => stem + extension);
         }
 
         // Rebuilds a video's final name (and its subtitles') with the given builder; true if the name changed.

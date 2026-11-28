@@ -61,6 +61,10 @@ namespace NzbDrone.Core.Test.MediaFiles.MovieFileMovingServiceTests
             Mocker.GetMock<IDiskProvider>()
                   .Setup(s => s.FileExists(It.IsAny<string>()))
                   .Returns(true);
+
+            Mocker.GetMock<IDiskProvider>()
+                  .Setup(s => s.FileExists(@"C:\Test\Movies\Movie\File Name.avi".AsOsAgnostic()))
+                  .Returns(false);
         }
 
         [Test]

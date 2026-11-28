@@ -124,14 +124,15 @@ namespace NzbDrone.Core.Test.ReorganiseTests
         }
 
         [Test]
-        public void should_say_why_a_file_whose_new_name_is_taken_is_not_renamed()
+        public void should_give_a_file_whose_new_name_is_taken_a_numbered_name()
         {
             GivenPreview();
             Mocker.GetMock<IDiskProvider>().Setup(d => d.FileExists(Path.Combine(_movie.Path, "Heat new.mkv"))).Returns(true);
 
             var item = Subject.Preview().Single();
 
-            item.Problem.Should().Contain("already has the name");
+            item.Problem.Should().BeNull();
+            item.To.Should().Be(Path.Combine(_movie.Path, "Heat new (2).mkv"));
         }
 
         [Test]
@@ -144,10 +145,10 @@ namespace NzbDrone.Core.Test.ReorganiseTests
         }
 
         [Test]
-        public void should_not_rename_two_files_to_the_same_name()
+        public void should_rename_two_files_with_the_same_new_name_to_numbered_names()
         {
-            Mocker.GetMock<IDiskProvider>().Setup(d => d.FileExists(It.IsAny<string>())).Returns(true);
-            Mocker.GetMock<IDiskProvider>().Setup(d => d.FileExists(Path.Combine(_movie.Path, "Heat new.mkv"))).Returns(false);
+            Mocker.GetMock<IDiskProvider>().Setup(d => d.FileExists(Path.Combine(_movie.Path, "Heat old.mkv"))).Returns(true);
+            Mocker.GetMock<IDiskProvider>().Setup(d => d.FileExists(Path.Combine(_movie.Path, "Heat copy.mkv"))).Returns(true);
             Mocker.GetMock<IRenameMovieFileService>()
                   .Setup(r => r.GetRenamePreviews(It.IsAny<List<int>>()))
                   .Returns(new List<RenameMovieFilePreview>
@@ -159,11 +160,12 @@ namespace NzbDrone.Core.Test.ReorganiseTests
             var items = Subject.Preview();
 
             items.Should().HaveCount(2);
-            items.Should().OnlyContain(i => i.Problem != null);
+            items.Should().OnlyContain(i => i.Problem == null);
+            items.Select(i => Path.GetFileName(i.To)).Should().BeEquivalentTo("Heat new.mkv", "Heat new (2).mkv");
 
             Subject.Execute(new ReorganiseLibraryCommand());
 
-            Mocker.GetMock<IExecute<RenameMovieFilesCommand>>().Verify(e => e.Execute(It.IsAny<RenameMovieFilesCommand>()), Times.Never());
+            Mocker.GetMock<IExecute<RenameMovieFilesCommand>>().Verify(e => e.Execute(It.Is<RenameMovieFilesCommand>(c => c.Files.Count == 2)), Times.Once());
         }
 
         [Test]
