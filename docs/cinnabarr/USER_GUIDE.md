@@ -84,12 +84,12 @@ A move updates the library path and tells Jellyfin / Emby (if connected in Setti
 
 ## Games
 
-1. In Settings → Media Management set a root folder to **Games**, and put your ROMs in folders named for the platform (`SNES`, `Master System`, `PS1`, `PS2`).
+1. In Settings → Media Management set a root folder to **Games**, and put your ROMs in folders named for the platform (`NES`, `SNES`, `Master System`, `Mega Drive` or `Genesis`, `N64`, `PS1`, `PS2`, `GameCube`, `Wii`, `Wii U`). Files whose extension only one platform uses (`.nes`, `.z64`, `.wbfs` and so on) are found anywhere; shared ones (`.zip`, `.iso`, `.md`, `.bin`, `.rvz`) need the platform folder, except that GameCube and Wii discs are told apart by their disc header.
 2. Open Library → Games and press *Scan for Games* (it also scans every 12 hours).
 3. **Cover art and details:** paste a free IGDB key (a Twitch application: dev.twitch.tv/console) in the panel on the Games page, press *Test connection*, then *Look up now*.
-4. **Play:** click a game. Master System and Super Nintendo games play in the browser with the keyboard or a gamepad. The emulator (EmulatorJS) is loaded by your browser from its own site, so Cinnabarr does not ship or redistribute it and the browser needs internet access to start a game. The ROM and your save state stay on your Cinnabarr server: *Save State* in the player's menu is kept there and loads on any device.
+4. **Play:** click a game. NES, Super Nintendo, Master System and Mega Drive games play in the browser, and Nintendo 64 and PlayStation games do too on a fast enough device, with the keyboard or a gamepad. The emulator (EmulatorJS) is loaded by your browser from its own site, so Cinnabarr does not ship or redistribute it and the browser needs internet access to start a game. The ROM and your save state stay on your Cinnabarr server: *Save State* in the player's menu is kept there and loads on any device.
 5. **PlayStation** games need a PlayStation BIOS, which Cinnabarr does not include. Put your own at `config/bios/psx.bin` (a disc `.cue` is sent to the player together with its `.bin` tracks).
-6. **PlayStation 2** games are listed and get cover art, but cannot be played in a browser: the browser emulator has no PS2 core.
+6. **PlayStation 2, GameCube, Wii and Wii U** games are listed and get cover art, but cannot be played in a browser: they are too heavy for one. Streaming them from the server is planned (docs/cinnabarr/JELLYFIN.md).
 
 Cinnabarr does not find, download or link to ROMs. It only manages files you already have.
 

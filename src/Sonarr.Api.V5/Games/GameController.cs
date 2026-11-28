@@ -48,6 +48,10 @@ public class GamePlatformResource
     public required string Name { get; set; }
     public required string[] Extensions { get; set; }
     public string? Core { get; set; }
+
+    // "browser", "auto" (browser now, streamed later) or "stream" (server only, not built yet).
+    public GamePlayMode Play { get; set; }
+    public bool NeedsBios { get; set; }
 }
 
 // The games library: the ROMs found in the Games root folders, and the platforms Cinnabarr knows. Scanning is the ScanGames command.
@@ -187,7 +191,9 @@ public class GameController : Controller
             Key = p.Key,
             Name = p.Name,
             Extensions = p.Extensions,
-            Core = p.Core
+            Core = p.Core,
+            Play = p.Play,
+            NeedsBios = p.NeedsBios
         }).ToList());
     }
 
