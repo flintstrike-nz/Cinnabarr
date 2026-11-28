@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>cinnabarr-play test page</title>
+    <style>
+        body { margin: 0; background: #101114; color: #eee; font-family: sans-serif; }
+        main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+        label { display: block; margin: 8px 0 2px; color: #aaa; font-size: 14px; }
+        input { width: 100%; box-sizing: border-box; padding: 8px; background: #1c1e24; color: #eee; border: 1px solid #3a3d48; border-radius: 6px; font-size: 16px; }
+        button { margin: 12px 8px 0 0; padding: 10px 18px; font-size: 16px; border-radius: 6px; border: 0; background: #e34234; color: #fff; cursor: pointer; }
+        button.secondary { background: #2b2e38; }
+        video { display: block; width: 100%; max-height: 70vh; margin-top: 16px; background: #000; image-rendering: pixelated; }
+        pre { background: #1c1e24; padding: 10px; border-radius: 6px; font-size: 13px; white-space: pre-wrap; }
+        .big { font-size: 22px; margin-top: 12px; }
+    </style>
+</head>
+<body>
+<main>
+    <h1>cinnabarr-play test page</h1>
+    <p>For trying the streamer by hand and measuring delay (docs/cinnabarr/JELLYFIN.md, step G7a). Plain ES2019, so it also runs in a TV's browser.</p>
+
+    <label for="key">API key (the file given with --api-key-file)</label>
+    <input id="key" autocomplete="off">
+    <label for="core">Core (a file in the --cores folder)</label>
+    <input id="core" placeholder="/path/to/cores/snes9x_libretro.so">
+    <label for="game">Game file</label>
+    <input id="game" placeholder="/path/to/game.sfc">
+    <label for="encoder">Encoder: auto, nvenc or x264</label>
+    <input id="encoder" value="auto">
+
+    <button id="start" type="button">Start</button>
+    <button id="measure" class="secondary" type="button">Measure delay</button>
+    <button id="stop" class="secondary" type="button">Stop</button>
+
+    <div class="big" id="latency">Delay: not measured yet</div>
+    <video id="video" autoplay playsinline></video>
+    <pre id="stats">Not started.</pre>
+    <p>Controls: a gamepad, or the keyboard (arrows, Z = B, X = A, Enter = Start, Shift = Select). <b>Measure delay</b> works with the test core (cinnabarr_test_libretro.so): it presses a button and times how long until the picture turns white.</p>
+</main>
+<script>
+(function () {
+    'use strict';
+
+    var $ = function (id) { return document.getElementById(id); };
+    var session = null;
+    var pc = null;
+    var channel = null;
+    var buttons = 0;
+    var lastSent = 0;
+    var keys = 0;
+    var measuring = null;
+
+    ['key', 'core', 'game', 'encoder'].forEach(function (id) {
+        try { $(id).value = localStorage.getItem('cplay-' + id) || $(id).value; } catch (e) { }
+        $(id).addEventListener('change', function () { try { localStorage.setItem('cplay-' + id, $(id).value); } catch (e) { } });
+    });
+
+    function api(method, path, body) {
+        return fetch(path, {
+            method: method,
+            headers: { 'X-Api-Key': $('key').value.trim(), 'Content-Type': 'application/json' },
+            body: body ? JSON.stringify(body) : undefined
+        }).then(function (r) {
+            return r.text().then(function (text) {
+                var data = text ? JSON.parse(text) : null;
+                if (!r.ok) { throw new Error((data && data.message) || r.status); }
+                return data;
+            });
+        });
+    }
+
+    function gathered(connection) {
+        return new Promise(function (resolve) {
+            if (connection.iceGatheringState === 'complete') { resolve(); return; }
+            connection.addEventListener('icegatheringstatechange', function () {
+                if (connection.iceGatheringState === 'complete') { resolve(); }
+            });
+            setTimeout(resolve, 3000);
+        });
+    }
+
+    function start() {
+        stop();
+        $('stats').textContent = 'Starting…';
+        api('POST', '/sessions', { core: $('core').value.trim(), game: $('game').value.trim(), encoder: $('encoder').value.trim() })
+            .then(function (result) {
+                session = result.id;
+                pc = new RTCPeerConnection();
+                pc.ontrack = function (e) {
+                    // Ask Chrome to play as soon as frames arrive (no jitter buffer beyond what is needed).
+                    if ('playoutDelayHint' in e.receiver) { e.receiver.playoutDelayHint = 0; }
+                    if ('jitterBufferTarget' in e.receiver) { e.receiver.jitterBufferTarget = 0; }
+                    if (e.track.kind === 'video') { $('video').srcObject = e.streams[0] || new MediaStream([e.track]); }
+                    else if ($('video').srcObject) { $('video').srcObject.addTrack(e.track); }
+                };
+                pc.ondatachannel = function (e) { channel = e.channel; channel.binaryType = 'arraybuffer'; };
+                return pc.setRemoteDescription({ type: 'offer', sdp: result.sdp })
+                    .then(function () { return pc.createAnswer(); })
+                    .then(function (answer) { return pc.setLocalDescription(answer); })
+                    .then(function () { return gathered(pc); })
+                    .then(function () { return api('POST', '/sessions/' + session + '/answer', { sdp: pc.localDescription.sdp }); });
+            })
+            .then(function () { pollStats(); })
+            .catch(function (e) { $('stats').textContent = 'Could not start: ' + e.message; });
+    }
+
+    function stop() {
+        if (session) { api('DELETE', '/sessions/' + session).catch(function () { }); }
+        if (pc) { pc.close(); }
+        session = null; pc = null; channel = null;
+    }
+
+    function pollStats() {
+        if (!session) { return; }
+        var id = session;
+        Promise.all([api('GET', '/sessions/' + id), pc ? pc.getStats() : Promise.resolve(null)]).then(function (r) {
+            var lines = [JSON.stringify(r[0], null, 1)];
+            if (r[1]) {
+                r[1].forEach(function (s) {
+                    if (s.type === 'inbound-rtp' && s.kind === 'video') {
+                        lines.push('decoded ' + s.framesDecoded + ', dropped ' + s.framesDropped + ', jitter buffer ' +
+                            (s.jitterBufferEmittedCount ? (1000 * s.jitterBufferDelay / s.jitterBufferEmittedCount).toFixed(1) + ' ms' : 'n/a'));
+                    }
+                    if (s.type === 'candidate-pair' && s.state === 'succeeded' && s.currentRoundTripTime !== undefined) {
+                        lines.push('round trip ' + (s.currentRoundTripTime * 1000).toFixed(1) + ' ms');
+                    }
+                });
+            }
+            $('stats').textContent = lines.join('\n');
+        }).catch(function () { });
+        if (session === id) { setTimeout(pollStats, 1000); }
+    }
+
+    // libretro joypad bits: B 0, Y 1, Select 2, Start 3, Up 4, Down 5, Left 6, Right 7, A 8, X 9, L 10, R 11, L2 12, R2 13, L3 14, R3 15.
+    // Standard gamepad buttons, in that order of libretro bits:
+    var PAD_TO_RETRO = [0, 8, 1, 9, 10, 11, 12, 13, 2, 3, 14, 15, 4, 5, 6, 7];
+    var KEY_TO_RETRO = { 38: 4, 40: 5, 37: 6, 39: 7, 90: 0, 88: 8, 13: 3, 16: 2, 65: 1, 83: 9 };
+
+    function send(mask, force) {
+        if (!channel || channel.readyState !== 'open') { return; }
+        var now = performance.now();
+        if (mask === buttons && !force && now - lastSent < 50) { return; }
+        buttons = mask;
+        lastSent = now;
+        var message = new ArrayBuffer(12);
+        var view = new DataView(message);
+        view.setUint8(0, 1);
+        view.setUint8(1, 0);
+        view.setUint16(2, mask, true);
+        channel.send(message);
+    }
+
+    window.addEventListener('keydown', function (e) {
+        if (e.target.tagName === 'INPUT' || KEY_TO_RETRO[e.keyCode] === undefined) { return; }
+        e.preventDefault();
+        keys |= 1 << KEY_TO_RETRO[e.keyCode];
+    });
+    window.addEventListener('keyup', function (e) {
+        if (KEY_TO_RETRO[e.keyCode] !== undefined) { keys &= ~(1 << KEY_TO_RETRO[e.keyCode]); }
+    });
+
+    var canvas = document.createElement('canvas');
+    canvas.width = 8;
+    canvas.height = 8;
+    var context = canvas.getContext('2d');
+
+    function brightness() {
+        var video = $('video');
+        if (!video.videoWidth) { return 0; }
+        context.drawImage(video, video.videoWidth / 2 - 4, video.videoHeight / 4, 8, 8, 0, 0, 8, 8);
+        var d = context.getImageData(0, 0, 1, 1).data;
+        return (d[0] + d[1] + d[2]) / 3;
+    }
+
+    function frameLoop() {
+        var mask = keys;
+        var pads = navigator.getGamepads ? navigator.getGamepads() : [];
+        for (var p = 0; p < pads.length; p++) {
+            var pad = pads[p];
+            if (!pad || !pad.connected) { continue; }
+            for (var b = 0; b < pad.buttons.length && b < 16; b++) {
+                if (pad.buttons[b].pressed) { mask |= 1 << PAD_TO_RETRO[b]; }
+            }
+            if (pad.axes[0] < -0.5) { mask |= 1 << 6; }
+            if (pad.axes[0] > 0.5) { mask |= 1 << 7; }
+            if (pad.axes[1] < -0.5) { mask |= 1 << 4; }
+            if (pad.axes[1] > 0.5) { mask |= 1 << 5; }
+        }
+        if (measuring && measuring.pressedAt) {
+            mask |= 1;
+            if (brightness() > 200) {
+                measuring.results.push(performance.now() - measuring.pressedAt);
+                measuring.pressedAt = 0;
+                showLatency();
+            } else if (performance.now() - measuring.pressedAt > 2000) {
+                measuring.pressedAt = 0;
+                measuring.misses++;
+            }
+        }
+        send(mask, false);
+        requestAnimationFrame(frameLoop);
+    }
+    requestAnimationFrame(frameLoop);
+
+    function showLatency() {
+        var r = measuring.results.slice().sort(function (a, b) { return a - b; });
+        if (!r.length) { $('latency').textContent = 'Delay: no change seen (is this the test core?)'; return; }
+        var median = r[Math.floor(r.length / 2)];
+        $('latency').textContent = 'Delay from button to picture: median ' + median.toFixed(0) + ' ms, best ' + r[0].toFixed(0) +
+            ' ms, worst ' + r[r.length - 1].toFixed(0) + ' ms (' + r.length + ' presses' + (measuring.misses ? ', ' + measuring.misses + ' missed' : '') +
+            '). Add the TV’s own input lag (game mode: usually 10–20 ms).';
+        window.cinnabarrLatency = { median: median, best: r[0], worst: r[r.length - 1], count: r.length };
+    }
+
+    // Ten presses, one every 600 ms: press, wait for white, release.
+    function measure() {
+        if (!session) { $('latency').textContent = 'Start a session with the test core first.'; return; }
+        measuring = { results: [], misses: 0, pressedAt: 0 };
+        var count = 0;
+        var tick = setInterval(function () {
+            if (count >= 10) { clearInterval(tick); measuring.done = true; showLatency(); return; }
+            if (!measuring.pressedAt && brightness() < 100) { measuring.pressedAt = performance.now(); count++; }
+        }, 600);
+    }
+
+    $('start').addEventListener('click', start);
+    $('stop').addEventListener('click', function () { stop(); $('stats').textContent = 'Stopped.'; });
+    $('measure').addEventListener('click', measure);
+    window.addEventListener('beforeunload', stop);
+})();
+</script>
+</body>
+</html>

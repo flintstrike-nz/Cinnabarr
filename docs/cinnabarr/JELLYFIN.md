@@ -1,6 +1,6 @@
 # Cinnabarr in Jellyfin on LG webOS, and streamed games (design)
 
-Status: **scheduled. Done: J0 (this document and the TV checklist), J1 (the request and status API, section 8), J2 (the plugin skeleton with the TV check page, `clients/jellyfin-plugin/`), J3 (the plugin's endpoints, listed in its README) J4 (the Cinnabarr screens inside the Jellyfin app: Library, Discover, Search and requesting) J5 (Downloads and interactive search for managers), G6 (the new platforms in Cinnabarr) and J6 (playing games in the Jellyfin app, browser tier). Next: G7a, the `cinnabarr-play` prototype.** This turns [Addendum A](ROADMAP.md#addendum-a--jellyfin--webos-integration-future-not-part-of-the-current-plan) into a plan and extends the games work in [GAMES.md](GAMES.md) with server-side emulation for the consoles a TV cannot emulate itself.
+Status: **scheduled. Done: J0 (this document and the TV checklist), J1 (the request and status API, section 8), J2 (the plugin skeleton with the TV check page, `clients/jellyfin-plugin/`), J3 (the plugin's endpoints, listed in its README) J4 (the Cinnabarr screens inside the Jellyfin app: Library, Discover, Search and requesting) J5 (Downloads and interactive search for managers), G6 (the new platforms in Cinnabarr), J6 (playing games in the Jellyfin app, browser tier) and the G7a prototype (`engines/cinnabarr-play`; its delay test on the real TV is still to do).** This turns [Addendum A](ROADMAP.md#addendum-a--jellyfin--webos-integration-future-not-part-of-the-current-plan) into a plan and extends the games work in [GAMES.md](GAMES.md) with server-side emulation for the consoles a TV cannot emulate itself.
 
 ## 1. Goal
 
@@ -105,6 +105,8 @@ Found while building J2: jellyfin-web only turns controller presses into key pre
 | 5 | Delay from button press to picture (G7a) | Decides whether streaming is playable | Lower the resolution, or keep heavy consoles library-only |
 
 Record the answers (and the TV firmware and Jellyfin versions) in this section when they are known.
+
+Item 5, measured so far: with `cinnabarr-play` (G7a), x264 on the CPU, the test core and Chromium on the same machine, **median 56 ms, best 39 ms** from button press to picture (10 presses). The real number needs the TV and the home network: see [engines/cinnabarr-play/README.md](../../engines/cinnabarr-play/README.md), "The delay test".
 
 ## 7. Risks
 
