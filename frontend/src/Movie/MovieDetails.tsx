@@ -57,7 +57,10 @@ const RELEASE_SORTS: { key: ReleaseSortKey; label: () => string }[] = [
 
 // Best is the order the server ranks releases in (what an automatic search would grab first); most seeders is the
 // quickest to download.
-function sortReleases(releases: MovieRelease[], sortKey: ReleaseSortKey) {
+function sortReleases(
+  releases: readonly MovieRelease[],
+  sortKey: ReleaseSortKey
+) {
   const sorted = [...releases];
 
   switch (sortKey) {

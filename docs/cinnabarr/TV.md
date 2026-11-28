@@ -19,7 +19,7 @@ Tested on paper for: LG OLED55A1PVA (2021, webOS 6, firmware 03.53.45 / 6.5.3-47
 
 ## About the Jellyfin app
 
-The Jellyfin app for LG is a thin shell around the web page the Jellyfin server serves, so a Jellyfin *plugin* can add screens to it. That is now planned: Cinnabarr and Games screens inside the Jellyfin app, and streaming from the server for the consoles the TV cannot emulate. See [JELLYFIN.md](JELLYFIN.md). It is not built yet, and it depends on what the TV does inside the Jellyfin app (gamepad, WebRTC, the Back key); the checklist is in JELLYFIN.md section 6. Until then, use the launcher above.
+The Jellyfin app for LG is a thin shell around the web page the Jellyfin server serves, so a Jellyfin *plugin* can add screens to it. That is now planned: Cinnabarr and Games screens inside the Jellyfin app, and streaming from the server for the consoles the TV cannot emulate. See [JELLYFIN.md](JELLYFIN.md). It is not built yet, and it depends on what the TV does inside the Jellyfin app (gamepad, WebRTC, the Back key); the checklist is in JELLYFIN.md section 6, and the Cinnabarr plugin for Jellyfin has a *Cinnabarr TV check* page that answers it from inside the Jellyfin app. Until the game screens exist, use the launcher above.
 
 ## The debug panel shows no controller
 
