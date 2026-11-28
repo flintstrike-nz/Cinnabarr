@@ -1,6 +1,6 @@
 # Cinnabarr in Jellyfin on LG webOS, and streamed games (design)
 
-Status: **scheduled; J0 (this document and the TV checklist) is done, nothing else is built yet.** This turns [Addendum A](ROADMAP.md#addendum-a--jellyfin--webos-integration-future-not-part-of-the-current-plan) into a plan and extends the games work in [GAMES.md](GAMES.md) with server-side emulation for the consoles a TV cannot emulate itself.
+Status: **scheduled; J0 (this document and the TV checklist) and J1 (the request and status API, section 8) are done.** This turns [Addendum A](ROADMAP.md#addendum-a--jellyfin--webos-integration-future-not-part-of-the-current-plan) into a plan and extends the games work in [GAMES.md](GAMES.md) with server-side emulation for the consoles a TV cannot emulate itself.
 
 ## 1. Goal
 
@@ -63,7 +63,7 @@ Cores are never bundled. As in GAMES.md, they are downloaded from the libretro b
 | --- | --- |
 | **J0** | This document, updates to Addendum A, GAMES.md and TV.md, and the TV checklist (section 6). |
 | **J1** | Cinnabarr API gaps for clients: discover lists (trending, popular, upcoming), an "in library / requested" lookup by TVDB/TMDb id, and the single "add item with options" contract shared with Addendum B. |
-| **J2** | Plugin skeleton: settings (Cinnabarr URL, API key, which Jellyfin users get which role), a *Test connection* button, a build script, a plugin repository `manifest.json`, and a probe page for the TV checklist. Targets Jellyfin 10.11 (.NET 9), with a 10.10 (.NET 8) build option. |
+| **J2** | Plugin skeleton: settings (Cinnabarr URL, API key, which Jellyfin users get which role), a *Test connection* button, a build script, a plugin repository `manifest.json`, and a probe page for the TV checklist. Targets Jellyfin 12.x (.NET 10, current stable 12.4), with a 10.11 (.NET 9) build option. |
 | **J3** | Proxy endpoints under `/Cinnabarr`: a fixed list, no pass-through of arbitrary paths. Role checks and a per-user request log. |
 | **J4** | Script injection (through the *File Transformation* plugin) and the TV screens: Library, Discover, Search and request. Spatial navigation taken from `frontend/src/tv.html`; the remote's Back key handled. |
 | **J5** | Downloads (queue: progress, pause, resume, remove, blocklist, re-search) and interactive search with grab into a version slot. Manager role only. |
@@ -114,4 +114,17 @@ Record the answers (and the TV firmware and Jellyfin versions) in this section w
 | Network | WebRTC needs UDP between the server and the TV. In Docker that means a published UDP port range or host networking. Keep it on the home network; nothing is exposed to the internet. |
 | GPU in Docker | Needs the NVIDIA container toolkit and `NVIDIA_DRIVER_CAPABILITIES=graphics,video,compute`. |
 | Core quality | dolphin_libretro and LRPS2 lag behind the standalone Dolphin and PCSX2. If a core is not good enough, the capture mode from G8 can run the standalone emulator instead. |
-| Licences | The cores have their own licences, some non-commercial; they are downloaded on request, never shipped (GAMES.md section 3). Jellyfin server and web are GPL-2.0. The plugin links against Jellyfin's libraries, so its licence must be compatible with theirs: before J2, read Jellyfin's licence files to see whether they are GPL-2.0-only or GPL-2.0-or-later, and pick the plugin's licence from that (GPL-3.0 only works with "or later"). |
+| Licences | The cores have their own licences, some non-commercial; they are downloaded on request, never shipped (GAMES.md section 3). The Jellyfin server packages a plugin builds against (`Jellyfin.Controller`, `Jellyfin.Model`) are published as GPL-3.0-only, so the plugin is GPL-3.0, the same as Cinnabarr. |
+
+## 8. The Cinnabarr API clients use (J1)
+
+All under `/api/v5`, with the `X-Api-Key` header. Only the Jellyfin plugin (and later the request relay) holds the key.
+
+| Call | What it does |
+| --- | --- |
+| `POST request` | Add a series or movie. Body: `{ "mediaType": "series" \| "movie", "externalId": <TVDB or TMDb id> }`, plus optional `qualityProfileId`, `rootFolderPath`, `searchNow` (default `true`), `seriesMonitor` (default `all`) and `tags`. Without them it uses the first root folder set aside for that library (else one that takes anything) and the oldest quality profile. Asking for something already in the library changes nothing and returns it with `alreadyExisted: true`, so a retry never makes a duplicate. |
+| `GET request/status?tvdbIds=1,2&tmdbIds=3` | For each id: `mediaType`, `externalId`, the Cinnabarr `id` if it is in the library, and `status`: `notInLibrary`, `wanted`, `unmonitored`, `downloading`, `partial` (a series with some of its episodes) or `available`. At most 200 ids of each kind. |
+| `GET movie/lookup/discover?list=trending\|popular` | Trending or popular movies (already existed). |
+| `GET movie/lookup?term=`, `GET series/lookup?term=` | Search by name (already existed). |
+
+There is no discover list for series: the series metadata source (SkyHook) has no trending or popular lists. The TV shows series search, and movie discover lists, until a source is chosen.
