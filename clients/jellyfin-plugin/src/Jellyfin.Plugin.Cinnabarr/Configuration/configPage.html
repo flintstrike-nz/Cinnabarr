@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Cinnabarr</title>
+</head>
+<body>
+    <div id="CinnabarrConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox">
+        <div data-role="content">
+            <div class="content-primary">
+                <h2>Cinnabarr</h2>
+                <p>Lets people browse and request shows and movies, manage downloads and play games from the Jellyfin apps. The address and API key stay on this server; the apps never see them.</p>
+
+                <form id="CinnabarrConfigForm">
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="CinnabarrUrl">Cinnabarr address</label>
+                        <input id="CinnabarrUrl" name="CinnabarrUrl" type="url" is="emby-input" placeholder="http://localhost:8989" />
+                        <div class="fieldDescription">How this Jellyfin server reaches Cinnabarr. Keep both on your home network.</div>
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="CinnabarrApiKey">API key</label>
+                        <input id="CinnabarrApiKey" name="CinnabarrApiKey" type="password" is="emby-input" autocomplete="off" />
+                        <div class="fieldDescription">In Cinnabarr: Settings → General → Security.</div>
+                    </div>
+                    <div>
+                        <button id="CinnabarrTest" is="emby-button" type="button" class="raised button-alt block"><span>Test connection</span></button>
+                        <div id="CinnabarrTestResult" class="fieldDescription" role="status"></div>
+                    </div>
+
+                    <h3>Who can do what</h3>
+                    <p class="fieldDescription">Administrators can do everything. Anyone not ticked here sees nothing from Cinnabarr. <b>Request</b>: browse, search and request. <b>Manage</b>: also downloads, interactive search and deleting. <b>Play</b>: games.</p>
+                    <table id="CinnabarrUsers" style="width:100%;border-collapse:collapse;">
+                        <thead>
+                            <tr><th style="text-align:left;">User</th><th>Request</th><th>Manage</th><th>Play</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+
+                    <div style="margin-top:2em;">
+                        <button is="emby-button" type="submit" class="raised button-submit block"><span>Save</span></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script type="text/javascript">
+            (function () {
+                var pluginId = '04afd9e8-511a-4cc3-a5d7-efd4e175eddf';
+                var page = document.querySelector('#CinnabarrConfigPage');
+                var roles = ['Requester', 'Manager', 'Player'];
+
+                function checkbox(user, role, access) {
+                    var cell = document.createElement('td');
+                    cell.style.textAlign = 'center';
+                    var input = document.createElement('input');
+                    input.type = 'checkbox';
+                    input.setAttribute('data-user', user.Id);
+                    input.setAttribute('data-role', role);
+                    input.setAttribute('aria-label', role + ' for ' + user.Name);
+                    input.checked = !!(access && access[role]);
+                    if (user.Policy && user.Policy.IsAdministrator) {
+                        input.checked = true;
+                        input.disabled = true;
+                    }
+                    cell.appendChild(input);
+                    return cell;
+                }
+
+                function renderUsers(users, config) {
+                    var body = page.querySelector('#CinnabarrUsers tbody');
+                    body.innerHTML = '';
+                    users.forEach(function (user) {
+                        var access = (config.Users || []).filter(function (u) {
+                            return u.UserId.replace(/-/g, '').toLowerCase() === user.Id.replace(/-/g, '').toLowerCase();
+                        })[0];
+                        var row = document.createElement('tr');
+                        var name = document.createElement('td');
+                        name.textContent = user.Name + (user.Policy && user.Policy.IsAdministrator ? ' (administrator)' : '');
+                        row.appendChild(name);
+                        roles.forEach(function (role) { row.appendChild(checkbox(user, role, access)); });
+                        body.appendChild(row);
+                    });
+                }
+
+                function readUsers() {
+                    var byUser = {};
+                    page.querySelectorAll('#CinnabarrUsers input[type=checkbox]').forEach(function (input) {
+                        if (input.disabled) { return; }
+                        var id = input.getAttribute('data-user');
+                        byUser[id] = byUser[id] || { UserId: id, Requester: false, Manager: false, Player: false };
+                        byUser[id][input.getAttribute('data-role')] = input.checked;
+                    });
+                    return Object.keys(byUser).map(function (k) { return byUser[k]; }).filter(function (u) {
+                        return u.Requester || u.Manager || u.Player;
+                    });
+                }
+
+                page.addEventListener('pageshow', function () {
+                    Dashboard.showLoadingMsg();
+                    Promise.all([ApiClient.getPluginConfiguration(pluginId), ApiClient.getUsers()]).then(function (results) {
+                        var config = results[0];
+                        page.querySelector('#CinnabarrUrl').value = config.CinnabarrUrl || '';
+                        page.querySelector('#CinnabarrApiKey').value = config.ApiKey || '';
+                        renderUsers(results[1], config);
+                        Dashboard.hideLoadingMsg();
+                    });
+                });
+
+                page.querySelector('#CinnabarrTest').addEventListener('click', function () {
+                    var result = page.querySelector('#CinnabarrTestResult');
+                    result.textContent = 'Testing…';
+                    ApiClient.ajax({
+                        type: 'POST',
+                        url: ApiClient.getUrl('Cinnabarr/Test'),
+                        data: JSON.stringify({
+                            Url: page.querySelector('#CinnabarrUrl').value,
+                            ApiKey: page.querySelector('#CinnabarrApiKey').value
+                        }),
+                        contentType: 'application/json',
+                        dataType: 'json'
+                    }).then(function (status) {
+                        result.textContent = status.Ok
+                            ? 'Connected to ' + (status.AppName || 'Cinnabarr') + (status.Version ? ' ' + status.Version : '') + '.'
+                            : status.Message;
+                    }, function () {
+                        result.textContent = 'The test failed. Check the Jellyfin log.';
+                    });
+                });
+
+                page.querySelector('#CinnabarrConfigForm').addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                        config.CinnabarrUrl = page.querySelector('#CinnabarrUrl').value.trim();
+                        config.ApiKey = page.querySelector('#CinnabarrApiKey').value.trim();
+                        config.Users = readUsers();
+                        ApiClient.updatePluginConfiguration(pluginId, config).then(Dashboard.processPluginConfigurationUpdateResult);
+                    });
+                    return false;
+                });
+            })();
+        </script>
+    </div>
+</body>
+</html>
