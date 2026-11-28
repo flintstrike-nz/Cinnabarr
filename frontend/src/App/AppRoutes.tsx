@@ -19,6 +19,7 @@ import ImportMovies from 'Movie/ImportMovies';
 import MovieCalendar from 'Movie/MovieCalendar';
 import MovieDetails from 'Movie/MovieDetails';
 import MoviesIndex from 'Movie/MoviesIndex';
+import OperationsPage from 'Operations/OperationsPage';
 import SearchPage from 'Search/SearchPage';
 import SeriesDetailsPage from 'Series/Details/SeriesDetailsPage';
 import SeriesIndex from 'Series/Index/SeriesIndex';
@@ -195,6 +196,8 @@ export function appRouteElements() {
       */}
 
       <Route path="/system/status" element={<Status />} />
+
+      <Route path="/operations" element={<OperationsPage />} />
 
       <Route path="/system/tasks" element={<Tasks />} />
 

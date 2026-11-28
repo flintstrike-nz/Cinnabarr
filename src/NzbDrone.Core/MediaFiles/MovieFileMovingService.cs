@@ -9,6 +9,7 @@ using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.MediaFiles.MovieImport;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Movies;
+using NzbDrone.Core.Operations;
 using NzbDrone.Core.Organizer;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.RootFolders;
@@ -32,6 +33,7 @@ namespace NzbDrone.Core.MediaFiles
         private readonly IRootFolderService _rootFolderService;
         private readonly IEventAggregator _eventAggregator;
         private readonly IConfigService _configService;
+        private readonly IFileOperationTracker _fileOperations;
         private readonly Logger _logger;
 
         public MovieFileMovingService(IUpdateMovieFileService updateMovieFileService,
@@ -42,6 +44,7 @@ namespace NzbDrone.Core.MediaFiles
                                 IRootFolderService rootFolderService,
                                 IEventAggregator eventAggregator,
                                 IConfigService configService,
+                                IFileOperationTracker fileOperations,
                                 Logger logger)
         {
             _updateMovieFileService = updateMovieFileService;
@@ -52,6 +55,7 @@ namespace NzbDrone.Core.MediaFiles
             _rootFolderService = rootFolderService;
             _eventAggregator = eventAggregator;
             _configService = configService;
+            _fileOperations = fileOperations;
             _logger = logger;
         }
 
@@ -121,6 +125,20 @@ namespace NzbDrone.Core.MediaFiles
                 return movieFile;
             }
 
+            // Another file at the destination: this one goes in next to it under a numbered name instead of staying behind.
+            var freePath = FreeFilePath.Find(_diskProvider, destinationFilePath, movieFilePath);
+
+            if (freePath != destinationFilePath)
+            {
+                // A file already numbered keeps its name.
+                if (!freePath.PathEquals(movieFilePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.Warn("A file already exists at '{0}'; '{1}' goes in as '{2}' instead, for Doctor to compare", destinationFilePath, movieFilePath, Path.GetFileName(freePath));
+                }
+
+                destinationFilePath = freePath;
+            }
+
             if (movieFilePath == destinationFilePath)
             {
                 throw new SameFilenameException("File not moved, source and destination are the same", movieFilePath);
@@ -133,7 +151,19 @@ namespace NzbDrone.Core.MediaFiles
                 localMovie.FileNameBeforeRename = movieFile.RelativePath;
             }
 
-            _diskTransferService.TransferFile(movieFilePath, destinationFilePath, mode);
+            var operation = _fileOperations.StartTransfer(FileOperationTitles.Movie(movie), movieFilePath, destinationFilePath, mode);
+
+            try
+            {
+                _diskTransferService.TransferFile(movieFilePath, destinationFilePath, mode);
+            }
+            catch (Exception ex)
+            {
+                _fileOperations.Fail(operation, ex);
+                throw;
+            }
+
+            _fileOperations.Complete(operation);
 
             _updateMovieFileService.ChangeFileDateForFile(movieFile, movie);
 

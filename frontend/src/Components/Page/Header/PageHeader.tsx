@@ -1,9 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { toggleIsSidebarVisible } from 'App/appStore';
+import { useNavigate } from 'react-router-dom';
+import { toggleIsSidebarVisible, useAppDimension } from 'App/appStore';
 import IconButton from 'Components/Link/IconButton';
 import Link from 'Components/Link/Link';
 import useKeyboardShortcuts from 'Helpers/Hooks/useKeyboardShortcuts';
 import { icons } from 'Helpers/Props';
+import { toggleOperationsPanel } from 'Operations/operationsPanelStore';
+import { useFileOperations } from 'Operations/useFileOperations';
 import translate from 'Utilities/String/translate';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import PageHeaderActionsMenu from './PageHeaderActionsMenu';
@@ -16,10 +19,22 @@ function PageHeader() {
     useState(false);
 
   const { bindShortcut, unbindShortcut } = useKeyboardShortcuts();
+  const isSmallScreen = useAppDimension('isSmallScreen');
+  const navigate = useNavigate();
+  const { activeCount } = useFileOperations();
 
   const handleSidebarToggle = useCallback(() => {
     toggleIsSidebarVisible();
   }, []);
+
+  // The operations queue: the panel on a wide screen, its own page on a phone.
+  const handleOperationsPress = useCallback(() => {
+    if (isSmallScreen) {
+      navigate('/operations');
+    } else {
+      toggleOperationsPanel();
+    }
+  }, [isSmallScreen, navigate]);
 
   const handleOpenKeyboardShortcutsModal = useCallback(() => {
     setIsKeyboardShortcutsModalOpen(true);
@@ -71,13 +86,17 @@ function PageHeader() {
 
       <div className={styles.right}>
         <IconButton
-          className={styles.donate}
-          iconClassName={styles.donateIcon}
-          name={icons.HEART}
-          aria-label={translate('Donate')}
-          to="https://sonarr.tv/donate.html"
-          title={translate('Donate')}
+          className={styles.operations}
+          iconClassName={styles.operationsIcon}
+          name={icons.OPERATIONS}
+          aria-label={translate('Operations')}
+          title={translate('Operations')}
+          onPress={handleOperationsPress}
         />
+
+        {activeCount ? (
+          <span className={styles.operationsBadge}>{activeCount}</span>
+        ) : null}
 
         <PageHeaderToolsMenu />
 

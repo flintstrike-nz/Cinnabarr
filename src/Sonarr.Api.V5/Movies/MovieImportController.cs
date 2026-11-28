@@ -13,10 +13,12 @@ public class UnmappedMovieFolderResource
     public required string Path { get; set; }
     public required string ParsedTitle { get; set; }
     public int ParsedYear { get; set; }
+    public bool IsFile { get; set; }
 }
 
-// Library import: the folders of a root folder that hold no movie of the library yet. Each is added with the
-// ordinary add-movie call, giving the folder as the movie's path.
+// Library import: the folders of a root folder that hold no movie of the library yet, and the video files lying
+// loose in it. A folder is added with the ordinary add-movie call, giving the folder as the movie's path; a loose
+// file, or anything belonging to a movie already in the library, is moved in with the MergeIntoMovie command.
 [V5ApiController("movie/import")]
 public class MovieImportController : Controller
 {
@@ -41,7 +43,8 @@ public class MovieImportController : Controller
             Name = f.Name,
             Path = f.Path,
             ParsedTitle = f.ParsedTitle,
-            ParsedYear = f.ParsedYear
+            ParsedYear = f.ParsedYear,
+            IsFile = f.IsFile
         }).ToList());
     }
 }

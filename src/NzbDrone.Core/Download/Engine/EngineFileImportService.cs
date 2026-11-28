@@ -418,10 +418,18 @@ namespace NzbDrone.Core.Download.Engine
                     var existingFiles = GetEpisodeFiles(episodes);
 
                     // Never rename over a file that isn't one being replaced (checked before anything is detached).
+                    // Another file has the name: this one goes in next to it under a numbered name, for Doctor to compare.
                     if (_diskProvider.FileExists(finalPath) && !existingFiles.Any(f => Path.Combine(series.Path, f.RelativePath).PathEquals(finalPath)))
                     {
-                        LogWaiting(waitingKey, "'{0}' is ready, but a file already exists at its final path; it stays under its pending name", file.FinalPath);
-                        return;
+                        if (!_fileMapper.NumberFinalPaths(link, file, FreeFilePath.Find(_diskProvider, finalPath)))
+                        {
+                            LogWaiting(waitingKey, "'{0}' is ready, but a file already exists at its final path; it stays under its pending name", file.FinalPath);
+                            return;
+                        }
+
+                        _logger.Warn("A file already exists at '{0}'; the download goes in as '{1}' instead, for Doctor to compare", finalPath, file.FinalPath);
+                        finalPath = Path.Combine(link.SavePath, file.FinalPath);
+                        save();
                     }
 
                     // Another download already replacing the same files, or headed for the same path, goes first: its

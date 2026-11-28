@@ -25,6 +25,7 @@ namespace NzbDrone.Core.MediaFiles.EpisodeImport.Manual
         List<ManualImportItem> GetMediaFiles(int seriesId, int? seasonNumber);
         List<ManualImportItem> GetMediaFiles(string path, string downloadId, int? seriesId, bool filterExistingFiles);
         ManualImportItem ReprocessItem(string path, string downloadId, int seriesId, int? seasonNumber, List<int> episodeIds, string releaseGroup, QualityModel quality, List<Language> languages, int indexerFlags, ReleaseType releaseType);
+        List<ImportResult> Import(ManualImportCommand message);
     }
 
     public class ManualImportService : IExecute<ManualImportCommand>, IManualImportService
@@ -488,6 +489,11 @@ namespace NzbDrone.Core.MediaFiles.EpisodeImport.Manual
 
         public void Execute(ManualImportCommand message)
         {
+            Import(message);
+        }
+
+        public List<ImportResult> Import(ManualImportCommand message)
+        {
             _logger.ProgressTrace("Manually importing {0} files using mode {1}", message.Files.Count, message.ImportMode);
 
             var imported = new List<ImportResult>();
@@ -633,6 +639,8 @@ namespace NzbDrone.Core.MediaFiles.EpisodeImport.Manual
                     _eventAggregator.PublishEvent(new DownloadCompletedEvent(trackedDownload, importedSeries, importedEpisodes, episodeFiles, importedResults.First().ImportDecision.LocalEpisode.Release));
                 }
             }
+
+            return imported;
         }
     }
 }
