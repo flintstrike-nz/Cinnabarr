@@ -17,7 +17,7 @@ A third library next to Series and Movies: **Games**. A game belongs to a **plat
 | G3 | Play in the browser from the details page, with gamepad support, saves and save states stored on the server | emulator choice (section 3) |
 | G4 | Play from the Jellyfin app on LG webOS | a prototype on a real TV (section 5) |
 | G5 | Doctor for games (duplicate regions/revisions, bad dumps), storage balancing for the Games library | G1 |
-| G6 | More platforms: NES, Mega Drive, Nintendo 64, GameCube, Wii, Wii U | nothing external |
+| G6 | More platforms: NES, Mega Drive, Nintendo 64, GameCube, Wii, Wii U (**built**: browser play for NES, Mega Drive and N64; GameCube and Wii told apart by disc header; each platform says whether it plays in the browser, either, or only streamed) | nothing external |
 | G7 | Stream the consoles a TV cannot emulate (PlayStation 2, GameCube, Wii, and PlayStation / N64 where the TV is too slow) from the server with `cinnabarr-play` | an NVIDIA GPU on the server; see [JELLYFIN.md](JELLYFIN.md) |
 | G8 | Wii U (experimental), through standalone Cemu | G7 |
 

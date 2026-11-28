@@ -135,7 +135,8 @@ namespace NzbDrone.Core.Games
                 var size = SizeOf(file, extension, folder);
                 var relative = System.IO.Path.GetRelativePath(root, folder);
                 var folders = relative == "." ? Enumerable.Empty<string>() : relative.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
-                var platform = GamePlatforms.Detect(new[] { System.IO.Path.GetFileName(root) }.Concat(folders), extension, size);
+                var folderNames = new[] { System.IO.Path.GetFileName(root) }.Concat(folders).ToList();
+                var platform = GamePlatforms.Detect(folderNames, extension, size, GamePlatforms.NeedsHeader(extension) ? ReadHeader(file) : null);
 
                 if (platform == null)
                 {
@@ -153,6 +154,30 @@ namespace NzbDrone.Core.Games
                     Path = file,
                     Size = size
                 };
+            }
+        }
+
+        // The first bytes of a disc image, which tell a GameCube disc from a Wii one; null when it can't be read.
+        private byte[] ReadHeader(string file)
+        {
+            try
+            {
+                using var stream = _diskProvider.OpenReadStream(file);
+
+                if (stream == null)
+                {
+                    return null;
+                }
+
+                var buffer = new byte[DiscSignature.HeaderLength];
+                var read = stream.ReadAtLeast(buffer, buffer.Length, false);
+
+                return read == buffer.Length ? buffer : buffer.Take(read).ToArray();
+            }
+            catch (Exception e) when (e is System.IO.IOException || e is UnauthorizedAccessException)
+            {
+                _logger.Debug(e, "Could not read the start of {0}", file);
+                return null;
             }
         }
 

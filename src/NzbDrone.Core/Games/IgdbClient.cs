@@ -83,7 +83,13 @@ namespace NzbDrone.Core.Games
             { "sms", 64 },
             { "snes", 19 },
             { "psx", 7 },
-            { "ps2", 8 }
+            { "ps2", 8 },
+            { "nes", 18 },
+            { "md", 29 },
+            { "n64", 4 },
+            { "gc", 21 },
+            { "wii", 5 },
+            { "wiiu", 41 }
         };
 
         private const string Fields = "name,summary,first_release_date,rating,genres.name,cover.image_id,involved_companies.developer,involved_companies.company.name";

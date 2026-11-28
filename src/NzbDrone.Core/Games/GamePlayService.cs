@@ -44,12 +44,6 @@ namespace NzbDrone.Core.Games
     /// </summary>
     public class GamePlayService : IGamePlayService
     {
-        // Platforms the browser emulator has a core for. PlayStation 2 has none.
-        private static readonly string[] Playable = { "sms", "snes", "psx" };
-
-        // Platforms whose emulator will not start without a BIOS the owner supplies.
-        private static readonly string[] NeedBios = { "psx" };
-
         private static readonly Regex CueFile = new Regex("^\\s*FILE\\s+\"(?<file>[^\"]+)\"", RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.Compiled);
 
         private readonly IAppFolderInfo _appFolderInfo;
@@ -68,9 +62,16 @@ namespace NzbDrone.Core.Games
             var platform = GamePlatforms.Get(game.PlatformKey);
             var info = new GamePlayInfo { Core = platform?.Core };
 
-            if (platform == null || !Playable.Contains(platform.Key))
+            if (platform == null)
             {
-                info.Reason = $"{platform?.Name ?? game.PlatformKey} cannot be played in the browser yet.";
+                info.Reason = $"{game.PlatformKey} is not a platform Cinnabarr knows.";
+                return info;
+            }
+
+            if (platform.Core == null)
+            {
+                // Streaming from the server (cinnabarr-play) is planned, not built: docs/cinnabarr/JELLYFIN.md.
+                info.Reason = $"{platform.Name} games are too heavy for a browser; they will be streamed from the server once that is built.";
                 return info;
             }
 
@@ -82,7 +83,7 @@ namespace NzbDrone.Core.Games
 
             info.Playable = true;
             info.HasState = _diskProvider.FileExists(GetStatePath(game));
-            info.NeedsBios = NeedBios.Contains(platform.Key);
+            info.NeedsBios = platform.NeedsBios;
             info.HasBios = FindBios(platform.Key) != null;
 
             return info;

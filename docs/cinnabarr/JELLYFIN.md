@@ -1,6 +1,6 @@
 # Cinnabarr in Jellyfin on LG webOS, and streamed games (design)
 
-Status: **scheduled. Done: J0 (this document and the TV checklist), J1 (the request and status API, section 8), J2 (the plugin skeleton with the TV check page, `clients/jellyfin-plugin/`), J3 (the plugin's endpoints, listed in its README) J4 (the Cinnabarr screens inside the Jellyfin app: Library, Discover, Search and requesting) and J5 (Downloads and interactive search for managers).** This turns [Addendum A](ROADMAP.md#addendum-a--jellyfin--webos-integration-future-not-part-of-the-current-plan) into a plan and extends the games work in [GAMES.md](GAMES.md) with server-side emulation for the consoles a TV cannot emulate itself.
+Status: **scheduled. Done: J0 (this document and the TV checklist), J1 (the request and status API, section 8), J2 (the plugin skeleton with the TV check page, `clients/jellyfin-plugin/`), J3 (the plugin's endpoints, listed in its README) J4 (the Cinnabarr screens inside the Jellyfin app: Library, Discover, Search and requesting) J5 (Downloads and interactive search for managers) and G6 (the new platforms in Cinnabarr).** This turns [Addendum A](ROADMAP.md#addendum-a--jellyfin--webos-integration-future-not-part-of-the-current-plan) into a plan and extends the games work in [GAMES.md](GAMES.md) with server-side emulation for the consoles a TV cannot emulate itself.
 
 ## 1. Goal
 
