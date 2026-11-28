@@ -76,6 +76,17 @@
   font-size: 12px;
 }
 
+.ratio {
+  margin-top: 4px;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.releaseSort {
+  display: inline-block;
+  margin-bottom: 10px;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;

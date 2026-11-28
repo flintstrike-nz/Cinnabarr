@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Icon from 'Components/Icon';
 import Button from 'Components/Link/Button';
@@ -9,6 +9,7 @@ import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import PageHeading from 'Components/Page/PageHeading';
 import { icons, kinds } from 'Helpers/Props';
+import Peers from 'InteractiveSearch/Peers';
 import { useQualityProfilesData } from 'Settings/Profiles/Quality/useQualityProfiles';
 import formatBytes from 'Utilities/Number/formatBytes';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
@@ -45,6 +46,51 @@ interface ReleaseRowProps {
   onGrab: (payload: { guid: string; indexerId: number }) => void;
 }
 
+type ReleaseSortKey = 'best' | 'seeders' | 'size' | 'age';
+
+const RELEASE_SORTS: { key: ReleaseSortKey; label: () => string }[] = [
+  { key: 'best', label: () => translate('ReleaseSortBest') },
+  { key: 'seeders', label: () => translate('ReleaseSortSeeders') },
+  { key: 'size', label: () => translate('ReleaseSortSize') },
+  { key: 'age', label: () => translate('ReleaseSortAge') },
+];
+
+// Best is the order the server ranks releases in (what an automatic search would grab first); most seeders is the
+// quickest to download.
+function sortReleases(releases: MovieRelease[], sortKey: ReleaseSortKey) {
+  const sorted = [...releases];
+
+  switch (sortKey) {
+    case 'seeders':
+      return sorted.sort(
+        (a, b) => (b.release?.seeders ?? -1) - (a.release?.seeders ?? -1)
+      );
+    case 'size':
+      return sorted.sort(
+        (a, b) => (b.release?.size ?? 0) - (a.release?.size ?? 0)
+      );
+    case 'age':
+      return sorted.sort(
+        (a, b) => (a.release?.ageHours ?? 0) - (b.release?.ageHours ?? 0)
+      );
+    default:
+      return sorted.sort((a, b) => a.releaseWeight - b.releaseWeight);
+  }
+}
+
+// Seeders per leecher: above 1, more people share it than want it.
+function formatRatio(seeders?: number, leechers?: number) {
+  if (seeders == null || leechers == null) {
+    return null;
+  }
+
+  if (leechers === 0) {
+    return seeders > 0 ? '∞' : null;
+  }
+
+  return (seeders / leechers).toFixed(1);
+}
+
 function ReleaseRow({ item, isGrabbing, onGrab }: ReleaseRowProps) {
   const { release, decision, parsedInfo } = item;
 
@@ -53,6 +99,9 @@ function ReleaseRow({ item, isGrabbing, onGrab }: ReleaseRowProps) {
       onGrab({ guid: release.guid, indexerId: release.indexerId });
     }
   }, [release, onGrab]);
+
+  const isTorrent = release?.protocol === 'torrent';
+  const ratio = formatRatio(release?.seeders, release?.leechers);
 
   return (
     <tr>
@@ -65,6 +114,23 @@ function ReleaseRow({ item, isGrabbing, onGrab }: ReleaseRowProps) {
         ))}
       </td>
       <td>{release?.indexer}</td>
+      <td>
+        {isTorrent ? (
+          <>
+            <Peers seeders={release?.seeders} leechers={release?.leechers} />
+            {ratio ? (
+              <div
+                className={styles.ratio}
+                title={translate('SeedRatioTooltip')}
+              >
+                {ratio}:1
+              </div>
+            ) : null}
+          </>
+        ) : (
+          '-'
+        )}
+      </td>
       <td>{formatBytes(release?.size ?? 0)}</td>
       <td>{Math.round(release?.age ?? 0)}d</td>
       <td>{parsedInfo?.quality?.quality.name}</td>
@@ -88,6 +154,16 @@ function InteractiveSearch({ movieId, versionSlotId }: InteractiveSearchProps) {
     versionSlotId
   );
   const { isGrabbing, grabError, grabRelease } = useGrabMovieRelease();
+  const [sortKey, setSortKey] = useState<ReleaseSortKey>('best');
+
+  const sorted = useMemo(() => sortReleases(data, sortKey), [data, sortKey]);
+
+  const handleSortChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      setSortKey(event.target.value as ReleaseSortKey);
+    },
+    []
+  );
 
   if (isFetching) {
     return <LoadingIndicator />;
@@ -101,11 +177,23 @@ function InteractiveSearch({ movieId, versionSlotId }: InteractiveSearchProps) {
     <>
       {grabError ? <p>{getErrorMessage(grabError)}</p> : null}
 
+      <label className={styles.releaseSort}>
+        {translate('Sort')}{' '}
+        <select value={sortKey} onChange={handleSortChange}>
+          {RELEASE_SORTS.map((sort) => (
+            <option key={sort.key} value={sort.key}>
+              {sort.label()}
+            </option>
+          ))}
+        </select>
+      </label>
+
       <table className={styles.table}>
         <thead>
           <tr>
             <th>{translate('Title')}</th>
             <th>{translate('Indexer')}</th>
+            <th>{translate('Peers')}</th>
             <th>{translate('Size')}</th>
             <th>{translate('Age')}</th>
             <th>{translate('Quality')}</th>
@@ -113,7 +201,7 @@ function InteractiveSearch({ movieId, versionSlotId }: InteractiveSearchProps) {
           </tr>
         </thead>
         <tbody>
-          {data.map((item) => (
+          {sorted.map((item) => (
             <ReleaseRow
               key={`${item.release?.indexerId}-${item.release?.guid}`}
               item={item}
