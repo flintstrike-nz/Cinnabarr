@@ -66,6 +66,13 @@ export const useGrabMovieRelease = () => {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['/queue'] });
       },
+      onError: (error) => {
+        // The server no longer has the search's results (they expire, and a restart clears them): search again so
+        // the list holds releases that can be grabbed.
+        if (error.statusCode === 404) {
+          queryClient.invalidateQueries({ queryKey: ['/release/movie'] });
+        }
+      },
     },
   });
 
