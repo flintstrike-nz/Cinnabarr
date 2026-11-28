@@ -1,6 +1,6 @@
 # Cinnabarr in Jellyfin on LG webOS, and streamed games (design)
 
-Status: **scheduled; J0 (this document and the TV checklist), J1 (the request and status API, section 8) J2 (the plugin skeleton with the TV check page, `clients/jellyfin-plugin/`) and J3 (the plugin's endpoints, listed in its README) are done.** This turns [Addendum A](ROADMAP.md#addendum-a--jellyfin--webos-integration-future-not-part-of-the-current-plan) into a plan and extends the games work in [GAMES.md](GAMES.md) with server-side emulation for the consoles a TV cannot emulate itself.
+Status: **scheduled. Done: J0 (this document and the TV checklist), J1 (the request and status API, section 8), J2 (the plugin skeleton with the TV check page, `clients/jellyfin-plugin/`), J3 (the plugin's endpoints, listed in its README) and J4 (the Cinnabarr screens inside the Jellyfin app: Library, Discover, Search and requesting).** This turns [Addendum A](ROADMAP.md#addendum-a--jellyfin--webos-integration-future-not-part-of-the-current-plan) into a plan and extends the games work in [GAMES.md](GAMES.md) with server-side emulation for the consoles a TV cannot emulate itself.
 
 ## 1. Goal
 
@@ -65,7 +65,7 @@ Cores are never bundled. As in GAMES.md, they are downloaded from the libretro b
 | **J1** | Cinnabarr API gaps for clients: discover lists (trending, popular, upcoming), an "in library / requested" lookup by TVDB/TMDb id, and the single "add item with options" contract shared with Addendum B. |
 | **J2** | Plugin skeleton: settings (Cinnabarr URL, API key, which Jellyfin users get which role), a *Test connection* button, a build script, a plugin repository `manifest.json`, and a probe page for the TV checklist. Targets Jellyfin 12.x (.NET 10, current stable 12.4), with a 10.11 (.NET 9) build option. |
 | **J3** | Proxy endpoints under `/Cinnabarr`: a fixed list, no pass-through of arbitrary paths. Role checks and a per-user request log. |
-| **J4** | Script injection (through the *File Transformation* plugin) and the TV screens: Library, Discover, Search and request. Spatial navigation taken from `frontend/src/tv.html`; the remote's Back key handled. |
+| **J4** | Script injection (built: the plugin adds its script to jellyfin-web's page itself, no other plugin needed) and the TV screens: Library, Discover, Search and request. Spatial navigation taken from `frontend/src/tv.html`; the remote's Back key handled. |
 | **J5** | Downloads (queue: progress, pause, resume, remove, blocklist, re-search) and interactive search with grab into a version slot. Manager role only. |
 | **G6** | Platforms: NES, Mega Drive, Nintendo 64, GameCube, Wii, Wii U in the platform catalog, with GameCube and Wii told apart by the disc header. |
 | **J6** | Games screen and browser-tier play inside Jellyfin. ROMs, saves and BIOS go through the plugin. |
