@@ -97,6 +97,9 @@ namespace NzbDrone.Core.Configuration
         private static readonly Regex HiddenCharacterRegex = new Regex("[^a-z0-9]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         private static readonly object Mutex = new object();
+        private static readonly NLog.Logger Logger = NzbDroneLogger.GetLogger(typeof(ConfigFileProvider));
+
+        private string BackupFile => _configFile + ".bak";
 
         public ConfigFileProvider(IAppFolderInfo appFolderInfo,
                                   ICacheManager cacheManager,
@@ -479,6 +482,20 @@ namespace NzbDrone.Core.Configuration
                     {
                         var contents = _diskProvider.ReadAllText(_configFile);
 
+                        // An empty config (from a save cut short before saves were atomic) comes back from the copy
+                        // kept by the last save, rather than stopping the app with its API key and settings lost.
+                        if (contents.IsNullOrWhiteSpace() && _diskProvider.FileExists(BackupFile))
+                        {
+                            var backup = _diskProvider.ReadAllText(BackupFile);
+
+                            if (backup.IsNotNullOrWhiteSpace())
+                            {
+                                Logger.Warn("{0} is empty; restoring it from {1}", _configFile, BackupFile);
+                                _diskProvider.WriteAllText(_configFile, backup);
+                                contents = backup;
+                            }
+                        }
+
                         if (contents.IsNullOrWhiteSpace())
                         {
                             throw new InvalidConfigFileException($"{_configFile} is empty. Please delete the config file and Sonarr will recreate it.");
@@ -489,7 +506,7 @@ namespace NzbDrone.Core.Configuration
                             throw new InvalidConfigFileException($"{_configFile} is corrupt. Please delete the config file and Sonarr will recreate it.");
                         }
 
-                        var xDoc = XDocument.Parse(_diskProvider.ReadAllText(_configFile));
+                        var xDoc = XDocument.Parse(contents);
                         var config = xDoc.Descendants(CONFIG_ELEMENT_NAME).ToList();
 
                         if (config.Count != 1)
@@ -516,7 +533,18 @@ namespace NzbDrone.Core.Configuration
         {
             lock (Mutex)
             {
-                _diskProvider.WriteAllText(_configFile, xDoc.ToString());
+                // Written next to it and swapped in, so a write cut short (or read halfway) never leaves the config
+                // empty; the copy it replaces is kept as config.xml.bak.
+                var temp = _configFile + ".tmp";
+
+                _diskProvider.WriteAllText(temp, xDoc.ToString());
+
+                if (_diskProvider.FileExists(_configFile) && _diskProvider.GetFileSize(_configFile) > 0)
+                {
+                    _diskProvider.CopyFile(_configFile, BackupFile, true);
+                }
+
+                _diskProvider.ReplaceFile(temp, _configFile);
             }
         }
 
