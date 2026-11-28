@@ -10,6 +10,7 @@ using NzbDrone.Core.Configuration;
 using NzbDrone.Core.MediaFiles.EpisodeImport;
 using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Events;
+using NzbDrone.Core.Operations;
 using NzbDrone.Core.Organizer;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.RootFolders;
@@ -36,6 +37,7 @@ namespace NzbDrone.Core.MediaFiles
         private readonly IRootFolderService _rootFolderService;
         private readonly IEventAggregator _eventAggregator;
         private readonly IConfigService _configService;
+        private readonly IFileOperationTracker _fileOperations;
         private readonly Logger _logger;
 
         public EpisodeFileMovingService(IEpisodeService episodeService,
@@ -48,6 +50,7 @@ namespace NzbDrone.Core.MediaFiles
                                 IRootFolderService rootFolderService,
                                 IEventAggregator eventAggregator,
                                 IConfigService configService,
+                                IFileOperationTracker fileOperations,
                                 Logger logger)
         {
             _episodeService = episodeService;
@@ -60,6 +63,7 @@ namespace NzbDrone.Core.MediaFiles
             _rootFolderService = rootFolderService;
             _eventAggregator = eventAggregator;
             _configService = configService;
+            _fileOperations = fileOperations;
             _logger = logger;
         }
 
@@ -164,7 +168,19 @@ namespace NzbDrone.Core.MediaFiles
             }
             else
             {
-                _diskTransferService.TransferFile(episodeFilePath, destinationFilePath, mode);
+                var operation = _fileOperations.StartTransfer(FileOperationTitles.Episode(series, episodes), episodeFilePath, destinationFilePath, mode);
+
+                try
+                {
+                    _diskTransferService.TransferFile(episodeFilePath, destinationFilePath, mode);
+                }
+                catch (Exception ex)
+                {
+                    _fileOperations.Fail(operation, ex);
+                    throw;
+                }
+
+                _fileOperations.Complete(operation);
             }
 
             _updateEpisodeFileService.ChangeFileDateForFile(episodeFile, series, episodes);

@@ -6,7 +6,7 @@ using NUnit.Framework;
 using NzbDrone.Common.Disk;
 using NzbDrone.Core.MediaFiles.EpisodeImport;
 using NzbDrone.Core.MediaFiles.EpisodeImport.Manual;
-using NzbDrone.Core.Messaging.Commands;
+using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
 using NzbDrone.Core.RootFolders;
 using NzbDrone.Core.Test.Framework;
@@ -45,9 +45,10 @@ namespace NzbDrone.Core.Test.MediaFiles
             Mocker.GetMock<IDiskProvider>().Setup(d => d.FolderExists(_folder)).Returns(true);
             Mocker.GetMock<IDiskProvider>().Setup(d => d.FileExists(It.IsAny<string>())).Returns(false);
 
-            Mocker.GetMock<IExecute<ManualImportCommand>>()
-                  .Setup(e => e.Execute(It.IsAny<ManualImportCommand>()))
-                  .Callback<ManualImportCommand>(c => _imported = c);
+            Mocker.GetMock<IManualImportService>()
+                  .Setup(e => e.Import(It.IsAny<ManualImportCommand>()))
+                  .Callback<ManualImportCommand>(c => _imported = c)
+                  .Returns(new List<ImportResult>());
         }
 
         private ManualImportItem Item(string name, int episodeId, params ImportRejection[] rejections)
@@ -90,6 +91,43 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void should_merge_episodes_the_folder_name_does_not_expect()
+        {
+            _items.Add(Item("Show.S02E01.mkv", 21, new ImportRejection(ImportRejectionReason.EpisodeUnexpected, "Episode 2x01 was unexpected considering the Show.S01 folder name")));
+
+            Subject.Execute(new MergeIntoSeriesCommand { SeriesId = 5, Paths = new List<string> { _folder } });
+
+            _imported.Files.Select(f => f.EpisodeIds.Single()).Should().Equal(11, 12, 21);
+        }
+
+        [Test]
+        public void should_say_why_each_file_was_left()
+        {
+            var rejected = Item("Show.S01E03.mkv", 13, new ImportRejection(ImportRejectionReason.Unknown, "Not an upgrade"));
+            var unmatched = new ManualImportItem { Path = System.IO.Path.Combine(_folder, "extra.mkv"), Episodes = new List<Episode>() };
+            _items.Add(rejected);
+            _items.Add(unmatched);
+
+            // The second file failed to move, so it's still there.
+            Mocker.GetMock<IDiskProvider>().Setup(d => d.FileExists(_items[1].Path)).Returns(true);
+            Mocker.GetMock<IManualImportService>()
+                  .Setup(e => e.Import(It.IsAny<ManualImportCommand>()))
+                  .Returns(new List<ImportResult>
+                  {
+                      new ImportResult(new ImportDecision(new LocalEpisode { Path = _items[1].Path }), "Destination already exists")
+                  });
+
+            var command = new MergeIntoSeriesCommand { SeriesId = 5, Paths = new List<string> { _folder } };
+            Subject.Execute(command);
+
+            command.Results.Should().HaveCount(4);
+            command.Results.Single(r => r.Path == _items[0].Path).Merged.Should().BeTrue();
+            command.Results.Single(r => r.Path == _items[1].Path).Reason.Should().Be("Destination already exists");
+            command.Results.Single(r => r.Path == rejected.Path).Reason.Should().Be("Not an upgrade");
+            command.Results.Single(r => r.Path == unmatched.Path).Reason.Should().Contain("doesn't match an episode");
+        }
+
+        [Test]
         public void should_not_touch_the_root_folder_the_series_folder_or_a_missing_path()
         {
             var inside = System.IO.Path.Combine(_series.Path, "Season 01");
@@ -99,7 +137,7 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             Subject.Execute(new MergeIntoSeriesCommand { SeriesId = 5, Paths = new List<string> { _root, inside, System.IO.Path.Combine(_root, "Gone") } });
 
-            Mocker.GetMock<IExecute<ManualImportCommand>>().Verify(e => e.Execute(It.IsAny<ManualImportCommand>()), Times.Never());
+            Mocker.GetMock<IManualImportService>().Verify(e => e.Import(It.IsAny<ManualImportCommand>()), Times.Never());
             Mocker.GetMock<IDiskProvider>().Verify(d => d.DeleteFolder(It.IsAny<string>(), It.IsAny<bool>()), Times.Never());
             ExceptionVerification.IgnoreWarns();
         }

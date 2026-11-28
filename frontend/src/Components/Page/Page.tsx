@@ -8,6 +8,7 @@ import SignalRListener from 'Components/SignalRListener';
 import AuthenticationRequiredModal from 'FirstRun/AuthenticationRequiredModal';
 import EngineLegalNoticeModal from 'FirstRun/EngineLegalNoticeModal';
 import useAppPage from 'Helpers/Hooks/useAppPage';
+import OperationsPanel from 'Operations/OperationsPanel';
 import { useUiSettingsValues } from 'Settings/UI/useUiSettings';
 import { useSystemStatusData } from 'System/Status/useSystemStatus';
 import ErrorPage from './ErrorPage';
@@ -101,6 +102,8 @@ function Page({ children }: PageProps) {
 
         {children}
       </div>
+
+      <OperationsPanel />
 
       <MobileTabBar />
 

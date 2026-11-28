@@ -12,6 +12,7 @@ import { useUpdateCommand } from 'Commands/useCommands';
 import Episode from 'Episode/Episode';
 import { EpisodeFile } from 'EpisodeFile/EpisodeFile';
 import { PagedQueryResponse } from 'Helpers/Hooks/usePagedApiQuery';
+import { FileOperation } from 'Operations/useFileOperations';
 import Series from 'Series/Series';
 import { DownloadClientModel } from 'Settings/DownloadClients/DownloadClients/useDownloadClients';
 import { ImportListModel } from 'Settings/ImportLists/ImportLists/useImportLists';
@@ -170,6 +171,21 @@ function SignalRListener() {
 
         removeQueryClientItem(queryClient, ['/episodeFile'], id);
         repopulatePage('episodeFileDeleted');
+      }
+
+      return;
+    }
+
+    if (name === 'fileoperation') {
+      if (body.action === 'sync') {
+        queryClient.invalidateQueries({ queryKey: ['/fileoperation'] });
+      } else if (body.action === 'updated') {
+        updateQueryClientItem(
+          queryClient,
+          ['/fileoperation'],
+          body.resource as FileOperation,
+          true
+        );
       }
 
       return;

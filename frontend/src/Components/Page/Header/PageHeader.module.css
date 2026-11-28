@@ -83,7 +83,7 @@
   flex-grow: 1;
 }
 
-.donate {
+.operations {
   composes: link from 'Components/Link/Link.module.css';
 
   display: inline-flex;
@@ -103,12 +103,22 @@
   }
 }
 
-.donateIcon {
-  transition: fill var(--transitionSmooth);
+.operationsIcon {
+  transition: color var(--transitionSmooth);
 }
 
-.donate:hover .donateIcon {
-  fill: currentColor;
+/* How many file operations are queued or running, on the button's corner. */
+.operationsBadge {
+  margin-left: -14px;
+  min-width: 16px;
+  border-radius: 8px;
+  background-color: var(--primaryBackgroundColor);
+  color: var(--white, #fff);
+  text-align: center;
+  font-size: 10px;
+  line-height: 16px;
+  transform: translateY(-9px);
+  pointer-events: none;
 }
 
 @media (--sidebarCollapsible) {
@@ -133,10 +143,6 @@
   }
 
   .brandName {
-    display: none;
-  }
-
-  .donate {
     display: none;
   }
 

@@ -9,6 +9,7 @@ using NzbDrone.Core.Extras.MovieExtras;
 using NzbDrone.Core.History;
 using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Events;
+using NzbDrone.Core.Operations;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
 
@@ -27,6 +28,7 @@ namespace NzbDrone.Core.MediaFiles.MovieImport
         private readonly IMovieHistoryService _historyService;
         private readonly IEventAggregator _eventAggregator;
         private readonly IMovieExtraService _extraService;
+        private readonly IFileOperationTracker _fileOperations;
         private readonly Logger _logger;
 
         public ImportApprovedMovie(IUpgradeMovieFiles movieFileUpgrader,
@@ -35,6 +37,7 @@ namespace NzbDrone.Core.MediaFiles.MovieImport
                                    IMovieHistoryService historyService,
                                    IEventAggregator eventAggregator,
                                    IMovieExtraService extraService,
+                                   IFileOperationTracker fileOperations,
                                    Logger logger)
         {
             _movieFileUpgrader = movieFileUpgrader;
@@ -43,6 +46,7 @@ namespace NzbDrone.Core.MediaFiles.MovieImport
             _historyService = historyService;
             _eventAggregator = eventAggregator;
             _extraService = extraService;
+            _fileOperations = fileOperations;
             _logger = logger;
         }
 
@@ -60,11 +64,17 @@ namespace NzbDrone.Core.MediaFiles.MovieImport
                 .ToList();
 
             var importResults = new List<ImportResult>();
+            var ordered = qualifiedImports.OrderByDescending(e => e.LocalMovie.Size).ToList();
 
-            foreach (var importDecision in qualifiedImports.OrderByDescending(e => e.LocalMovie.Size))
+            // The operations queue shows every file to import, and its move into the movie, before any of them runs.
+            var operations = ordered.ToDictionary(d => d, d => QueueOperations(d.LocalMovie, newDownload, importMode, downloadClientItem));
+
+            foreach (var importDecision in ordered)
             {
                 var localMovie = importDecision.LocalMovie;
                 var oldFiles = new List<DeletedMovieFile>();
+
+                _fileOperations.Start(operations[importDecision]);
 
                 try
                 {
@@ -178,6 +188,10 @@ namespace NzbDrone.Core.MediaFiles.MovieImport
                     _logger.Warn(e, "Couldn't import movie " + localMovie);
                     importResults.Add(new ImportResult(importDecision, "Failed to import movie", e.Message));
                 }
+                finally
+                {
+                    FinishOperations(operations[importDecision], importResults.LastOrDefault(r => r.ImportDecision == importDecision));
+                }
             }
 
             // Adding all the rejected decisions
@@ -185,6 +199,51 @@ namespace NzbDrone.Core.MediaFiles.MovieImport
                                             .Select(d => new ImportResult(d, d.Rejections.Select(r => r.Message).ToArray())));
 
             return importResults;
+        }
+
+        private FileOperation QueueOperations(LocalMovie localMovie, bool newDownload, ImportMode importMode, DownloadClientItem downloadClientItem)
+        {
+            var title = FileOperationTitles.Movie(localMovie.Movie);
+            var operation = _fileOperations.Queue(FileOperationKinds.Import, title, localMovie.Path, localMovie.Movie.Path);
+
+            // Only a new file is moved (or copied) into the movie's folder; one already there is just recorded.
+            if (newDownload && !localMovie.InPlace)
+            {
+                var copy = importMode == ImportMode.Copy || (importMode == ImportMode.Auto && downloadClientItem is { CanMoveFiles: false });
+
+                _fileOperations.Queue(copy ? FileOperationKinds.Copy : FileOperationKinds.Move, title, localMovie.Path);
+            }
+
+            return operation;
+        }
+
+        private void FinishOperations(FileOperation operation, ImportResult result)
+        {
+            if (operation == null)
+            {
+                return;
+            }
+
+            if (result == null || result.Result == ImportResultType.Imported)
+            {
+                _fileOperations.Complete(operation);
+                _fileOperations.SkipQueued(operation.Path, "Nothing to move");
+
+                return;
+            }
+
+            var reason = string.Join("; ", result.Errors);
+
+            if (result.Result == ImportResultType.Skipped)
+            {
+                _fileOperations.Skip(operation, reason);
+            }
+            else
+            {
+                _fileOperations.Fail(operation, reason);
+            }
+
+            _fileOperations.SkipQueued(operation.Path, $"Not done: {reason}");
         }
     }
 }

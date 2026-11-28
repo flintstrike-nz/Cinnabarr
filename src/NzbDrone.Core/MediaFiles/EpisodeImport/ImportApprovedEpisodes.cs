@@ -11,6 +11,7 @@ using NzbDrone.Core.MediaFiles.Commands;
 using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
+using NzbDrone.Core.Operations;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
 
@@ -31,6 +32,7 @@ namespace NzbDrone.Core.MediaFiles.EpisodeImport
         private readonly IHistoryService _historyService;
         private readonly IEventAggregator _eventAggregator;
         private readonly IManageCommandQueue _commandQueueManager;
+        private readonly IFileOperationTracker _fileOperations;
         private readonly Logger _logger;
 
         public ImportApprovedEpisodes(IUpgradeMediaFiles episodeFileUpgrader,
@@ -41,6 +43,7 @@ namespace NzbDrone.Core.MediaFiles.EpisodeImport
                                       IHistoryService historyService,
                                       IEventAggregator eventAggregator,
                                       IManageCommandQueue commandQueueManager,
+                                      IFileOperationTracker fileOperations,
                                       Logger logger)
         {
             _episodeFileUpgrader = episodeFileUpgrader;
@@ -51,6 +54,7 @@ namespace NzbDrone.Core.MediaFiles.EpisodeImport
             _historyService = historyService;
             _eventAggregator = eventAggregator;
             _commandQueueManager = commandQueueManager;
+            _fileOperations = fileOperations;
             _logger = logger;
         }
 
@@ -65,12 +69,19 @@ namespace NzbDrone.Core.MediaFiles.EpisodeImport
                 .ToList();
 
             var importResults = new List<ImportResult>();
+            var ordered = qualifiedImports.OrderBy(e => e.LocalEpisode.Episodes.Select(episode => episode.EpisodeNumber).MinOrDefault())
+                                          .ThenByDescending(e => e.LocalEpisode.Size)
+                                          .ToList();
 
-            foreach (var importDecision in qualifiedImports.OrderBy(e => e.LocalEpisode.Episodes.Select(episode => episode.EpisodeNumber).MinOrDefault())
-                                                           .ThenByDescending(e => e.LocalEpisode.Size))
+            // The operations queue shows every file to import, and its move into the series, before any of them runs.
+            var operations = ordered.ToDictionary(d => d, d => QueueOperations(d.LocalEpisode, newDownload, importMode, downloadClientItem));
+
+            foreach (var importDecision in ordered)
             {
                 var localEpisode = importDecision.LocalEpisode;
                 var oldFiles = new List<DeletedEpisodeFile>();
+
+                _fileOperations.Start(operations[importDecision]);
 
                 try
                 {
@@ -203,6 +214,10 @@ namespace NzbDrone.Core.MediaFiles.EpisodeImport
                     _logger.Warn(e, "Couldn't import episode " + localEpisode);
                     importResults.Add(new ImportResult(importDecision, "Failed to import episode", e.Message));
                 }
+                finally
+                {
+                    FinishOperations(operations[importDecision], importResults.LastOrDefault(r => r.ImportDecision == importDecision));
+                }
             }
 
             // Adding all the rejected decisions
@@ -210,6 +225,51 @@ namespace NzbDrone.Core.MediaFiles.EpisodeImport
                                             .Select(d => new ImportResult(d, d.Rejections.Select(r => r.Message).ToArray())));
 
             return importResults;
+        }
+
+        private FileOperation QueueOperations(LocalEpisode localEpisode, bool newDownload, ImportMode importMode, DownloadClientItem downloadClientItem)
+        {
+            var title = FileOperationTitles.Episode(localEpisode.Series, localEpisode.Episodes);
+            var operation = _fileOperations.Queue(FileOperationKinds.Import, title, localEpisode.Path, localEpisode.Series.Path);
+
+            // Only a new file is moved (or copied) into the series; one already in its folder is just recorded.
+            if (newDownload && !localEpisode.InPlace)
+            {
+                var copy = importMode == ImportMode.Copy || (importMode == ImportMode.Auto && downloadClientItem is { CanMoveFiles: false });
+
+                _fileOperations.Queue(copy ? FileOperationKinds.Copy : FileOperationKinds.Move, title, localEpisode.Path);
+            }
+
+            return operation;
+        }
+
+        private void FinishOperations(FileOperation operation, ImportResult result)
+        {
+            if (operation == null)
+            {
+                return;
+            }
+
+            if (result == null || result.Result == ImportResultType.Imported)
+            {
+                _fileOperations.Complete(operation);
+                _fileOperations.SkipQueued(operation.Path, "Nothing to move");
+
+                return;
+            }
+
+            var reason = string.Join("; ", result.Errors);
+
+            if (result.Result == ImportResultType.Skipped)
+            {
+                _fileOperations.Skip(operation, reason);
+            }
+            else
+            {
+                _fileOperations.Fail(operation, reason);
+            }
+
+            _fileOperations.SkipQueued(operation.Path, $"Not done: {reason}");
         }
     }
 }
