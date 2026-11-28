@@ -50,6 +50,17 @@ namespace NzbDrone.Common.Test
                 .Setup(v => v.WriteAllText(configFile, It.IsAny<string>()))
                 .Callback<string, string>((p, t) => _configFileContents = t);
 
+            // The config is saved to a temp file next to it and then swapped in.
+            string tempContents = null;
+
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(v => v.WriteAllText(configFile + ".tmp", It.IsAny<string>()))
+                .Callback<string, string>((p, t) => tempContents = t);
+
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(v => v.ReplaceFile(configFile + ".tmp", configFile))
+                .Callback(() => _configFileContents = tempContents);
+
             Mocker.GetMock<IOptions<AuthOptions>>()
                 .Setup(v => v.Value)
                 .Returns(new AuthOptions());
