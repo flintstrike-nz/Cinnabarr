@@ -2,7 +2,23 @@
 
 Lets people use Cinnabarr from the Jellyfin apps (the goal is the LG webOS app): browse and request shows and movies, manage downloads, run interactive search and play games. The design and the steps are in [docs/cinnabarr/JELLYFIN.md](../../docs/cinnabarr/JELLYFIN.md).
 
-**Status: J3.** It holds the Cinnabarr address and API key, decides what each Jellyfin user may do, tests the connection, has the *Cinnabarr TV check* page, and exposes the endpoints below for the TV screens. The screens themselves come in later steps.
+**Status: J4.** It holds the Cinnabarr address and API key, decides what each Jellyfin user may do, tests the connection, has the *Cinnabarr TV check* page, exposes the endpoints below, and adds the Cinnabarr screens to the Jellyfin app: Library, Discover and Search with requesting. Downloads, interactive search and games come next.
+
+## Using it
+
+Users with a role see a Cinnabarr button (a "C") in Jellyfin's top bar, next to search. It opens a full-screen view:
+
+- **Library**: everything in Cinnabarr, filtered to series, movies, or what is still requested.
+- **Discover**: trending and popular movies (there is no list source for series yet).
+- **Search**: find a movie or series by name.
+
+Pick a poster to see its details and, if it is not in the library yet, **Request** it. Cinnabarr adds it with its default root folder and quality profile and starts searching.
+
+Remote: arrows move, OK selects, Back goes back (and closes the view). Controller: d-pad or left stick move, A selects, B goes back. While the view is open, Jellyfin's own handling of the remote and controller is held back.
+
+### How the screens get into the app
+
+The plugin adds one stylesheet and one script tag to jellyfin-web's `index.html` as Jellyfin serves it (an ASP.NET startup filter; no files are changed, so Docker and read-only installs work, and uninstalling removes it). The LG webOS app loads the page from the server, so it gets the screens too. Nothing else is needed: no File Transformation or JavaScript Injector plugin. The script finds Jellyfin's top bar by position (it works with both the newer app bar and the older header); if a Jellyfin update moves things around, that is the one place to adjust (`Web/client.js`, `headerSlot`).
 
 ## Build
 

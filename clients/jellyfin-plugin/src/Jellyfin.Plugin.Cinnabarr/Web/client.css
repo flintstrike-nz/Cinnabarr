@@ -1,0 +1,359 @@
+/* Cinnabarr inside Jellyfin. Sized for a TV seen from the sofa; works with a mouse too. Chromium 79 safe. */
+
+html.cnb-open,
+html.cnb-open body {
+    overflow: hidden;
+}
+
+.cnb-overlay {
+    --cnb-bg: #101114;
+    --cnb-surface: #1c1e24;
+    --cnb-surface-2: #262932;
+    --cnb-text: #f2f2f4;
+    --cnb-muted: #a7a9b3;
+    --cnb-accent: #e34234;
+    --cnb-accent-text: #fff;
+    --cnb-focus: #ffffff;
+    --cnb-ok: #3fb950;
+    --cnb-warn: #d29922;
+    --cnb-info: #58a6ff;
+
+    position: fixed;
+    inset: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2147483000;
+    display: flex;
+    flex-direction: column;
+    background: var(--cnb-bg);
+    color: var(--cnb-text);
+    font-family: inherit;
+    font-size: max(15px, 1.05vw);
+    line-height: 1.35;
+}
+
+.cnb-top {
+    display: flex;
+    align-items: center;
+    gap: 1.2em;
+    padding: 1em 2.5vw 0.6em;
+    flex: none;
+}
+
+.cnb-brand {
+    font-size: 1.5em;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--cnb-accent);
+}
+
+.cnb-tabs {
+    display: flex;
+    gap: 0.4em;
+    flex: 1;
+}
+
+.cnb-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.6em 2.5vw 3em;
+}
+
+.cnb-button {
+    font: inherit;
+    color: var(--cnb-text);
+    background: var(--cnb-surface-2);
+    border: 2px solid transparent;
+    border-radius: 0.5em;
+    padding: 0.5em 1.1em;
+    cursor: pointer;
+    outline: none;
+}
+
+.cnb-button:hover {
+    background: #30343f;
+}
+
+.cnb-tab {
+    background: transparent;
+    color: var(--cnb-muted);
+    font-size: 1.1em;
+}
+
+.cnb-tab.cnb-active {
+    color: var(--cnb-text);
+    background: var(--cnb-surface);
+}
+
+.cnb-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em;
+    margin: 0.4em 0 1em;
+}
+
+.cnb-chip {
+    border-radius: 2em;
+    padding: 0.35em 1em;
+}
+
+.cnb-chip.cnb-active {
+    background: var(--cnb-text);
+    color: var(--cnb-bg);
+}
+
+.cnb-primary {
+    background: var(--cnb-accent);
+    color: var(--cnb-accent-text);
+    font-weight: 600;
+}
+
+.cnb-primary:hover {
+    background: #f05545;
+}
+
+.cnb-button[disabled] {
+    opacity: 0.6;
+}
+
+/* The focus ring: thick and high-contrast, because on a TV it is the only pointer there is. */
+.cnb-f:focus {
+    border-color: var(--cnb-focus);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25);
+}
+
+.cnb-searchForm {
+    display: flex;
+    gap: 0.6em;
+    margin-bottom: 1.2em;
+    max-width: 50em;
+}
+
+.cnb-input {
+    flex: 1;
+    font: inherit;
+    font-size: 1.1em;
+    color: var(--cnb-text);
+    background: var(--cnb-surface);
+    border: 2px solid #3a3d48;
+    border-radius: 0.5em;
+    padding: 0.5em 0.8em;
+    outline: none;
+}
+
+.cnb-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(max(120px, 10.5vw), 1fr));
+    gap: 1.4em 1em;
+}
+
+.cnb-card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    text-align: left;
+    font: inherit;
+    color: var(--cnb-text);
+    background: transparent;
+    border: 3px solid transparent;
+    border-radius: 0.6em;
+    padding: 0.25em;
+    cursor: pointer;
+    outline: none;
+    transition: transform 0.12s ease;
+}
+
+.cnb-card:focus {
+    transform: scale(1.05);
+    background: var(--cnb-surface);
+}
+
+.cnb-poster {
+    position: relative;
+    width: 100%;
+    padding-top: 150%;
+    border-radius: 0.4em;
+    overflow: hidden;
+    background: linear-gradient(160deg, #2b2e38, #17181d);
+}
+
+.cnb-poster img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.cnb-posterTitle {
+    position: absolute;
+    left: 0.6em;
+    right: 0.6em;
+    bottom: 40%;
+    text-align: center;
+    color: var(--cnb-muted);
+    font-size: 0.95em;
+}
+
+.cnb-poster img + .cnb-posterTitle {
+    display: none;
+}
+
+.cnb-badge {
+    position: absolute;
+    left: 0.4em;
+    bottom: 0.4em;
+    padding: 0.15em 0.55em;
+    border-radius: 1em;
+    font-size: 0.75em;
+    font-weight: 600;
+    background: rgba(0, 0, 0, 0.75);
+    color: var(--cnb-text);
+}
+
+.cnb-badge-available {
+    background: var(--cnb-ok);
+    color: #04110a;
+}
+
+.cnb-badge-downloading {
+    background: var(--cnb-info);
+    color: #04101f;
+}
+
+.cnb-badge-wanted,
+.cnb-badge-partial {
+    background: var(--cnb-warn);
+    color: #1a1200;
+}
+
+.cnb-cardTitle {
+    margin-top: 0.45em;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cnb-cardYear {
+    color: var(--cnb-muted);
+    font-size: 0.85em;
+}
+
+.cnb-empty {
+    color: var(--cnb-muted);
+    padding: 2em 0;
+    font-size: 1.1em;
+}
+
+.cnb-detail {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(5, 5, 8, 0.85);
+}
+
+.cnb-detailCard {
+    display: flex;
+    gap: 2em;
+    width: min(70em, 90vw);
+    max-height: 85vh;
+    padding: 2em;
+    border-radius: 1em;
+    background: var(--cnb-surface);
+}
+
+.cnb-detailPoster {
+    flex: none;
+    width: 14em;
+}
+
+.cnb-detailPoster img {
+    width: 100%;
+    border-radius: 0.5em;
+}
+
+.cnb-detailText {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.cnb-detailTitle {
+    margin: 0 0 0.2em;
+    font-size: 1.8em;
+}
+
+.cnb-detailMeta {
+    color: var(--cnb-muted);
+    margin-bottom: 1em;
+}
+
+.cnb-detailOverview {
+    flex: 1;
+    overflow-y: auto;
+    margin: 0 0 1.5em;
+    max-height: 14em;
+}
+
+.cnb-actions {
+    display: flex;
+    gap: 0.8em;
+}
+
+.cnb-toast {
+    position: absolute;
+    left: 50%;
+    bottom: 2em;
+    transform: translate(-50%, 1em);
+    opacity: 0;
+    padding: 0.7em 1.4em;
+    border-radius: 0.6em;
+    background: var(--cnb-surface-2);
+    color: var(--cnb-text);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+}
+
+.cnb-toast.cnb-show {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+.cnb-headerButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    margin: 0 2px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
+.cnb-headerButton:hover,
+.cnb-headerButton:focus {
+    background: rgba(255, 255, 255, 0.12);
+    outline: none;
+}
+
+.cnb-headerButton:focus {
+    box-shadow: 0 0 0 2px currentColor;
+}
+
+.cnb-headerButton svg {
+    display: block;
+}
