@@ -128,7 +128,7 @@ namespace NzbDrone.Core.MediaFiles
                 var seasonNumber = episodesInFile.First().SeasonNumber;
                 var newPath = _filenameBuilder.BuildFilePath(episodesInFile, fileSeries, file, Path.GetExtension(episodeFilePath));
 
-                if (!episodeFilePath.PathEquals(newPath, StringComparison.Ordinal))
+                if (!episodeFilePath.PathEquals(newPath, StringComparison.Ordinal) && !FreeFilePath.IsNumberedCopy(_diskProvider, episodeFilePath, newPath))
                 {
                     yield return new RenameEpisodeFilePreview
                     {

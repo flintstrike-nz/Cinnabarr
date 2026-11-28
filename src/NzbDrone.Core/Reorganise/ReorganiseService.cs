@@ -215,15 +215,14 @@ namespace NzbDrone.Core.Reorganise
                 items.AddRange(_looseMediaService.Find(folder));
             }
 
-            // Two files that would end up with the same name: neither is done, so nothing is overwritten or lost.
-            foreach (var clash in items.Where(i => i.Problem == null && i.To != null && i.Kind != ReorganiseKinds.Folder)
-                         .GroupBy(i => i.To, PathEqualityComparer.Instance)
-                         .Where(g => g.Count() > 1))
+            // A name another file has (or will have, earlier in the run) gets a number, as the move gives it: nothing is
+            // skipped or written over, and Doctor flags the worse of the copies afterwards.
+            var taken = new HashSet<string>(PathEqualityComparer.Instance);
+
+            foreach (var item in items.Where(i => i.Problem == null && i.To != null && i.Kind != ReorganiseKinds.Folder))
             {
-                foreach (var item in clash)
-                {
-                    item.Problem = $"{clash.Count()} files would get the name {Path.GetFileName(clash.Key)}. Keep one (or make them versions) and run again";
-                }
+                item.To = FreeFilePath.Find(_diskProvider, item.To, item.From, taken);
+                taken.Add(item.To);
             }
 
             return items;
@@ -403,12 +402,6 @@ namespace NzbDrone.Core.Reorganise
             if (!_diskProvider.FileExists(item.From))
             {
                 return "The file isn't there any more. Refresh the series or movie to update the library";
-            }
-
-            // A change of case only is the same file on a drive that ignores case.
-            if (_diskProvider.FileExists(item.To) && !item.To.PathEquals(item.From, StringComparison.OrdinalIgnoreCase))
-            {
-                return $"Another file already has the name {Path.GetFileName(item.To)}. The library may hold two files for this {(item.MediaType == ReorganiseMediaTypes.Movie ? "movie" : "episode")}";
             }
 
             return null;

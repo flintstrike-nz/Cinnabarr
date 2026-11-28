@@ -125,6 +125,20 @@ namespace NzbDrone.Core.MediaFiles
                 return movieFile;
             }
 
+            // Another file at the destination: this one goes in next to it under a numbered name instead of staying behind.
+            var freePath = FreeFilePath.Find(_diskProvider, destinationFilePath, movieFilePath);
+
+            if (freePath != destinationFilePath)
+            {
+                // A file already numbered keeps its name.
+                if (!freePath.PathEquals(movieFilePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.Warn("A file already exists at '{0}'; '{1}' goes in as '{2}' instead, for Doctor to compare", destinationFilePath, movieFilePath, Path.GetFileName(freePath));
+                }
+
+                destinationFilePath = freePath;
+            }
+
             if (movieFilePath == destinationFilePath)
             {
                 throw new SameFilenameException("File not moved, source and destination are the same", movieFilePath);
