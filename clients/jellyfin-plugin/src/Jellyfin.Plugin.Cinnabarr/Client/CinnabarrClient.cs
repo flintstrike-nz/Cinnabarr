@@ -20,7 +20,14 @@ namespace Jellyfin.Plugin.Cinnabarr.Client
     public interface ICinnabarrClient
     {
         // Calls Cinnabarr's /api/v5/<path> with the API key. path is relative, e.g. "request/status?tmdbIds=603".
+        // The response body is not buffered; the caller disposes the response.
         Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, HttpContent? content, CancellationToken cancellationToken);
+
+        // The same, with a Range header passed on (for ROM downloads).
+        Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, HttpContent? content, string? range, CancellationToken cancellationToken);
+
+        // Whether a Cinnabarr address and key are saved.
+        bool IsConfigured { get; }
 
         // Checks a URL and key (the saved ones when both are empty).
         Task<CinnabarrStatus> TestAsync(string? url, string? apiKey, CancellationToken cancellationToken);
@@ -46,11 +53,26 @@ namespace Jellyfin.Plugin.Cinnabarr.Client
             _logger = logger;
         }
 
+        public bool IsConfigured
+        {
+            get
+            {
+                var config = _configuration();
+
+                return !string.IsNullOrWhiteSpace(config.CinnabarrUrl) && !string.IsNullOrWhiteSpace(config.ApiKey);
+            }
+        }
+
         public Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, HttpContent? content, CancellationToken cancellationToken)
+        {
+            return SendAsync(method, path, content, null, cancellationToken);
+        }
+
+        public Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, HttpContent? content, string? range, CancellationToken cancellationToken)
         {
             var config = _configuration();
 
-            return SendAsync(config.CinnabarrUrl, config.ApiKey, method, path, content, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            return SendAsync(config.CinnabarrUrl, config.ApiKey, method, path, content, range, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         }
 
         public async Task<CinnabarrStatus> TestAsync(string? url, string? apiKey, CancellationToken cancellationToken)
@@ -64,7 +86,7 @@ namespace Jellyfin.Plugin.Cinnabarr.Client
 
             try
             {
-                using var response = await SendAsync(url, apiKey, HttpMethod.Get, "system/status", null, HttpCompletionOption.ResponseContentRead, cancellationToken).ConfigureAwait(false);
+                using var response = await SendAsync(url, apiKey, HttpMethod.Get, "system/status", null, null, HttpCompletionOption.ResponseContentRead, cancellationToken).ConfigureAwait(false);
 
                 if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                 {
@@ -142,7 +164,7 @@ namespace Jellyfin.Plugin.Cinnabarr.Client
             return new Uri(root, "api/v5/" + path);
         }
 
-        private async Task<HttpResponseMessage> SendAsync(string? baseUrl, string? apiKey, HttpMethod method, string path, HttpContent? content, HttpCompletionOption completion, CancellationToken cancellationToken)
+        private async Task<HttpResponseMessage> SendAsync(string? baseUrl, string? apiKey, HttpMethod method, string path, HttpContent? content, string? range, HttpCompletionOption completion, CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(apiKey))
             {
@@ -154,6 +176,12 @@ namespace Jellyfin.Plugin.Cinnabarr.Client
             using var request = new HttpRequestMessage(method, uri) { Content = content };
             request.Headers.Add("X-Api-Key", apiKey.Trim());
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*", 0.1));
+
+            if (!string.IsNullOrEmpty(range) && RangeHeaderValue.TryParse(range, out var parsedRange))
+            {
+                request.Headers.Range = parsedRange;
+            }
 
             var client = _httpClientFactory.CreateClient(HttpClientName);
 

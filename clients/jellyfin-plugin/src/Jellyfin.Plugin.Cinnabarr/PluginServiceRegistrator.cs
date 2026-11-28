@@ -1,5 +1,6 @@
 using System;
 using Jellyfin.Plugin.Cinnabarr.Client;
+using Jellyfin.Plugin.Cinnabarr.Requests;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Plugins;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,6 +18,7 @@ namespace Jellyfin.Plugin.Cinnabarr
             });
 
             serviceCollection.AddSingleton<ICinnabarrClient, CinnabarrClient>();
+            serviceCollection.AddSingleton<IRequestLog, RequestLog>();
         }
     }
 }
