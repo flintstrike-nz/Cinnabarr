@@ -2,7 +2,7 @@
 
 Lets people use Cinnabarr from the Jellyfin apps (the goal is the LG webOS app): browse and request shows and movies, manage downloads, run interactive search and play games. The design and the steps are in [docs/cinnabarr/JELLYFIN.md](../../docs/cinnabarr/JELLYFIN.md).
 
-**Status: J4.** It holds the Cinnabarr address and API key, decides what each Jellyfin user may do, tests the connection, has the *Cinnabarr TV check* page, exposes the endpoints below, and adds the Cinnabarr screens to the Jellyfin app: Library, Discover and Search with requesting. Downloads, interactive search and games come next.
+**Status: J5.** It holds the Cinnabarr address and API key, decides what each Jellyfin user may do, tests the connection, has the *Cinnabarr TV check* page, exposes the endpoints below, and adds the Cinnabarr screens to the Jellyfin app: Library, Discover and Search with requesting, and for managers Downloads and interactive search. Games come next.
 
 ## Using it
 
@@ -13,6 +13,11 @@ Users with a role see a Cinnabarr button (a "C") in Jellyfin's top bar, next to 
 - **Search**: find a movie or series by name.
 
 Pick a poster to see its details and, if it is not in the library yet, **Request** it. Cinnabarr adds it with its default root folder and quality profile and starts searching.
+
+Managers also get:
+
+- **Downloads**: the queue, refreshed every 2 seconds, with progress, time left and any problem Cinnabarr reports. **Pause** / **Resume** (built-in engine downloads), **Grab now** (a release waiting out a delay), **Remove**, and **Remove and find another** (blocklists the release and searches again). Removing needs a second press within 4 seconds.
+- **Find releases** on anything in the library: interactive search across indexers, in Cinnabarr's order, with quality, size, seeders, indexer, age and why a release is not wanted. **Grab** sends it to downloads; a release Cinnabarr would not pick needs a second press (**Grab anyway**). For a series, pick the season first (the newest is chosen). Grabs go to the main version; choosing a version slot comes later.
 
 Remote: arrows move, OK selects, Back goes back (and closes the view). Controller: d-pad or left stick move, A selects, B goes back. While the view is open, Jellyfin's own handling of the remote and controller is held back.
 
