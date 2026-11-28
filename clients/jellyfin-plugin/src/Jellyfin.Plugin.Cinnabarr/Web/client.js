@@ -413,6 +413,9 @@
         if (has('manager')) {
             list.push({ key: 'downloads', label: 'Downloads', render: renderDownloads });
         }
+        if (has('player')) {
+            list.push({ key: 'games', label: 'Games', render: renderGames });
+        }
         return list;
     }
 
@@ -915,6 +918,215 @@
         }
     }
 
+    // ---- Games (players) ----
+
+    var gamesState = { platform: 'all', games: null, platforms: null };
+    var player = null;
+
+    function renderGames() {
+        if (!gamesState.games) {
+            body.appendChild(loading());
+            Promise.all([api('Games'), api('Games/Platforms')]).then(function (results) {
+                gamesState.games = (results[0] || []).slice().sort(function (a, b) {
+                    return (a.sortTitle || a.title || '').localeCompare(b.sortTitle || b.title || '');
+                });
+                gamesState.platforms = results[1] || [];
+                if (screen === 'games') {
+                    render(false);
+                }
+            }).catch(showError);
+            return;
+        }
+
+        var present = gamesState.platforms.filter(function (p) {
+            return gamesState.games.some(function (g) { return g.platformKey === p.key; });
+        });
+        if (present.length > 1) {
+            body.appendChild(chipRow([{ label: 'All', value: 'all' }].concat(present.map(function (p) {
+                return { label: p.name, value: p.key };
+            })), gamesState.platform, function (value) {
+                gamesState.platform = value;
+                render(false, '.cnb-chip.cnb-active');
+            }));
+        }
+
+        var shown = gamesState.games.filter(function (g) {
+            return gamesState.platform === 'all' || g.platformKey === gamesState.platform;
+        });
+        if (!shown.length) {
+            body.appendChild(el('div', 'cnb-empty', 'No games yet. Add a Games root folder in Cinnabarr and scan it.'));
+            return;
+        }
+
+        var wrap = el('div', 'cnb-grid cnb-gameGrid');
+        shown.forEach(function (g) {
+            var platform = platformOf(g);
+            var card = el('button', 'cnb-f cnb-card');
+            card.type = 'button';
+            card.setAttribute('data-key', 'game-' + g.id);
+            var art = el('div', 'cnb-poster cnb-gamePoster');
+            if (g.hasCover) {
+                var img = el('img');
+                img.loading = 'lazy';
+                img.alt = '';
+                img.src = imageUrl('Games/' + g.id + '/Cover');
+                img.onerror = function () {
+                    img.remove();
+                };
+                art.appendChild(img);
+            }
+            art.appendChild(el('span', 'cnb-posterTitle', g.title));
+            if (platform && platform.play === 'stream') {
+                art.appendChild(el('span', 'cnb-badge', 'Streaming later'));
+            }
+            card.appendChild(art);
+            card.appendChild(el('span', 'cnb-cardTitle', g.title));
+            card.appendChild(el('span', 'cnb-cardYear', g.platformName || g.platformKey));
+            card.addEventListener('click', function () {
+                openGame(g);
+            });
+            wrap.appendChild(card);
+        });
+        body.appendChild(wrap);
+    }
+
+    function platformOf(game) {
+        var list = gamesState.platforms || [];
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].key === game.platformKey) {
+                return list[i];
+            }
+        }
+        return null;
+    }
+
+    function openGame(game) {
+        closeDetail();
+        detailEl = el('div', 'cnb-detail');
+        detailEl.setAttribute('role', 'dialog');
+        detailEl.setAttribute('aria-label', game.title);
+        detailEl.__returnFocus = document.activeElement;
+        var card = el('div', 'cnb-detailCard');
+        var art = el('div', 'cnb-detailPoster');
+        if (game.hasCover) {
+            var img = el('img');
+            img.alt = '';
+            img.src = imageUrl('Games/' + game.id + '/Cover');
+            img.onerror = function () {
+                img.remove();
+            };
+            art.appendChild(img);
+        }
+        card.appendChild(art);
+
+        var text = el('div', 'cnb-detailText');
+        text.appendChild(el('h2', 'cnb-detailTitle', game.title));
+        var meta = [game.platformName || game.platformKey];
+        if (game.region) {
+            meta.push(game.region);
+        }
+        if (game.year) {
+            meta.push(String(game.year));
+        }
+        text.appendChild(el('div', 'cnb-detailMeta', meta.join(' · ')));
+        var note = el('p', 'cnb-detailOverview', game.overview || '');
+        text.appendChild(note);
+        var actions = el('div', 'cnb-actions');
+        actions.appendChild(button('Close', '', function () {
+            closeDetail();
+        }));
+        text.appendChild(actions);
+        card.appendChild(text);
+        detailEl.appendChild(card);
+        overlay.appendChild(detailEl);
+        focus(actions.querySelector('.cnb-f'));
+
+        api('Games/' + game.id + '/Play').then(function (info) {
+            if (!detailEl) {
+                return;
+            }
+            if (!info || !info.playable) {
+                note.textContent = (info && info.reason) || 'This game cannot be played here.';
+                return;
+            }
+            if (info.needsBios && !info.hasBios) {
+                note.textContent = 'This needs your own BIOS on the Cinnabarr server, at config/bios/' + game.platformKey + '.bin. Cinnabarr does not include one.';
+                return;
+            }
+            var play = button(info.hasState ? 'Continue' : 'Play', 'cnb-primary', function () {
+                startGame(game, info);
+            });
+            actions.insertBefore(play, actions.firstChild);
+            focus(play);
+        }).catch(function (e) {
+            note.textContent = e.message;
+        });
+    }
+
+    function startGame(game, info) {
+        var returnFocus = detailEl ? detailEl.__returnFocus : null;
+        closeDetail();
+        var frame = el('iframe', 'cnb-player');
+        frame.title = game.title;
+        frame.allow = 'gamepad; fullscreen; autoplay';
+        frame.setAttribute('allowfullscreen', '');
+        var hash = 'id=' + game.id +
+            '&core=' + encodeURIComponent(info.core) +
+            '&title=' + encodeURIComponent(game.title) +
+            '&state=' + (info.hasState ? '1' : '0') +
+            (info.hasBios ? '&bios=' + encodeURIComponent(game.platformKey) : '');
+        frame.src = endpoint('Web/play.html') + '#' + hash;
+        player = { frame: frame, returnFocus: returnFocus, gameId: game.id };
+        overlay.appendChild(frame);
+        frame.addEventListener('load', function () {
+            try {
+                frame.contentWindow.focus();
+            } catch (e) {
+                frame.focus();
+            }
+        });
+    }
+
+    // Asks the game to save and close; it answers with "exit". Closes anyway if it does not answer.
+    function leaveGame() {
+        if (!player) {
+            return;
+        }
+        var current = player;
+        try {
+            current.frame.contentWindow.postMessage({ cinnabarr: 'leave' }, location.origin);
+        } catch (e) {
+            endGame();
+            return;
+        }
+        setTimeout(function () {
+            if (player === current) {
+                endGame();
+            }
+        }, 4000);
+    }
+
+    function endGame() {
+        if (!player) {
+            return;
+        }
+        var ended = player;
+        player = null;
+        ended.frame.remove();
+        if (overlay) {
+            render(false, '.cnb-card[data-key="game-' + ended.gameId + '"]');
+        }
+    }
+
+    window.addEventListener('message', function (e) {
+        if (e.origin !== location.origin || !e.data || !player || e.source !== player.frame.contentWindow) {
+            return;
+        }
+        if (e.data.cinnabarr === 'exit') {
+            endGame();
+        }
+    });
+
     // ---- Opening and closing ----
 
     function open() {
@@ -950,6 +1162,11 @@
         if (!overlay) {
             return;
         }
+        if (player) {
+            player.frame.remove();
+            player = null;
+        }
+        gamesState.games = null;
         overlay.remove();
         overlay = null;
         detailEl = null;
@@ -1031,6 +1248,10 @@
     }
 
     function goBack() {
+        if (player) {
+            leaveGame();
+            return;
+        }
         if (closeDetail()) {
             return;
         }
@@ -1039,6 +1260,13 @@
 
     function press(action) {
         if (!overlay) {
+            return;
+        }
+        if (player) {
+            // The game has the controller and the keys; only Back (or Select + Start, in the game page) leaves it.
+            if (action === 'back') {
+                leaveGame();
+            }
             return;
         }
         if (action === 'back') {
@@ -1126,7 +1354,7 @@
             return;
         }
         var pads = navigator.getGamepads ? navigator.getGamepads() : [];
-        for (var p = 0; p < pads.length; p++) {
+        for (var p = 0; !player && p < pads.length; p++) {
             var pad = pads[p];
             if (!pad || !pad.connected) {
                 continue;

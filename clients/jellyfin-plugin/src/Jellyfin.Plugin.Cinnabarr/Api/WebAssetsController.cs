@@ -7,8 +7,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace Jellyfin.Plugin.Cinnabarr.Api
 {
     /// <summary>
-    /// The script and stylesheet added to jellyfin-web. They hold no data and no secrets, so they are served without
-    /// sign-in (the login page loads them too); everything they fetch needs the user's Jellyfin session.
+    /// The script and stylesheet added to jellyfin-web, and the game player page. They hold no data and no secrets, so
+    /// they are served without sign-in (the login page loads them too); everything they fetch needs the user's
+    /// Jellyfin session.
     /// </summary>
     [ApiController]
     [Route("Cinnabarr/Web")]
@@ -18,7 +19,8 @@ namespace Jellyfin.Plugin.Cinnabarr.Api
         private static readonly Dictionary<string, string> Assets = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["client.js"] = "application/javascript; charset=utf-8",
-            ["client.css"] = "text/css; charset=utf-8"
+            ["client.css"] = "text/css; charset=utf-8",
+            ["play.html"] = "text/html; charset=utf-8"
         };
 
         [HttpGet("{file}")]

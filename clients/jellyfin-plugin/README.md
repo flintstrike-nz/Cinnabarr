@@ -2,7 +2,7 @@
 
 Lets people use Cinnabarr from the Jellyfin apps (the goal is the LG webOS app): browse and request shows and movies, manage downloads, run interactive search and play games. The design and the steps are in [docs/cinnabarr/JELLYFIN.md](../../docs/cinnabarr/JELLYFIN.md).
 
-**Status: J5.** It holds the Cinnabarr address and API key, decides what each Jellyfin user may do, tests the connection, has the *Cinnabarr TV check* page, exposes the endpoints below, and adds the Cinnabarr screens to the Jellyfin app: Library, Discover and Search with requesting, and for managers Downloads and interactive search. Games come next.
+**Status: J6.** It holds the Cinnabarr address and API key, decides what each Jellyfin user may do, tests the connection, has the *Cinnabarr TV check* page, exposes the endpoints below, and adds the Cinnabarr screens to the Jellyfin app: Library, Discover and Search with requesting, for managers Downloads and interactive search, and for players Games. Streaming the heavy consoles from the server (`cinnabarr-play`) comes next.
 
 ## Using it
 
@@ -20,6 +20,12 @@ Managers also get:
 - **Find releases** on anything in the library: interactive search across indexers, in Cinnabarr's order, with quality, size, seeders, indexer, age and why a release is not wanted. **Grab** sends it to downloads; a release Cinnabarr would not pick needs a second press (**Grab anyway**). For a series, pick the season first (the newest is chosen). Grabs go to the main version; choosing a version slot comes later.
 
 Remote: arrows move, OK selects, Back goes back (and closes the view). Controller: d-pad or left stick move, A selects, B goes back. While the view is open, Jellyfin's own handling of the remote and controller is held back.
+
+Players also get:
+
+- **Games**: the games library with cover art, filtered by platform. NES, Super Nintendo, Master System and Mega Drive play on the TV itself; Nintendo 64 and PlayStation do too if the TV keeps up; PlayStation 2, GameCube, Wii and Wii U are marked *Streaming later* and explain why when opened. **Play** (or **Continue**, when there is a save) opens the game full screen. To leave, press **Back** on the remote or hold **Select + Start** on the controller for 1.5 seconds: the game is saved to the Cinnabarr server first, so **Continue** picks up there on any device. While a game runs, the controller and keys belong to the game; Jellyfin's own controller handling is ignored.
+
+The emulator (EmulatorJS) is loaded by the TV from its own site, like Cinnabarr's player: neither Cinnabarr nor this plugin ships it, so the TV needs internet access to start a game. ROMs, saves and BIOS files come from Cinnabarr through the plugin with the user's Jellyfin session.
 
 ### How the screens get into the app
 
@@ -81,6 +87,7 @@ All under `/Cinnabarr`, all need a signed-in Jellyfin user. This is a fixed list
 | --- | --- | --- |
 | `GET Me` | any | (plugin) the caller's roles and whether Cinnabarr is set up |
 | `POST Test` | administrator | (plugin) test `{ Url, ApiKey }` or the saved settings |
+| `GET Web/client.js`, `Web/client.css`, `Web/play.html` | anyone | (plugin) the screens and the game page; no data in them |
 | `GET Series`, `GET Series/{id}` | Requester | `series`, `series/{id}` |
 | `GET Movies`, `GET Movies/{id}` | Requester | `movie`, `movie/{id}` |
 | `GET Image/Series/{id}/{file}` | Requester | `mediacover/{id}/{file}` (poster, fanart…; movies use their remote image URLs) |
@@ -98,6 +105,7 @@ All under `/Cinnabarr`, all need a signed-in Jellyfin user. This is a fixed list
 | `GET Releases/Movie?movieId=&versionSlotId=`, `POST Releases/Movie` | Manager | `release/movie` |
 | `GET Search?query=`, `POST Search/Grab` | Manager | `search`, `search/grab` |
 | `GET Games`, `GET Games/{id}` | Player | `game`, `game/{id}` |
+| `GET Games/Platforms` | Player | `game/platform` (how each platform is played) |
 | `GET Games/{id}/Cover`, `GET Games/{id}/Play` | Player | `game/{id}/cover`, `game/{id}/play` |
 | `GET Games/{id}/Rom` | Player | `game/{id}/rom`, with `Range` passed on |
 | `GET`/`PUT Games/{id}/State` | Player | `game/{id}/state` (up to 64 MB) |
