@@ -1,6 +1,6 @@
 # Cinnabarr in Jellyfin on LG webOS, and streamed games (design)
 
-Status: **scheduled; J0 (this document and the TV checklist) and J1 (the request and status API, section 8) are done.** This turns [Addendum A](ROADMAP.md#addendum-a--jellyfin--webos-integration-future-not-part-of-the-current-plan) into a plan and extends the games work in [GAMES.md](GAMES.md) with server-side emulation for the consoles a TV cannot emulate itself.
+Status: **scheduled; J0 (this document and the TV checklist), J1 (the request and status API, section 8) and J2 (the plugin skeleton with the TV check page, `clients/jellyfin-plugin/`) are done.** This turns [Addendum A](ROADMAP.md#addendum-a--jellyfin--webos-integration-future-not-part-of-the-current-plan) into a plan and extends the games work in [GAMES.md](GAMES.md) with server-side emulation for the consoles a TV cannot emulate itself.
 
 ## 1. Goal
 
@@ -92,7 +92,9 @@ Jellyfin administrators have every role.
 
 ## 6. TV checklist (do this before J4 and G7a)
 
-These are the questions the plan depends on. Each has to be answered on the real TV, **inside the Jellyfin app** (not the TV's web browser, which can behave differently). Until J2 ships the probe page, the first item can be checked with `/tv?debug=1` in the TV browser as described in [TV.md](TV.md).
+These are the questions the plan depends on. Each has to be answered on the real TV, **inside the Jellyfin app** (not the TV's web browser, which can behave differently). Install the plugin ([clients/jellyfin-plugin/README.md](../../clients/jellyfin-plugin/README.md)) and open *Dashboard → Cinnabarr TV check* in the Jellyfin app on the TV: it answers items 1 to 4.
+
+Found while building J2: jellyfin-web only turns controller presses into key presses when the user's *Enable gamepad* setting is on (it is off by default). When it is on, the key presses it makes are synthetic (`isTrusted` is false, with keys like `GamepadA`), so a game screen can tell them apart from the remote and ignore them. That answers most of item 3.
 
 | # | Question | Why it matters | If the answer is no |
 | --- | --- | --- | --- |
