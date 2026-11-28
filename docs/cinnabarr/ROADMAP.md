@@ -690,7 +690,7 @@ Decided since the first draft: metadata comes from TVDB, TMDb and IMDb (§4.14);
 
 ## Addendum A — Jellyfin + webOS integration (future, not part of the current plan)
 
-> Status: **idea, not scheduled.** Nothing in Phases 1–7 depends on this, and no phase should be delayed or reshaped for it. It is recorded here so that decisions made in the main plan don't accidentally close the door.
+> Status: **scheduled; see [JELLYFIN.md](JELLYFIN.md) for the plan (steps J0–J6, plus streamed games G6–G8).** It now also covers downloads, interactive search and playing games from the Jellyfin app. The text below is the original idea and still holds; where they differ, JELLYFIN.md wins. Nothing in Phases 1–7 depends on it.
 
 ### A.1 Goal
 
@@ -1383,4 +1383,4 @@ Built-in (code) indexers: Prowlarr implements about 70 sites as code rather than
 
 ## Games (design)
 
-Game library, metadata and play in the browser / Jellyfin on LG webOS: see [GAMES.md](GAMES.md). Needs owner decisions and API keys before code.
+Game library, metadata and play in the browser: see [GAMES.md](GAMES.md). Playing from Jellyfin on LG webOS, and streaming the consoles a TV cannot emulate itself (`cinnabarr-play`): see [JELLYFIN.md](JELLYFIN.md).

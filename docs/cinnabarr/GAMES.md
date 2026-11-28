@@ -17,6 +17,9 @@ A third library next to Series and Movies: **Games**. A game belongs to a **plat
 | G3 | Play in the browser from the details page, with gamepad support, saves and save states stored on the server | emulator choice (section 3) |
 | G4 | Play from the Jellyfin app on LG webOS | a prototype on a real TV (section 5) |
 | G5 | Doctor for games (duplicate regions/revisions, bad dumps), storage balancing for the Games library | G1 |
+| G6 | More platforms: NES, Mega Drive, Nintendo 64, GameCube, Wii, Wii U | nothing external |
+| G7 | Stream the consoles a TV cannot emulate (PlayStation 2, GameCube, Wii, and PlayStation / N64 where the TV is too slow) from the server with `cinnabarr-play` | an NVIDIA GPU on the server; see [JELLYFIN.md](JELLYFIN.md) |
+| G8 | Wii U (experimental), through standalone Cemu | G7 |
 
 Acquiring ROMs is out of scope. Cinnabarr does not search for, download or link to ROMs. The games library only manages files the user already has, and the legal notice shown before the engine is used is extended to say so.
 
@@ -46,11 +49,13 @@ Two possible routes:
 1. **A Jellyfin plugin** (C#, runs in Jellyfin) that adds a Games library type and a page that embeds the Cinnabarr player. Works in the stock app if the webOS web view runs it. Needs a plugin to be written and kept up to date with Jellyfin releases.
 2. **Cinnabarr's own page opened from the TV** (a web app on the TV's browser or the webOS sideload route). Simpler, does not need Jellyfin at all.
 
+**Decision:** route 2 is built (`/tv`, G4) and stays as the fallback. Route 1 is now planned in [JELLYFIN.md](JELLYFIN.md), together with server-side streaming for the heavier consoles.
+
 Risks: older webOS versions ship an old Chromium (WebAssembly speed, missing features); a TV gamepad must pair over Bluetooth and appear in the Gamepad API; the Jellyfin app's remote-control focus handling may fight the emulator for the d-pad. **G4 starts with a one-day prototype on a real TV** (EmulatorJS page, one 8-bit core, one controller) to see which of these is true.
 
 ## 6. Decisions needed from the owner
 
 1. **Metadata provider:** IGDB, ScreenScraper, or both? Each needs a key the owner registers (Twitch application for IGDB; screenscraper.fr account). Cinnabarr cannot create these.
 2. **Emulator licence stance:** OK to ship only GPL-compatible cores and fetch others on request?
-3. **Which platforms first:** a short list (for example NES, SNES, Mega Drive, Game Boy/GBA, PlayStation) so cores and DATs can be chosen.
-4. **LG TV:** model/webOS version and which controller, for the G4 prototype.
+3. **Which platforms first:** answered: NES, SNES, Master System, Mega Drive, Nintendo 64, PlayStation, PlayStation 2, GameCube, Wii, Wii U.
+4. **LG TV:** answered: OLED55A1PVA (webOS 6) with an Xbox Elite Series 2 (see TV.md).
