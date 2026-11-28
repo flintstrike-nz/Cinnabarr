@@ -92,6 +92,35 @@ namespace NzbDrone.Common.Test.DiskTests
         }
 
         [Test]
+        public void CopyFile_should_overwrite_existing_file_when_asked()
+        {
+            var source = GetTempFilePath();
+            var destination = GetTempFilePath();
+
+            File.WriteAllText(source, "New");
+            File.WriteAllText(destination, "Old");
+
+            Subject.CopyFile(source, destination, true);
+
+            File.ReadAllText(destination).Should().Be("New");
+            File.Exists(source).Should().BeTrue();
+        }
+
+        [Test]
+        public void CopyFile_should_not_overwrite_existing_file_by_default()
+        {
+            var source = GetTempFilePath();
+            var destination = GetTempFilePath();
+
+            File.WriteAllText(source, "New");
+            File.WriteAllText(destination, "Old");
+
+            Assert.Catch<IOException>(() => Subject.CopyFile(source, destination));
+
+            File.ReadAllText(destination).Should().Be("Old");
+        }
+
+        [Test]
         public void ReplaceFile_should_replace_existing_file()
         {
             var source = GetTempFilePath();
