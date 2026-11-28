@@ -286,6 +286,10 @@ namespace Jellyfin.Plugin.Cinnabarr.Api
         [HttpGet("Games")]
         public Task<IActionResult> Games(CancellationToken ct) => Forward(CinnabarrRoles.Player, HttpMethod.Get, "game", ct);
 
+        // The platforms Cinnabarr knows, with how each is played (browser, auto or stream).
+        [HttpGet("Games/Platforms")]
+        public Task<IActionResult> GamePlatforms(CancellationToken ct) => Forward(CinnabarrRoles.Player, HttpMethod.Get, "game/platform", ct);
+
         [HttpGet("Games/{id:int}")]
         public Task<IActionResult> Game([FromRoute] int id, CancellationToken ct) => Forward(CinnabarrRoles.Player, HttpMethod.Get, $"game/{id}", ct);
 

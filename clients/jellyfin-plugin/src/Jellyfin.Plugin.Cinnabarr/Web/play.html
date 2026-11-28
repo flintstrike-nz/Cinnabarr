@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cinnabarr game</title>
+    <style>
+        html, body { margin: 0; height: 100%; background: #000; color: #eee; font-family: sans-serif; overflow: hidden; }
+        #game { width: 100%; height: 100%; }
+        #hint { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); padding: 10px 18px; border-radius: 8px;
+                background: rgba(20, 20, 24, 0.85); font-size: 18px; transition: opacity 0.4s; pointer-events: none; }
+        #hint.gone { opacity: 0; }
+    </style>
+</head>
+<body>
+    <div id="game"></div>
+    <div id="hint">To leave: press Back on the remote, or hold Select + Start on the controller.</div>
+    <script>
+        /*
+         * One game, inside the Cinnabarr view in Jellyfin. Opened in an iframe by client.js on the same origin, so it
+         * uses the Jellyfin session of the page around it: nothing secret is in this page's address. The emulator
+         * (EmulatorJS) is loaded by the browser from its own site; Cinnabarr and this plugin do not ship it.
+         * Plain ES2019 for webOS 6.
+         */
+        (function () {
+            'use strict';
+
+            var EMULATOR = 'https://cdn.emulatorjs.org/stable/data/';
+            var parentWindow = window.parent;
+            var client = parentWindow && parentWindow.ApiClient;
+            var params = {};
+            location.hash.replace(/^#/, '').split('&').forEach(function (pair) {
+                var i = pair.indexOf('=');
+                if (i > 0) {
+                    params[decodeURIComponent(pair.slice(0, i))] = decodeURIComponent(pair.slice(i + 1));
+                }
+            });
+
+            var id = parseInt(params.id, 10);
+            var leaving = false;
+
+            function tell(message) {
+                if (parentWindow && parentWindow !== window) {
+                    parentWindow.postMessage({ cinnabarr: message }, location.origin);
+                }
+            }
+
+            if (!client || !id || !/^[A-Za-z0-9]+$/.test(params.core || '')) {
+                document.getElementById('hint').textContent = 'Open games from the Cinnabarr view in Jellyfin.';
+                return;
+            }
+
+            var token = client.accessToken();
+
+            function url(path) {
+                return client.getUrl('Cinnabarr/' + path) + '?ApiKey=' + encodeURIComponent(token);
+            }
+
+            function saveState(state) {
+                return fetch(client.getUrl('Cinnabarr/Games/' + id + '/State'), {
+                    method: 'PUT',
+                    headers: { 'Authorization': 'MediaBrowser Token="' + token + '"', 'Content-Type': 'application/octet-stream' },
+                    body: new Blob([state])
+                });
+            }
+
+            // Saves where the player is, then asks the page around to close this one. Gives up on saving after 3 s.
+            function leave() {
+                if (leaving) {
+                    return;
+                }
+                leaving = true;
+                var saved = Promise.resolve();
+                try {
+                    var emulator = window.EJS_emulator;
+                    var state = emulator && emulator.gameManager && emulator.started !== false ? emulator.gameManager.getState() : null;
+                    if (state && state.length) {
+                        saved = saveState(state);
+                    }
+                } catch (e) {
+                    saved = Promise.resolve();
+                }
+                var timeout = new Promise(function (resolve) { setTimeout(resolve, 3000); });
+                Promise.race([saved, timeout]).then(function () { tell('exit'); }, function () { tell('exit'); });
+            }
+
+            window.EJS_player = '#game';
+            window.EJS_core = params.core;
+            window.EJS_gameName = params.title || 'Game';
+            window.EJS_gameUrl = url('Games/' + id + '/Rom');
+            window.EJS_pathtodata = EMULATOR;
+            window.EJS_startOnLoaded = true;
+            if (params.state === '1') {
+                window.EJS_loadStateURL = url('Games/' + id + '/State');
+            }
+            if (params.bios && /^[a-z0-9]+$/.test(params.bios)) {
+                window.EJS_biosUrl = url('Games/Bios/' + params.bios);
+            }
+            window.EJS_onSaveState = function (e) {
+                saveState(e.state);
+            };
+
+            // The remote's Back key.
+            window.addEventListener('keydown', function (e) {
+                if (e.keyCode === 461 || e.keyCode === 10009) {
+                    e.preventDefault();
+                    leave();
+                }
+            }, true);
+
+            // Select + Start held for 1.5 seconds, like Cinnabarr's /tv launcher.
+            var since = 0;
+            function poll() {
+                var pads = navigator.getGamepads ? navigator.getGamepads() : [];
+                var held = false;
+                for (var i = 0; i < pads.length; i++) {
+                    var p = pads[i];
+                    if (p && p.connected && p.buttons[8] && p.buttons[9] && p.buttons[8].pressed && p.buttons[9].pressed) {
+                        held = true;
+                    }
+                }
+                if (held) {
+                    since = since || Date.now();
+                    if (Date.now() - since > 1500) {
+                        since = 0;
+                        leave();
+                    }
+                } else {
+                    since = 0;
+                }
+                if (!leaving) {
+                    requestAnimationFrame(poll);
+                }
+            }
+            requestAnimationFrame(poll);
+
+            window.addEventListener('message', function (e) {
+                if (e.origin === location.origin && e.data && e.data.cinnabarr === 'leave') {
+                    leave();
+                }
+            });
+
+            setTimeout(function () {
+                document.getElementById('hint').className = 'gone';
+            }, 6000);
+
+            var script = document.createElement('script');
+            script.src = EMULATOR + 'loader.js';
+            document.body.appendChild(script);
+            tell('started');
+        })();
+    </script>
+</body>
+</html>
