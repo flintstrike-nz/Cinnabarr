@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Cinnabarr TV check</title>
+</head>
+<body>
+    <!--
+        The TV checklist from docs/cinnabarr/JELLYFIN.md section 6, run inside the Jellyfin app itself.
+        Plain ES2019 so the webOS 6 web engine can run it.
+    -->
+    <div id="CinnabarrTvCheckPage" data-role="page" class="page type-interior pluginConfigurationPage">
+        <div data-role="content">
+            <div class="content-primary">
+                <h2>Cinnabarr TV check</h2>
+                <p>Open this page on the TV, inside the Jellyfin app. Pair the controller, then press a few buttons on it and on the remote (including Back). Then tell whoever is building Cinnabarr what each row says, or use <b>Copy report</b>.</p>
+
+                <table id="CinnabarrChecks" style="width:100%;border-collapse:collapse;font-size:1.1em;">
+                    <tbody>
+                        <tr><th style="text-align:left;width:30%;">1. Controller</th><td id="checkGamepad">Press a button on the controller…</td></tr>
+                        <tr><th style="text-align:left;">2. Streaming (WebRTC)</th><td id="checkWebRtc">Checking…</td></tr>
+                        <tr><th style="text-align:left;">3. Jellyfin's own controller handling</th><td id="checkJellyfinPad">Checking…</td></tr>
+                        <tr><th style="text-align:left;">4. Remote keys</th><td id="checkKeys">Press keys on the remote…</td></tr>
+                        <tr><th style="text-align:left;">Device</th><td id="checkDevice"></td></tr>
+                    </tbody>
+                </table>
+
+                <div style="margin-top:1.5em;">
+                    <button id="CinnabarrCopyReport" is="emby-button" type="button" class="raised button-alt"><span>Copy report</span></button>
+                </div>
+                <pre id="CinnabarrReport" style="white-space:pre-wrap;font-size:0.85em;opacity:0.8;"></pre>
+            </div>
+        </div>
+
+        <script type="text/javascript">
+            (function () {
+                var page = document.querySelector('#CinnabarrTvCheckPage');
+                var state = { gamepad: 'none seen', webrtc: 'unknown', jellyfinPad: 'unknown', keys: [], synthetic: 0 };
+                var timer = null;
+
+                function set(id, text) {
+                    var el = page.querySelector('#' + id);
+                    if (el) { el.textContent = text; }
+                    report();
+                }
+
+                function report() {
+                    var text = [
+                        'Cinnabarr TV check',
+                        'Controller: ' + state.gamepad,
+                        'WebRTC: ' + state.webrtc,
+                        'Jellyfin controller handling: ' + state.jellyfinPad + (state.synthetic ? ' (' + state.synthetic + ' translated key presses seen)' : ''),
+                        'Keys: ' + (state.keys.length ? state.keys.join(', ') : 'none yet'),
+                        'User agent: ' + navigator.userAgent
+                    ].join('\n');
+                    var el = page.querySelector('#CinnabarrReport');
+                    if (el) { el.textContent = text; }
+                    return text;
+                }
+
+                // 1. Does the Gamepad API see the controller here?
+                function pollGamepads() {
+                    if (!navigator.getGamepads) {
+                        state.gamepad = 'MISSING: this web engine has no Gamepad API';
+                        set('checkGamepad', state.gamepad);
+                        return;
+                    }
+                    var pads = navigator.getGamepads() || [];
+                    var found = [];
+                    for (var i = 0; i < pads.length; i++) {
+                        var p = pads[i];
+                        if (!p) { continue; }
+                        var pressed = [];
+                        for (var b = 0; b < p.buttons.length; b++) {
+                            if (p.buttons[b] && p.buttons[b].pressed) { pressed.push(b); }
+                        }
+                        found.push('"' + p.id + '", mapping "' + (p.mapping || '') + '", ' + p.buttons.length + ' buttons, ' + p.axes.length + ' axes' +
+                            (pressed.length ? ', pressed: ' + pressed.join(' ') : ''));
+                    }
+                    var text = found.length
+                        ? 'OK: ' + found.join(' | ')
+                        : 'Gamepad API present, ' + pads.length + ' slots, no controller yet (press a button; a browser only lists a controller after a press)';
+                    if (text !== state.gamepad) {
+                        state.gamepad = text;
+                        set('checkGamepad', text);
+                    }
+                }
+
+                // 2. Can this page receive an H.264 video stream over WebRTC?
+                function checkWebRtc() {
+                    if (typeof RTCPeerConnection === 'undefined') {
+                        state.webrtc = 'MISSING: no RTCPeerConnection (streamed games would need the slower fallback)';
+                        set('checkWebRtc', state.webrtc);
+                        return;
+                    }
+                    var codecs = null;
+                    if (window.RTCRtpReceiver && RTCRtpReceiver.getCapabilities) {
+                        var caps = RTCRtpReceiver.getCapabilities('video');
+                        codecs = caps && caps.codecs ? caps.codecs.map(function (c) { return c.mimeType; }) : null;
+                    }
+                    var pc;
+                    try {
+                        pc = new RTCPeerConnection();
+                    } catch (e) {
+                        state.webrtc = 'BROKEN: RTCPeerConnection exists but could not be created (' + e.message + ')';
+                        set('checkWebRtc', state.webrtc);
+                        return;
+                    }
+                    var offer = pc.addTransceiver
+                        ? (pc.addTransceiver('video', { direction: 'recvonly' }), pc.createOffer())
+                        : pc.createOffer({ offerToReceiveVideo: true });
+                    offer.then(function (o) {
+                        var h264 = /a=rtpmap:\d+ H264\//i.test(o.sdp);
+                        state.webrtc = (h264 ? 'OK: can receive H.264' : 'NO H.264 in the offer') +
+                            (codecs ? ' (codecs: ' + codecs.filter(function (c, i, a) { return a.indexOf(c) === i; }).join(', ') + ')' : '');
+                        set('checkWebRtc', state.webrtc);
+                        pc.close();
+                    }, function (e) {
+                        state.webrtc = 'BROKEN: could not create an offer (' + e.message + ')';
+                        set('checkWebRtc', state.webrtc);
+                        pc.close();
+                    });
+                }
+
+                // 3. Jellyfin turns controller presses into synthetic key presses ("GamepadA", arrow keys) when its
+                // "Enable gamepad" setting is on. Games must ignore those, which works because they are untrusted events.
+                function checkJellyfinPad() {
+                    var setting = null;
+                    try {
+                        for (var i = 0; i < localStorage.length; i++) {
+                            var key = localStorage.key(i);
+                            if (/enableGamepad$/.test(key)) { setting = localStorage.getItem(key); }
+                        }
+                    } catch (e) { setting = null; }
+                    state.jellyfinPad = setting === 'true'
+                        ? 'ON: Jellyfin moves its focus with the controller; games will ignore its translated presses'
+                        : 'OFF (Jellyfin setting "Enable gamepad" is not on)';
+                    set('checkJellyfinPad', state.jellyfinPad);
+                }
+
+                // 4. Which keys arrive, and are they real (trusted) presses or Jellyfin's translations?
+                function onKey(e) {
+                    if (!page.isConnected) { return; }
+                    if (!e.isTrusted) {
+                        state.synthetic++;
+                        checkJellyfinPad();
+                        return;
+                    }
+                    var name = (e.key || '?') + ' (' + e.keyCode + ')' + (e.keyCode === 461 ? ' = Back' : '');
+                    if (state.keys[state.keys.length - 1] !== name) {
+                        state.keys.push(name);
+                        if (state.keys.length > 12) { state.keys.shift(); }
+                    }
+                    set('checkKeys', 'Seen: ' + state.keys.join(', '));
+                }
+
+                page.addEventListener('pageshow', function () {
+                    set('checkDevice', navigator.userAgent);
+                    checkWebRtc();
+                    checkJellyfinPad();
+                    pollGamepads();
+                    if (!timer) { timer = setInterval(pollGamepads, 150); }
+                    window.addEventListener('keydown', onKey, true);
+                });
+
+                page.addEventListener('pagehide', function () {
+                    if (timer) { clearInterval(timer); timer = null; }
+                    window.removeEventListener('keydown', onKey, true);
+                });
+
+                page.querySelector('#CinnabarrCopyReport').addEventListener('click', function () {
+                    var text = report();
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(text).then(function () {
+                            Dashboard.alert('Copied.');
+                        }, function () {
+                            Dashboard.alert('Could not copy; the report is shown at the bottom of the page.');
+                        });
+                    } else {
+                        Dashboard.alert('Copying is not available here; the report is shown at the bottom of the page.');
+                    }
+                });
+            })();
+        </script>
+    </div>
+</body>
+</html>
