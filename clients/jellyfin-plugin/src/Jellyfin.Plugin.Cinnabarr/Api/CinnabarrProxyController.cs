@@ -231,13 +231,14 @@ namespace Jellyfin.Plugin.Cinnabarr.Api
         [HttpPost("Downloads/{downloadId}/Resume")]
         public Task<IActionResult> Resume([FromRoute] string downloadId, CancellationToken ct) => EngineAction(downloadId, "resume", ct);
 
-        // Interactive search for a series, a season (seriesId + seasonNumber) or an episode (episodeId).
+        // Interactive search for a season (seriesId + seasonNumber) or an episode (episodeId).
         [HttpGet("Releases/Series")]
         public Task<IActionResult> SeriesReleases([FromQuery] int? seriesId, [FromQuery] int? seasonNumber, [FromQuery] int? episodeId, [FromQuery] int versionSlotId = 0, CancellationToken ct = default)
         {
-            if (seriesId == null && episodeId == null)
+            // Cinnabarr searches an episode, or a season of a series; anything else would be its RSS feed.
+            if (episodeId == null && (seriesId == null || seasonNumber == null))
             {
-                return Task.FromResult(Bad("seriesId or episodeId is required."));
+                return Task.FromResult(Bad("Give episodeId, or seriesId with seasonNumber."));
             }
 
             var query = Query(

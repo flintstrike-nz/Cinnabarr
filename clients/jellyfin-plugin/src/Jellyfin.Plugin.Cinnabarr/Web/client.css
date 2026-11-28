@@ -357,3 +357,130 @@ html.cnb-open body {
 .cnb-headerButton svg {
     display: block;
 }
+
+/* Downloads and releases */
+
+.cnb-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8em;
+    max-width: 80em;
+}
+
+.cnb-row {
+    background: var(--cnb-surface);
+    border-radius: 0.7em;
+    padding: 0.9em 1.1em;
+}
+
+.cnb-rowHead {
+    display: flex;
+    align-items: baseline;
+    gap: 1em;
+}
+
+.cnb-rowTitle {
+    flex: 1;
+    min-width: 0;
+    font-weight: 600;
+    font-size: 1.05em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cnb-rowRelease {
+    font-weight: 500;
+    white-space: normal;
+    word-break: break-word;
+}
+
+.cnb-rowStatus {
+    flex: none;
+    font-size: 0.85em;
+    font-weight: 600;
+    padding: 0.1em 0.6em;
+    border-radius: 1em;
+    background: var(--cnb-surface-2);
+}
+
+.cnb-q-downloading {
+    background: var(--cnb-info);
+    color: #04101f;
+}
+
+.cnb-q-completed {
+    background: var(--cnb-ok);
+    color: #04110a;
+}
+
+.cnb-q-warning,
+.cnb-q-failed,
+.cnb-q-downloadClientUnavailable {
+    background: var(--cnb-warn);
+    color: #1a1200;
+}
+
+.cnb-rowSub,
+.cnb-rowMeta {
+    color: var(--cnb-muted);
+    font-size: 0.9em;
+    margin-top: 0.3em;
+    word-break: break-word;
+}
+
+.cnb-rowProblem {
+    color: #f0b35a;
+    font-size: 0.9em;
+    margin-top: 0.3em;
+}
+
+.cnb-progress {
+    height: 0.45em;
+    border-radius: 0.3em;
+    background: var(--cnb-surface-2);
+    margin-top: 0.6em;
+    overflow: hidden;
+}
+
+.cnb-progressFill {
+    height: 100%;
+    background: var(--cnb-info);
+}
+
+.cnb-row .cnb-actions {
+    margin-top: 0.7em;
+    flex-wrap: wrap;
+}
+
+.cnb-releases {
+    align-items: stretch;
+}
+
+.cnb-releasePanel {
+    display: flex;
+    flex-direction: column;
+    width: min(80em, 94vw);
+    margin: 3vh auto;
+    padding: 1.5em 2em;
+    border-radius: 1em;
+    background: var(--cnb-bg);
+    overflow: hidden;
+}
+
+.cnb-releaseTop {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+}
+
+.cnb-releaseTop .cnb-detailTitle {
+    flex: 1;
+}
+
+.cnb-releaseList {
+    flex: 1;
+    overflow-y: auto;
+    max-width: none;
+    padding-bottom: 1em;
+}
